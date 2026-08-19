@@ -1,8 +1,28 @@
 'use client';
 
 import Link from 'next/link';
+import { supabase } from '@/lib/supabase';
 
 export default function DonnerCoursPage() {
+
+  // Fonction qui déclenche la pop-up Google via Supabase
+  const handleGoogleSignIn = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}`,
+        },
+      });
+
+      if (error) {
+        console.error('Erreur Supabase Google OAuth:', error.message);
+      }
+    } catch (err) {
+      console.error('Erreur lors de la connexion Google:', err);
+    }
+  };
+
   return (
     <main className="min-h-screen bg-[#FFFDF7] flex flex-col justify-between p-6">
       
@@ -58,7 +78,7 @@ export default function DonnerCoursPage() {
 
             <button 
               type="submit" 
-              className="w-full py-3.5 bg-[#FF5A5F] hover:bg-[#E0484C] text-white font-bold rounded-xl transition text-sm shadow-md"
+              className="w-full py-3.5 bg-[#FF5A5F] hover:bg-[#E0484C] text-white font-bold rounded-xl transition text-sm shadow-md cursor-pointer"
             >
               Inscription par e-mail
             </button>
@@ -72,11 +92,13 @@ export default function DonnerCoursPage() {
           </div>
 
           <div className="space-y-3">
-            <button className="w-full py-3 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl font-medium text-sm text-gray-700 transition flex items-center justify-center gap-2">
+            {/* BOUTON GOOGLE */}
+            <button 
+              type="button"
+              onClick={handleGoogleSignIn}
+              className="w-full py-3 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl font-medium text-sm text-gray-700 transition flex items-center justify-center gap-2 cursor-pointer"
+            >
               Inscription avec Google
-            </button>
-            <button className="w-full py-3 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl font-medium text-sm text-gray-700 transition flex items-center justify-center gap-2">
-              Inscription avec Apple
             </button>
           </div>
 
