@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import { 
   Search, 
   Menu, 
@@ -190,9 +191,12 @@ export default function Home() {
             <button className="text-gray-600 hover:text-black">
               <HelpCircle className="w-5 h-5" />
             </button>
-            <button className="bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-bold px-4 py-2 rounded-full transition">
-              Donner des cours
-            </button>
+            <Link 
+             href="/donner-cours" 
+               className="bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-bold px-4 py-2 rounded-full transition inline-block"
+>
+               Donner des cours
+              </Link>
           </div>
         </div>
       </header>
@@ -210,9 +214,12 @@ export default function Home() {
             <button className="text-gray-700 hover:text-black transition p-1 rounded-full">
               <HelpCircle className="w-6 h-6 stroke-[1.8]" />
             </button>
-            <a href="#" className="text-gray-900 font-bold hover:text-[#FF5A5F] transition text-sm">
-              Donner des cours
-            </a>
+            <Link 
+              href="/donner-cours" 
+              className="text-gray-900 font-bold hover:text-[#FF5A5F] transition text-sm"
+>
+                 Donner des cours
+                  </Link>
             <button 
               onClick={() => setShowLogin(true)}
               className="text-gray-900 font-bold hover:text-[#FF5A5F] transition text-sm"
