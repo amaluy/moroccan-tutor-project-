@@ -1,117 +1,249 @@
 'use client';
 
+import { useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Smile, Search, ChevronRight, Check, Plus } from 'lucide-react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
 
 export default function DonnerCoursPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  
+  // Récupération de la matière principale si elle est passée dans l'URL
+  const mainSubjectFromUrl = searchParams.get('matiere');
 
-  // Fonction qui déclenche la pop-up Google via Supabase
-  const handleGoogleSignIn = async () => {
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}`,
-        },
-      });
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedSubjects, setSelectedSubjects] = useState<string[]>(
+    mainSubjectFromUrl ? [mainSubjectFromUrl] : []
+  );
 
-      if (error) {
-        console.error('Erreur Supabase Google OAuth:', error.message);
+  // Les 8 vraies matières de la plateforme
+  const allSubjects = [
+    'Maths',
+    'Anglais',
+    'Français',
+    'Arabe',
+    'Soutien scolaire',
+    'SVT',
+    'Physique',
+    'Physique - Chimie',
+  ];
+
+  // Compétences / modules additionnels suggérés pour l'étape 2 (quand la matière principale est choisie)
+  const additionalModules = [
+    'Statistiques',
+    'Physique',
+    'Chimie',
+    'Préparation concours',
+    'Autres sciences',
+    'Chimie organique',
+    'Logique mathématique',
+    'Trigonométrie',
+    'Géométrie',
+    'Arithmétique',
+  ];
+
+  const isMainStep = selectedSubjects.length === 0;
+  const isMaxReached = selectedSubjects.length >= 5;
+
+  // Filtrage pour la recherche de la 1ère page
+  const filteredSubjects = allSubjects.filter((s) =>
+    s.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const handleSelectMainSubject = (subjectName: string) => {
+    setSelectedSubjects([subjectName]);
+  };
+
+  const handleToggleModule = (mod: string) => {
+    if (selectedSubjects.includes(mod)) {
+      // On ne peut pas retirer la toute première matière principale sélectionnée par simple clic ici si on veut, ou alors on gère
+      if (selectedSubjects.length === 1) return; 
+      setSelectedSubjects(selectedSubjects.filter((s) => s !== mod));
+    } else {
+      if (selectedSubjects.length < 5) {
+        setSelectedSubjects([...selectedSubjects, mod]);
       }
-    } catch (err) {
-      console.error('Erreur lors de la connexion Google:', err);
     }
   };
 
+  const handleNext = () => {
+    router.push(`/donner-cours/etape-suivante?matieres=${encodeURIComponent(selectedSubjects.join(','))}`);
+  };
+
   return (
-    <main className="min-h-screen bg-[#FFFDF7] flex flex-col justify-between p-6">
+    <main className="min-h-screen bg-white text-gray-900 font-sans flex flex-col justify-between selection:bg-[#FF5A5F] selection:text-white">
       
-      {/* Header avec Logo */}
-      <header className="max-w-7xl mx-auto w-full py-4">
-        <Link href="/" className="text-2xl font-extrabold text-[#FF5A5F] tracking-tight">
+      {/* Header minimaliste */}
+      <header className="w-full max-w-6xl mx-auto px-6 py-6 flex items-center justify-between">
+        <Link href="/" className="text-2xl font-black text-[#FF5A5F] tracking-tight">
           profmaroc
         </Link>
+        <span className="text-xs font-semibold text-gray-400">Étape 1 sur 3</span>
       </header>
 
-      {/* Contenu principal */}
-      <div className="max-w-6xl w-full mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 items-center my-auto py-8">
+      {/* Contenu principal double colonne */}
+      <div className="flex-1 max-w-6xl mx-auto px-6 py-12 w-full grid grid-cols-1 lg:grid-cols-12 gap-16 items-start my-auto">
         
-        {/* Colonne gauche : Texte explicatif */}
-        <div className="space-y-6">
-          <h1 className="text-4xl sm:text-5xl font-extrabold text-gray-900 leading-tight">
-            Donner des cours,<br />vivre de sa passion !
-          </h1>
-
-          <p className="text-gray-600 text-sm leading-relaxed max-w-md">
-            Bienvenue sur la plus grande communauté de professeurs particuliers au Maroc où des milliers d'élèves trouvent chaque jour le prof parfait pour leurs cours particuliers.
-          </p>
-
-          <div className="space-y-3 text-sm font-semibold text-gray-800 pt-2">
-            <p className="flex items-center gap-2">
-              <span>🥂</span> Donnez vos cours <strong>en ligne ou en face à face</strong>
-            </p>
-            <p className="flex items-center gap-2">
-              <span>💸</span> <strong>Fixez vos tarifs</strong> comme vous voulez
-            </p>
-            <p className="flex items-center gap-2">
-              <span>🔷</span> <strong>Organisez</strong> votre emploi du temps
-            </p>
+        {/* Colonne de gauche : Bloc "À savoir" dynamique selon l'étape */}
+        <div className="lg:col-span-5 bg-[#FFF2F2] border border-[#FFE4E4] p-8 rounded-[2rem] shadow-xs space-y-5 sticky top-8">
+          <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-[#FF5A5F] shadow-xs">
+            <Smile className="w-6 h-6" />
           </div>
-
-          <p className="text-xs text-gray-500 pt-4">
-            Étudiants, enseignants, autodidactes, passionnés, diplômés, professionnels... Inscrivez-vous sur <strong>profmaroc</strong> et commencez dès aujourd'hui !
-          </p>
+          <h2 className="text-2xl font-black text-gray-900 tracking-tight">À savoir</h2>
+          
+          <div className="space-y-3 text-sm text-gray-600 font-medium leading-relaxed">
+            {isMainStep ? (
+              <p>
+                ProfMaroc vous propose d'enseigner et de partager vos connaissances dans nos disciplines clés. Utilisez le moteur de recherche pour sélectionner votre matière principale et laissez-vous guider pour que l'aventure commence ;)
+              </p>
+            ) : (
+              <p>
+                Vous pouvez ajouter <strong className="text-gray-900">{5 - selectedSubjects.length} matière{5 - selectedSubjects.length > 1 ? 's' : ''} supplémentaire{5 - selectedSubjects.length > 1 ? 's' : ''}</strong> à votre annonce. Choisissez des matières que vous enseignez simultanément.
+              </p>
+            )}
+          </div>
         </div>
 
-        {/* Colonne droite : Formulaire d'inscription */}
-        <div className="bg-white rounded-3xl p-8 shadow-xl border border-gray-100 max-w-md w-full mx-auto">
-          <h2 className="text-2xl font-bold text-center text-gray-900 mb-6">
-            Créez votre profil
-          </h2>
+        {/* Colonne de droite : Sélection des matières ou compétences */}
+        <div className="lg:col-span-7 space-y-6">
+          
+          {isMainStep ? (
+            // --- ÉTAPE 1 : CHOIX DE LA MATIÈRE PRINCIPALE ---
+            <>
+              <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">
+                Quelles <span className="text-[#FF5A5F]">matières</span> enseignez-vous ?
+              </h1>
 
-          <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
-            <input 
-              type="email" 
-              placeholder="Email" 
-              className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#FF5A5F] text-sm"
-            />
+              {/* Barre de recherche */}
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input 
+                  type="text"
+                  placeholder='Essayer "Maths"...'
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-12 pr-4 py-4 bg-white border border-gray-200/90 rounded-2xl text-sm font-medium focus:outline-none focus:border-[#FF5A5F] shadow-xs transition"
+                />
+              </div>
 
-            <button 
-              type="submit" 
-              className="w-full py-3.5 bg-[#FF5A5F] hover:bg-[#E0484C] text-white font-bold rounded-xl transition text-sm shadow-md cursor-pointer"
-            >
-              Inscription par e-mail
-            </button>
-          </form>
+              <div className="space-y-2 pt-2">
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                  Matières les plus enseignées
+                </span>
+              </div>
 
-          <div className="relative my-6 text-center">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200"></div>
-            </div>
-            <span className="relative bg-white px-3 text-xs text-gray-400 font-medium">ou</span>
-          </div>
+              {/* Liste des 8 matières */}
+              <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
+                {filteredSubjects.length > 0 ? (
+                  filteredSubjects.map((sub, index) => (
+                    <div 
+                      key={index}
+                      onClick={() => handleSelectMainSubject(sub)}
+                      className="bg-[#FAFAFA] hover:bg-gray-50 border border-gray-200/80 p-4.5 rounded-2xl flex items-center justify-between cursor-pointer transition group shadow-xs"
+                    >
+                      <span className="font-bold text-gray-800 text-base group-hover:text-[#FF5A5F] transition">
+                        {sub}
+                      </span>
+                      <div className="text-gray-400 group-hover:text-[#FF5A5F] transition">
+                        <ChevronRight className="w-5 h-5" />
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-center text-gray-500 py-8 text-sm font-medium">
+                    Aucune matière trouvée pour "{searchTerm}".
+                  </p>
+                )}
+              </div>
+            </>
+          ) : (
+            // --- ÉTAPE 2 : AJOUT DES COMPATIBILITÉS / MAX 5 ---
+            <>
+              <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">
+                Vous enseignez <span className="text-[#FF5A5F]">les {selectedSubjects[0]}</span>
+              </h1>
 
-          <div className="space-y-3">
-            {/* BOUTON GOOGLE */}
-            <button 
-              type="button"
-              onClick={handleGoogleSignIn}
-              className="w-full py-3 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl font-medium text-sm text-gray-700 transition flex items-center justify-center gap-2 cursor-pointer"
-            >
-              Inscription avec Google
-            </button>
-          </div>
+              {/* Matières déjà sélectionnées en haut (en rouge) */}
+              <div className="space-y-3 pt-2">
+                {selectedSubjects.map((sub, index) => (
+                  <div 
+                    key={index}
+                    onClick={() => handleToggleModule(sub)}
+                    className="bg-[#FF6B6B] text-white p-4.5 rounded-2xl flex items-center justify-between cursor-pointer shadow-sm transition"
+                  >
+                    <span className="font-bold text-base">{sub}</span>
+                    <div className="w-6 h-6 rounded-lg bg-white/20 flex items-center justify-center text-white">
+                      <Check className="w-4 h-4 stroke-[3]" />
+                    </div>
+                  </div>
+                ))}
+              </div>
 
-          <p className="text-center text-xs text-gray-500 mt-6">
-            Vous avez déjà un compte ? <Link href="#" className="font-bold text-gray-800 hover:underline">Connexion</Link>
-          </p>
+              {/* Section compétences associées */}
+              <div className="space-y-3 pt-4">
+                <h2 className="text-lg font-extrabold text-gray-900">
+                  Ajoutez des compétences associées
+                </h2>
+                <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">
+                  (optionnel)
+                </p>
+
+                <div className="space-y-3">
+                  {additionalModules
+                    .filter((mod) => !selectedSubjects.includes(mod))
+                    .map((mod, index) => {
+                      const disabled = isMaxReached;
+                      return (
+                        <div 
+                          key={index}
+                          onClick={() => !disabled && handleToggleModule(mod)}
+                          className={`p-4.5 rounded-2xl flex items-center justify-between transition border ${
+                            disabled 
+                              ? 'bg-gray-50 border-gray-100 opacity-50 cursor-not-allowed' 
+                              : 'bg-[#FAFAFA] hover:bg-gray-50 border-gray-200/80 cursor-pointer group'
+                          }`}
+                        >
+                          <span className={`font-bold text-sm ${disabled ? 'text-gray-400' : 'text-gray-800 group-hover:text-[#FF5A5F]'}`}>
+                            {mod}
+                          </span>
+                          <div className={`w-6 h-6 rounded-lg flex items-center justify-center transition ${
+                            disabled ? 'text-gray-300' : 'text-gray-400 group-hover:text-[#FF5A5F]'
+                          }`}>
+                            <Plus className="w-4 h-4" />
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+
+              {/* Boutons de navigation */}
+              <div className="pt-6 flex items-center justify-between gap-4">
+                <button
+                  onClick={() => setSelectedSubjects([])}
+                  className="px-8 py-4 bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-sm rounded-2xl transition cursor-pointer"
+                >
+                  Retour
+                </button>
+                <button
+                  onClick={handleNext}
+                  className="flex-1 py-4 bg-[#FF6B6B] hover:bg-[#fa5252] text-white font-bold text-sm rounded-2xl transition shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <span>Suivant</span>
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </>
+          )}
+
         </div>
 
       </div>
 
-      {/* Footer minimaliste */}
-      <footer className="text-center text-xs text-gray-400 py-4">
-        © 2026 ProfMaroc. Tous droits réservés.
+      {/* Footer */}
+      <footer className="w-full py-6 text-center text-xs text-gray-400 font-medium">
+        © 2026 ProfMaroc — Tous droits réservés.
       </footer>
     </main>
   );

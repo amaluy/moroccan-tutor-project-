@@ -1,6 +1,7 @@
 'use client';
 
 import { Search, Menu, X, ChevronDown, HelpCircle } from 'lucide-react';
+import Link from 'next/link';
 
 interface NavbarProps {
   isLoggedIn: boolean;
@@ -117,9 +118,14 @@ export default function Navbar({
           <HelpCircle className="w-6 h-6 stroke-[1.8]" />
         </button>
 
-        <span className="text-gray-900 font-bold hover:text-[#FF5A5F] transition text-sm cursor-pointer">
+        {/* Lien vers la page de sélection des cours */}
+        <Link 
+          href="/donner-cours" 
+          className="text-gray-900 font-bold hover:text-[#FF5A5F] transition text-sm"
+        >
           Donner des cours
-        </span>
+        </Link>
+
         <button 
           onClick={onLogoutClick}
           className="text-gray-900 font-bold hover:text-[#FF5A5F] transition text-sm"
