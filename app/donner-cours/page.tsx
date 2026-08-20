@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Smile, Search, ChevronRight, Check, Plus, Sparkles, Layers } from 'lucide-react';
+import { Smile, Search, ChevronRight, Check, Plus, Layers } from 'lucide-react';
 import Link from 'next/link';
 
 export default function DonnerCoursPage() {
@@ -16,6 +16,7 @@ export default function DonnerCoursPage() {
     mainSubjectFromUrl ? [mainSubjectFromUrl] : []
   );
 
+  // Les 8 matières uniques et officielles de la plateforme
   const allSubjects = [
     'Maths',
     'Anglais',
@@ -27,22 +28,10 @@ export default function DonnerCoursPage() {
     'Physique - Chimie',
   ];
 
-  const additionalModules = [
-    'Statistiques',
-    'Physique',
-    'Chimie',
-    'Préparation concours',
-    'Autres sciences',
-    'Chimie organique',
-    'Logique mathématique',
-    'Trigonométrie',
-    'Géométrie',
-    'Arithmétique',
-  ];
-
   const isMainStep = selectedSubjects.length === 0;
   const isMaxReached = selectedSubjects.length >= 5;
 
+  // Filtrage pour la recherche de la 1ère page
   const filteredSubjects = allSubjects.filter((s) =>
     s.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -53,7 +42,7 @@ export default function DonnerCoursPage() {
 
   const handleToggleModule = (mod: string) => {
     if (selectedSubjects.includes(mod)) {
-      if (selectedSubjects.length === 1) return; 
+      if (selectedSubjects.length === 1) return; // Empêche de décocher la matière principale de départ
       setSelectedSubjects(selectedSubjects.filter((s) => s !== mod));
     } else {
       if (selectedSubjects.length < 5) {
@@ -69,7 +58,7 @@ export default function DonnerCoursPage() {
   return (
     <main className="min-h-screen bg-[#FCFCFD] text-gray-900 font-sans flex flex-col justify-between selection:bg-[#FF5A5F] selection:text-white relative overflow-hidden">
       
-      {/* Éléments de fond décoratifs pour donner du cachet unique */}
+      {/* Éléments de fond décoratifs */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[350px] bg-gradient-to-b from-red-50/60 to-transparent rounded-full blur-3xl pointer-events-none -z-10" />
 
       {/* Header minimaliste */}
@@ -79,16 +68,12 @@ export default function DonnerCoursPage() {
             prof<span className="text-[#FF5A5F]">maroc</span>
           </span>
         </Link>
-        <div className="flex items-center gap-2 bg-white px-4 py-1.5 rounded-full border border-gray-200/80 shadow-xs">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="text-xs font-bold text-gray-600">Étape 1 sur 3</span>
-        </div>
       </header>
 
       {/* Contenu principal */}
       <div className="flex-1 max-w-6xl mx-auto px-6 py-10 w-full grid grid-cols-1 lg:grid-cols-12 gap-12 items-start my-auto">
         
-        {/* Colonne de gauche : Bloc "À savoir" revisité et stylé */}
+        {/* Colonne de gauche : Bloc "À savoir" */}
         <div className="lg:col-span-5 bg-white border border-red-100 p-8 rounded-[2.5rem] shadow-xl shadow-red-500/5 space-y-6 sticky top-8 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-red-50 to-orange-50 rounded-bl-full pointer-events-none -z-10" />
           
@@ -109,7 +94,7 @@ export default function DonnerCoursPage() {
             ) : (
               <div className="space-y-3">
                 <p>
-                  Vous pouvez ajouter jusqu'à <strong className="text-gray-900">4 matières supplémentaires</strong> pour élargir vos opportunités de cours.
+                  Vous pouvez ajouter jusqu'à <strong className="text-gray-900">4 matières supplémentaires</strong> parmi nos disciplines pour élargir vos opportunités de cours.
                 </p>
                 <div className="bg-red-50/60 p-3.5 rounded-2xl border border-red-100 flex items-center gap-3">
                   <Layers className="w-5 h-5 text-[#FF5A5F] shrink-0" />
@@ -126,7 +111,7 @@ export default function DonnerCoursPage() {
         <div className="lg:col-span-7 bg-white p-8 sm:p-10 rounded-[2.5rem] border border-gray-200/80 shadow-xl shadow-gray-200/40 space-y-6">
           
           {isMainStep ? (
-            // --- ÉTAPE 1 : CHOIX DE LA MATIÈRE ---
+            // --- ÉTAPE 1 : CHOIX DE LA MATIÈRE PRINCIPALE ---
             <>
               <div className="space-y-2">
                 <span className="text-xs font-bold text-[#FF5A5F] uppercase tracking-wider">Spécialité</span>
@@ -135,7 +120,7 @@ export default function DonnerCoursPage() {
                 </h1>
               </div>
 
-              {/* Barre de recherche moderne */}
+              {/* Barre de recherche */}
               <div className="relative pt-2">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input 
@@ -149,11 +134,11 @@ export default function DonnerCoursPage() {
 
               <div className="pt-2">
                 <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-                  Matières principales
+                  Matières disponibles
                 </span>
               </div>
 
-              {/* Liste des matières */}
+              {/* Liste des 8 matières */}
               <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
                 {filteredSubjects.length > 0 ? (
                   filteredSubjects.map((sub, index) => (
@@ -178,16 +163,16 @@ export default function DonnerCoursPage() {
               </div>
             </>
           ) : (
-            // --- ÉTAPE 2 : COMPÉTENCES & MAX 5 ---
+            // --- ÉTAPE 2 : AJOUT DES AUTRES MATIÈRES DU CATALOGUE (MAX 5) ---
             <>
               <div className="space-y-1">
                 <span className="text-xs font-bold text-[#FF5A5F] uppercase tracking-wider">Sélection active</span>
                 <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">
-                  Vous enseignez <span className="text-[#FF5A5F]">les {selectedSubjects[0]}</span>
+                  Vous enseignez <span className="text-[#FF5A5F]">le {selectedSubjects[0]}</span>
                 </h1>
               </div>
 
-              {/* Matières choisies en haut */}
+              {/* Matières choisies en haut (en rouge) */}
               <div className="space-y-3 pt-2">
                 {selectedSubjects.map((sub, index) => (
                   <div 
@@ -203,11 +188,11 @@ export default function DonnerCoursPage() {
                 ))}
               </div>
 
-              {/* Compétences associées */}
+              {/* Autres matières de la plateforme à ajouter en plus */}
               <div className="space-y-3 pt-4">
                 <div className="flex items-center justify-between">
                   <h2 className="text-base font-extrabold text-gray-900">
-                    Compétences associées
+                    Ajouter d'autres matières
                   </h2>
                   <span className="text-xs font-semibold text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full">
                     Optionnel
@@ -215,7 +200,7 @@ export default function DonnerCoursPage() {
                 </div>
 
                 <div className="space-y-3 max-h-[280px] overflow-y-auto pr-1">
-                  {additionalModules
+                  {allSubjects
                     .filter((mod) => !selectedSubjects.includes(mod))
                     .map((mod, index) => {
                       const disabled = isMaxReached;
