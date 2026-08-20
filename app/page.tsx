@@ -1,6 +1,9 @@
 'use client';
-
+import { detailedSubjects, subjectsData } from './data/subjectsData';
 import { useState, useEffect, useRef } from 'react';
+import { Professor } from '@/types/professor';
+import { ProfessorCard } from './components/ProfessorCard';
+import HelpModal from './components/HelpModal';
 import { 
   Search, 
   Menu, 
@@ -39,108 +42,7 @@ import {
 const SUPABASE_URL = 'https://ydrswexzawreqrnuqwkh.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_tiN8U5jsxtqe-F10_98DTw_jdcEf-IX';
 
-interface Professor {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  level: string;
-  subject: string;
-  city: string;
-  price: number;
-  bio: string;
-  avatar_url: string | null;
-  rating: number;
-  total_reviews: number;
-  is_approved: boolean;
-  created_at: string;
-  offers_free_trial?: boolean;
-  is_online?: boolean;
-}
 
-const detailedSubjects = [
-  {
-    id: 'maths',
-    name: 'Mathématiques',
-    category: 'Sciences Exactes',
-    icon: Calculator,
-    description: 'Algèbre, géométrie, analyse, probabilités et préparation intensive aux examens du Régional et du National.',
-    levels: ['Collège', 'Lycée', 'Bac Biof', 'Classes Prépa', 'Universitaire'],
-    badgeColor: 'bg-indigo-50 text-indigo-600 border-indigo-100',
-    iconBg: 'bg-indigo-500'
-  },
-  {
-    id: 'physique-chimie',
-    name: 'Physique - Chimie',
-    category: 'Sciences Physiques',
-    icon: Atom,
-    description: 'Mécanique, électricité, chimie organique et solutions aqueuses avec résolutions d’exercices types BAC.',
-    levels: ['Collège', 'Lycée (SM / PC / SVT)', 'Supérieur'],
-    badgeColor: 'bg-amber-50 text-amber-600 border-amber-100',
-    iconBg: 'bg-amber-500'
-  },
-  {
-    id: 'svt',
-    name: 'SVT (Sciences de la Vie et de la Terre)',
-    category: 'Sciences Naturelles',
-    icon: Dna,
-    description: 'Génétique, immunologie, géologie et écologie expliquées de façon schématique et pédagogique.',
-    levels: ['Collège', 'Lycée (SVT / PC)', 'Faculté'],
-    badgeColor: 'bg-emerald-50 text-emerald-600 border-emerald-100',
-    iconBg: 'bg-emerald-500'
-  },
-  {
-    id: 'francais',
-    name: 'Français & Langue',
-    category: 'Langues & Littérature',
-    icon: BookOpen,
-    description: 'Étude d’œuvres littéraires, production écrite, méthodologie de la synthèse et préparation au Régional 1ère Année Bac.',
-    levels: ['Primaire', 'Collège', '1ère BAC (Régional)', 'Communication'],
-    badgeColor: 'bg-[#FF5A5F]/10 text-[#FF5A5F] border-[#FF5A5F]/20',
-    iconBg: 'bg-[#FF5A5F]'
-  },
-  {
-    id: 'anglais',
-    name: 'Anglais',
-    category: 'Langues Vivantes',
-    icon: Languages,
-    description: 'Grammaire, vocabulaire, expression orale, préparation au TOEFL/IELTS et soutien du programme national.',
-    levels: ['Tous niveaux', 'Business English', 'Soutien Scolaire'],
-    badgeColor: 'bg-sky-50 text-sky-600 border-sky-100',
-    iconBg: 'bg-sky-500'
-  },
-  {
-    id: 'arabe',
-    name: 'Arabe & Éducation Islamique',
-    category: 'Langues & Humaines',
-    icon: Globe,
-    description: 'Grammaire (Nahw/Sarf), analyse de textes littéraires et consolidation des bases pour le brevet et le bac.',
-    levels: ['Primaire', 'Collège', 'Lycée'],
-    badgeColor: 'bg-teal-50 text-teal-600 border-teal-100',
-    iconBg: 'bg-teal-500'
-  },
-  {
-    id: 'soutien-general',
-    name: 'Soutien Scolaire Global',
-    category: 'Accompagnement',
-    icon: GraduationCap,
-    description: 'Aide aux devoirs, méthodologie de travail, organisation et suivi hebdomadaire multidisciplinaire pour les plus jeunes.',
-    levels: ['Primaire', 'Collège'],
-    badgeColor: 'bg-purple-50 text-purple-600 border-purple-100',
-    iconBg: 'bg-purple-500'
-  }
-];
-
-const subjectsData = [
-  { name: 'Maths', icon: Calculator },
-  { name: 'Anglais', icon: Languages },
-  { name: 'Français', icon: BookOpen },
-  { name: 'Arabe', icon: Globe },
-  { name: 'Soutien scolaire', icon: GraduationCap },
-  { name: 'SVT', icon: Dna },
-  { name: 'Physique', icon: Zap },
-  { name: 'Physique - Chimie', icon: Atom },
-];
 
 const steps = [
   {
@@ -515,7 +417,7 @@ export default function Home() {
           </section>
         )}
 
-        {/* PAGE D'ACCUEIL LANDING */}
+      {/* PAGE D'ACCUEIL LANDING */}
         {currentPage === 'landing' && (
           <section className="flex-1 flex flex-col items-center justify-center px-6 py-16 md:py-24 text-center max-w-5xl mx-auto my-auto animate-in fade-in duration-300">
             <div className="inline-flex items-center gap-2 bg-red-50 border border-red-100 px-4 py-1.5 rounded-full mb-8 text-xs font-bold text-[#FF5A5F] shadow-sm">
@@ -944,70 +846,7 @@ export default function Home() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {professors.map((prof) => (
-                  <div 
-                    key={prof.id} 
-                    className="bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 flex flex-col justify-between group"
-                  >
-                    <div className="relative h-72 w-full bg-slate-100 overflow-hidden flex items-center justify-center">
-                      {prof.avatar_url ? (
-                        <img 
-                          src={prof.avatar_url} 
-                          alt={prof.name}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-slate-200 flex flex-col items-center justify-center text-slate-400">
-                          <User className="w-24 h-24 stroke-[1]" />
-                        </div>
-                      )}
-
-                      <button className="absolute top-4 right-4 p-2 bg-black/20 hover:bg-black/40 text-white rounded-full backdrop-blur-md transition z-10">
-                        <Heart className="w-5 h-5" />
-                      </button>
-
-                      <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 via-black/40 to-transparent text-white drop-shadow-md">
-                        <h3 className="text-2xl font-bold leading-tight">{prof.name}</h3>
-                        <p className="text-xs font-medium text-gray-200">
-                          {prof.city} {prof.is_online ? '(face à face & webcam)' : '(face à face)'}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
-                      <div>
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-1 text-sm font-bold text-gray-900">
-                            <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-                            <span>{prof.rating || 5}</span>
-                            <span className="text-gray-400 font-normal">({prof.total_reviews || 0} avis)</span>
-                          </div>
-
-                          {prof.is_approved && (
-                            <span className="text-[11px] font-extrabold px-2.5 py-0.5 rounded-md bg-purple-100 text-purple-700">
-                              Confirmé
-                            </span>
-                          )}
-                        </div>
-
-                        <p className="text-sm text-gray-700 font-medium line-clamp-2">
-                          <strong className="text-gray-900">{prof.subject}</strong> - {prof.bio}
-                        </p>
-                      </div>
-
-                      <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
-                        <div>
-                          <span className="text-lg font-extrabold text-gray-900">{prof.price}MAD</span>
-                          <span className="text-xs text-gray-500">/h</span>
-                        </div>
-
-                        {prof.offers_free_trial && (
-                          <span className="text-xs font-semibold text-[#FF5A5F]">
-                            1<sup>er</sup> cours offert
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+                  <ProfessorCard key={prof.id} prof={prof} />
                 ))}
               </div>
             )}
@@ -1015,177 +854,17 @@ export default function Home() {
         </div>
       )}
 
+    {/* FOOTER */}
       <footer className="py-6 text-center text-xs text-gray-500 border-t border-gray-200">
         © 2026 ProfMaroc. Tous droits réservés.
       </footer>
 
-      {isHelpOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-center items-center p-4 sm:p-6 overflow-y-auto">
-          <div className="bg-white rounded-3xl w-full max-w-5xl max-h-[90vh] shadow-2xl flex flex-col md:flex-row overflow-hidden relative animate-in fade-in zoom-in duration-200">
-            <button 
-              onClick={() => setIsHelpOpen(false)}
-              className="absolute top-4 right-4 p-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full transition z-10"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <div className="w-full md:w-72 bg-gray-50 border-r border-gray-200 p-6 flex flex-col gap-6 shrink-0">
-              <div 
-                className="flex items-center gap-2 text-[#FF5A5F] font-bold text-sm cursor-pointer hover:underline"
-                onClick={() => setIsHelpOpen(false)}
-              >
-                <ChevronLeft className="w-4 h-4" />
-                <span>Retour au site</span>
-              </div>
-
-              <div>
-                <h3 className="text-xs font-extrabold text-gray-400 uppercase tracking-wider mb-3">
-                  Articles Élève
-                </h3>
-                <nav className="space-y-1">
-                  <button
-                    onClick={() => setHelpSection('recherche')}
-                    className={`w-full text-left px-3 py-2 rounded-xl text-sm font-semibold transition ${
-                      helpSection === 'recherche' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-600 hover:text-black hover:bg-gray-100'
-                    }`}
-                  >
-                    Trouver un professeur
-                  </button>
-                </nav>
-              </div>
-
-              <div>
-                <h3 className="text-xs font-extrabold text-gray-400 uppercase tracking-wider mb-3">
-                  Gérer mes demandes
-                </h3>
-                <nav className="space-y-1">
-                  <button
-                    onClick={() => setHelpSection('acceptee')}
-                    className={`w-full text-left px-3 py-2 rounded-xl text-sm font-semibold transition relative pl-5 ${
-                      helpSection === 'acceptee' ? 'bg-white shadow-sm text-gray-900 border-l-4 border-[#FF5A5F]' : 'text-gray-600 hover:text-black hover:bg-gray-100'
-                    }`}
-                  >
-                    Demande acceptée
-                  </button>
-
-                  <button
-                    onClick={() => setHelpSection('refusee')}
-                    className={`w-full text-left px-3 py-2 rounded-xl text-sm font-semibold transition ${
-                      helpSection === 'refusee' ? 'bg-white shadow-sm text-gray-900 border-l-4 border-[#FF5A5F]' : 'text-gray-600 hover:text-black hover:bg-gray-100'
-                    }`}
-                  >
-                    Demande refusée
-                  </button>
-
-                  <button
-                    onClick={() => setHelpSection('avis')}
-                    className={`w-full text-left px-3 py-2 rounded-xl text-sm font-semibold transition ${
-                      helpSection === 'avis' ? 'bg-white shadow-sm text-gray-900 border-l-4 border-[#FF5A5F]' : 'text-gray-600 hover:text-black hover:bg-gray-100'
-                    }`}
-                  >
-                    Laisser un avis
-                  </button>
-                </nav>
-              </div>
-
-              <div>
-                <h3 className="text-xs font-extrabold text-gray-400 uppercase tracking-wider mb-3">
-                  Espace Enseignant
-                </h3>
-                <nav className="space-y-1">
-                  <button
-                    onClick={() => setHelpSection('inscription')}
-                    className={`w-full text-left px-3 py-2 rounded-xl text-sm font-semibold transition ${
-                      helpSection === 'inscription' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-600 hover:text-black hover:bg-gray-100'
-                    }`}
-                  >
-                    S'inscrire comme professeur
-                  </button>
-                  <button
-                    onClick={() => setHelpSection('compte')}
-                    className={`w-full text-left px-3 py-2 rounded-xl text-sm font-semibold transition ${
-                      helpSection === 'compte' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-600 hover:text-black hover:bg-gray-100'
-                    }`}
-                  >
-                    Mon compte
-                  </button>
-                </nav>
-              </div>
-            </div>
-
-            <div className="flex-1 p-6 sm:p-10 overflow-y-auto">
-              {helpSection === 'acceptee' && (
-                <div className="space-y-6">
-                  <span className="text-xs font-bold text-[#FF5A5F] tracking-wide uppercase">ARTICLE ÉLÈVE</span>
-                  <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900">Demande acceptée</h2>
-                  <p className="text-base text-gray-700 leading-relaxed">Vous avez <strong className="text-[#FF5A5F]">sélectionné</strong> votre professeur, votre demande de cours a été <strong className="text-[#FF5A5F]">envoyée</strong> et le professeur l'a acceptée ; vous pouvez désormais échanger directement avec lui.</p>
-                  <p className="text-base text-gray-700 leading-relaxed">Connectez-vous sur votre espace ProfMaroc pour lui répondre. Plusieurs canaux sont disponibles pour discuter de votre premier cours (messagerie interne, téléphone ou e-mail).</p>
-                  <p className="text-base text-gray-700 leading-relaxed">Pour consulter les détails et coordonnées du professeur, rendez-vous sur son profil depuis votre messagerie instantanée.</p>
-                  <div className="bg-red-50/80 border border-red-100 rounded-2xl p-5 flex items-start gap-3 mt-6">
-                    <Info className="w-5 h-5 text-[#FF5A5F] shrink-0 mt-0.5" />
-                    <p className="text-sm text-gray-800 leading-relaxed">Une fois votre demande validée, nous vous suggérons de lui <strong className="text-[#FF5A5F]">proposer un premier créneau</strong> en mentionnant directement vos disponibilités horaires.</p>
-                  </div>
-                </div>
-              )}
-
-              {helpSection === 'refusee' && (
-                <div className="space-y-6">
-                  <span className="text-xs font-bold text-[#FF5A5F] tracking-wide uppercase">ARTICLE ÉLÈVE</span>
-                  <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900">Demande refusée</h2>
-                  <p className="text-base text-gray-700 leading-relaxed">Si votre demande n'a pas été acceptée, ne vous inquiétez pas ! Cela survient généralement en raison d'un emploi du temps complet chez l'enseignant.</p>
-                  <p className="text-base text-gray-700 leading-relaxed">Notre équipe vous permet d'envoyer immédiatement une nouvelle demande à un autre professeur qualifié dans la même matière sans aucun frais supplémentaire.</p>
-                  <div className="bg-gray-100 rounded-2xl p-5 flex items-start gap-3 mt-6">
-                    <XCircle className="w-5 h-5 text-gray-600 shrink-0 mt-0.5" />
-                    <p className="text-sm text-gray-700 leading-relaxed">Conseil : N'hésitez pas à contacter 2 ou 3 professeurs en parallèle pour maximiser vos chances de trouver un créneau rapidement.</p>
-                  </div>
-                </div>
-              )}
-
-              {helpSection === 'inscription' && (
-                <div className="space-y-6">
-                  <span className="text-xs font-bold text-[#FF5A5F] tracking-wide uppercase">ARTICLE PROFESSEUR</span>
-                  <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900">Comment puis-je m'inscrire en tant que professeur ?</h2>
-                  <p className="text-base text-gray-700 leading-relaxed">Rejoindre la communauté ProfMaroc est simple et rapide :</p>
-                  <ol className="list-decimal pl-5 space-y-3 text-sm sm:text-base text-gray-700">
-                    <li>Cliquez sur le bouton <strong>"Donner des cours"</strong> situé dans le menu supérieur.</li>
-                    <li>Remplissez votre profil en précisant vos diplômes, votre niveau et les matières enseignées.</li>
-                    <li>Fixez vos tarifs horaires et vos disponibilités.</li>
-                    <li>Notre équipe valide votre dossier sous 24h à 48h.</li>
-                  </ol>
-                  <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5 flex items-start gap-3 mt-6">
-                    <UserPlus className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
-                    <p className="text-sm text-gray-800 leading-relaxed">Un profil complet avec une jolie photo et une description détaillée reçoit jusqu'à 3 fois plus de demandes d'élèves !</p>
-                  </div>
-                </div>
-              )}
-
-              {helpSection === 'recherche' && (
-                <div className="space-y-6">
-                  <span className="text-xs font-bold text-[#FF5A5F] tracking-wide uppercase">ARTICLE ÉLÈVE</span>
-                  <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900">Comment trouver un professeur ?</h2>
-                  <p className="text-base text-gray-700 leading-relaxed">Utilisez simplement la barre de recherche sur la page d'accueil en saisissant la matière souhaitée (Maths, Anglais, SVT...) et votre ville. Vous pourrez ensuite filtrer les profils selon les tarifs, les avis et les niveaux proposées.</p>
-                </div>
-              )}
-
-              {helpSection === 'avis' && (
-                <div className="space-y-6">
-                  <span className="text-xs font-bold text-[#FF5A5F] tracking-wide uppercase">ARTICLE ÉLÈVE</span>
-                  <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900">Comment laisser un avis ?</h2>
-                  <p className="text-base text-gray-700 leading-relaxed">Après votre premier cours, une invitation vous sera envoyée directement dans votre messagerie pour évaluer le cours et laisser un commentaire sur le profil de votre enseignant.</p>
-                </div>
-              )}
-
-              {helpSection === 'compte' && (
-                <div className="space-y-6">
-                  <span className="text-xs font-bold text-[#FF5A5F] tracking-wide uppercase">MON COMPTE</span>
-                  <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900">Gérer mes informations personnelles</h2>
-                  <p className="text-base text-gray-700 leading-relaxed">Depuis votre tableau de bord, vous pouvez à tout moment modifier vos informations personnelles, changer votre mot de passe ou mettre à jour votre numéro de téléphone.</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      <HelpModal 
+        isOpen={isHelpOpen} 
+        onClose={() => setIsHelpOpen(false)} 
+        helpSection={helpSection} 
+        setHelpSection={setHelpSection} 
+      />
     </main>
   );
 }
