@@ -10,12 +10,16 @@ export default function AdminDashboardPage() {
   const [authorized, setAuthorized] = useState(false);
 
   useEffect(() => {
-    // Vérification de l'accès administrateur
-    const userEmail = localStorage.getItem('user_email');
+    // On récupère l'email et on le met en minuscules pour éviter les erreurs de majuscules (ex: berradaOamal)
+    const userEmail = (localStorage.getItem('user_email') || '').toLowerCase().trim();
     const isAdmin = localStorage.getItem('is_admin');
 
+    // On accepte ton email peu importe les majuscules, ou si le flag admin est présent
     if (userEmail === 'berrada0amal@gmail.com' || isAdmin === 'true') {
       setAuthorized(true);
+      // On s'assure que le localStorage est bien configuré pour les prochaines fois
+      localStorage.setItem('user_email', 'berrada0amal@gmail.com');
+      localStorage.setItem('is_admin', 'true');
     } else {
       alert("Accès refusé : Réservé aux administrateurs.");
       router.push('/');
@@ -100,7 +104,7 @@ export default function AdminDashboardPage() {
                 localStorage.clear();
                 router.push('/connexion');
               }}
-              className="px-4 py-2 bg-red-50 hover:bg-red-100 text-[#FF5A5F] font-bold text-xs rounded-xl transition flex items-center gap-1.5"
+              className="px-4 py-2 bg-red-50 hover:bg-red-100 text-[#FF5A5F] font-bold text-xs rounded-xl transition flex items-center gap-1.5 cursor-pointer"
             >
               <Trash2 className="w-4 h-4" />
               <span>Réinitialiser la session</span>
