@@ -26,24 +26,14 @@ export default function Navbar({
   onOpenHelp
 }: NavbarProps) {
   
-  const [isUserAdmin, setIsUserAdmin] = useState(false);
+  const [isAdminPage, setIsAdminPage] = useState(false);
 
   useEffect(() => {
-    // 1. On vérifie le localStorage classique
-    const userEmail = localStorage.getItem('user_email');
-    
-    // 2. On vérifie aussi si Supabase stocke la session quelque part
-    const supabaseSession = localStorage.getItem('sb-access-token') || localStorage.getItem('supabase.auth.token');
-
-    // Si ton email est détecté OU pour être 100% sûr pendant tes tests, 
-    // on force l'admin si tu es connecté. 
-    // (Tu pourras restreindre plus tard si besoin, mais là tu verras enfin ton bouton)
-    if (userEmail === 'berrada0amal@gmail.com' || isLoggedIn) {
-      setIsUserAdmin(true);
-    } else {
-      setIsUserAdmin(true); // FORÇAGE TEMPORAIRE POUR TOI ADMIN : mets false si tu veux masquer pour les autres
+    // On vérifie si on est sur la page d'administration
+    if (typeof window !== 'undefined') {
+      setIsAdminPage(window.location.pathname.startsWith('/admin'));
     }
-  }, [isLoggedIn]);
+  }, []);
 
   // NAVBAR MODE NON CONNECTÉ (LANDING / ABOUT / SUBJECTS)
   if (!isLoggedIn) {
@@ -120,9 +110,9 @@ export default function Navbar({
     );
   }
 
-  // NAVBAR MODE CONNECTÉ (Le bouton Espace Admin apparaîtra forcément ici)
+  // NAVBAR MODE CONNECTÉ
   return (
-    <nav className="w-full max-w-7xl mx-auto px-6 py-6 flex items-center justify-between z-20">
+    <nav className="w-full max-w-7xl mx-auto px-6 py-6 flex items-center justify-between z-25">
       <div className="flex items-center cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
         <span className="text-2xl md:text-3xl font-extrabold text-[#FF5A5F] tracking-tight">
           profmaroc
@@ -130,14 +120,16 @@ export default function Navbar({
       </div>
 
       <div className="hidden md:flex items-center gap-8">
-        {/* Bouton Espace Admin */}
-        <Link 
-          href="/admin" 
-          className="px-3.5 py-2 bg-gray-900 text-white font-bold text-xs rounded-xl hover:bg-gray-800 transition flex items-center gap-1.5 shadow-md"
-        >
-          <ShieldAlert className="w-4 h-4 text-[#FF5A5F]" />
-          <span>Espace Admin</span>
-        </Link>
+        {/* Bouton Espace Admin (Affiché seulement si on n'y est pas déjà, ou gardé selon ton choix) */}
+        {!isAdminPage && (
+          <Link 
+            href="/admin" 
+            className="px-3.5 py-2 bg-gray-900 text-white font-bold text-xs rounded-xl hover:bg-gray-800 transition flex items-center gap-1.5 shadow-md"
+          >
+            <ShieldAlert className="w-4 h-4 text-[#FF5A5F]" />
+            <span>Espace Admin</span>
+          </Link>
+        )}
 
         <button 
           onClick={onOpenHelp}
@@ -147,19 +139,24 @@ export default function Navbar({
           <HelpCircle className="w-6 h-6 stroke-[1.8]" />
         </button>
 
-        <Link 
-          href="/donner-cours/profil" 
-          className="text-gray-900 font-bold hover:text-[#FF5A5F] transition text-sm"
-        >
-          Donner des cours
-        </Link>
+        {/* Masqué si on est sur la page admin */}
+        {!isAdminPage && (
+          <>
+            <Link 
+              href="/donner-cours/profil" 
+              className="text-gray-900 font-bold hover:text-[#FF5A5F] transition text-sm"
+            >
+              Donner des cours
+            </Link>
 
-        <button 
-          onClick={onLogoutClick}
-          className="text-gray-900 font-bold hover:text-[#FF5A5F] transition text-sm cursor-pointer"
-        >
-          Déconnexion
-        </button>
+            <button 
+              onClick={onLogoutClick}
+              className="text-gray-900 font-bold hover:text-[#FF5A5F] transition text-sm cursor-pointer"
+            >
+              Déconnexion
+            </button>
+          </>
+        )}
       </div>
 
       <button 
