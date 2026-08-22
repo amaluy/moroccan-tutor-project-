@@ -4,19 +4,28 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
-import { ChevronLeft, ArrowRight, ShieldCheck, GraduationCap, Users, Target, Award } from 'lucide-react';
+import { ChevronLeft, ArrowRight, ShieldCheck, GraduationCap, Users } from 'lucide-react';
 
 export default function ConnexionPage() {
   const router = useRouter();
   const [currentPage, setCurrentPage] = useState<'landing' | 'about'>('landing');
-  const [email, setEmail] = useState('berradaOamal@gmail.com');
+  const [email, setEmail] = useState('berrada0amal@gmail.com');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const handleSignUp = (e: React.FormEvent) => {
     e.preventDefault();
     if (email.trim() !== '') {
-      // router.replace remplace la page de connexion dans l'historique.
-      // Ainsi, le bouton "Retour" depuis l'accueil quitte le site au lieu de revenir ici.
+      // 1. Sauvegarde de l'email de l'utilisateur
+      localStorage.setItem('user_email', email.trim());
+      
+      // 2. Si c'est ton email, on active le statut admin dans le localStorage
+      if (email.trim().toLowerCase() === 'berrada0amal@gmail.com') {
+        localStorage.setItem('is_admin', 'true');
+      } else {
+        localStorage.removeItem('is_admin');
+      }
+
+      // 3. Redirection vers l'accueil
       router.replace('/'); 
     }
   };
@@ -52,7 +61,7 @@ export default function ConnexionPage() {
           </p>
           <button 
             onClick={() => setCurrentPage('landing')}
-            className="px-6 py-3 bg-gray-900 hover:bg-black text-white font-bold rounded-xl text-sm transition flex items-center gap-2 shadow-md"
+            className="px-6 py-3 bg-gray-900 hover:bg-black text-white font-bold rounded-xl text-sm transition flex items-center gap-2 shadow-md cursor-pointer"
           >
             <ChevronLeft className="w-4 h-4" />
             <span>Retour à l'accueil</span>
@@ -86,9 +95,9 @@ export default function ConnexionPage() {
             />
             <button 
               type="submit"
-              className="w-full sm:w-auto px-6 py-3.5 bg-[#FF5A5F] hover:bg-[#E0484C] text-white font-bold rounded-xl transition text-sm sm:text-base shrink-0 shadow-md flex items-center justify-center gap-2"
+              className="w-full sm:w-auto px-6 py-3.5 bg-[#FF5A5F] hover:bg-[#E0484C] text-white font-bold rounded-xl transition text-sm sm:text-base shrink-0 shadow-md flex items-center justify-center gap-2 cursor-pointer"
             >
-              <span>S'inscrire sur ProfMaroc</span>
+              <span>S'inscrire / Se connecter</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>

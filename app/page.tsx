@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import Navbar from './components/Navbar';
 import StickyHeader from './components/StickyHeader';
 import SearchSection from './components/SearchSection';
@@ -10,10 +11,13 @@ import Footer from './components/Footer';
 import HelpModal from './components/HelpModal';
 import ProfessorCard from './components/ProfessorCard';
 import { Professor } from '@/types/professor';
-import { BookOpen, ChevronLeft, ChevronRight, Check, Repeat } from 'lucide-react';
+import { BookOpen, ChevronLeft, ChevronRight, Check, Repeat, ShieldAlert, ArrowRight } from 'lucide-react';
 
 const SUPABASE_URL = 'https://ydrswexzawreqrnuqwkh.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_tiN8U5jsxtqe-F10_98DTw_jdcEf-IX';
+
+// Mets ici vos VRAIS emails d'administrateurs
+const ADMIN_EMAILS = ['ton.email@gmail.com', 'email.de.ton.collegue@gmail.com'];
 
 export default function Home() {
   const router = useRouter();
@@ -30,11 +34,22 @@ export default function Home() {
   const [professors, setProfessors] = useState<Professor[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // États pour détecter si l'utilisateur connecté est admin
+  const [isAdmin, setIsAdmin] = useState(false);
+
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [helpSection, setHelpSection] = useState<'recherche' | 'acceptee' | 'refusee' | 'avis' | 'inscription' | 'compte'>('acceptee');
 
-  // Action de déconnexion : renvoie vers la page de connexion/inscription
+  // Vérification de la session et des droits admin au chargement
+  useEffect(() => {
+    const email = localStorage.getItem('user_email');
+    if (email && ADMIN_EMAILS.includes(email)) {
+      setIsAdmin(true);
+    }
+  }, []);
+
   const handleLogout = () => {
+    localStorage.removeItem('user_email');
     router.replace('/connexion');
   };
 
@@ -111,6 +126,30 @@ export default function Home() {
           onLogoutClick={handleLogout}
           onOpenHelp={() => setIsHelpOpen(true)}
         />
+
+        {/* 🛡️ BOUTON ACCÈS ADMIN : S'affiche uniquement sur l'accueil si c'est toi ou ton collègue */}
+        {isAdmin && (
+          <div className="max-w-7xl mx-auto px-6 w-full pt-4">
+            <Link 
+              href="/admin"
+              className="bg-gradient-to-r from-gray-900 to-gray-800 text-white p-5 rounded-2xl shadow-lg flex items-center justify-between hover:from-black hover:to-gray-900 transition group cursor-pointer"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-[#FF5A5F]/20 flex items-center justify-center text-[#FF5A5F]">
+                  <ShieldAlert className="w-6 h-6" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold">Panneau d'administration disponible</h2>
+                  <p className="text-xs text-gray-300">Cliquez ici pour accéder à l'espace de modération et valider les profs.</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 bg-[#FF5A5F] hover:bg-[#E0484C] text-white px-4 py-2 rounded-xl text-xs font-bold transition shadow-md">
+                <span>Ouvrir l'admin</span>
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </div>
+            </Link>
+          </div>
+        )}
 
         <div 
           className="flex-1 relative w-full overflow-hidden"
