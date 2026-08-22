@@ -15,8 +15,8 @@ export default function DonnerCoursPage() {
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>(
     mainSubjectFromUrl ? [mainSubjectFromUrl] : []
   );
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Les 8 matières uniques et officielles de la plateforme
   const allSubjects = [
     'Maths',
     'Anglais',
@@ -31,7 +31,6 @@ export default function DonnerCoursPage() {
   const isMainStep = selectedSubjects.length === 0;
   const isMaxReached = selectedSubjects.length >= 5;
 
-  // Filtrage pour la recherche de la 1ère page
   const filteredSubjects = allSubjects.filter((s) =>
     s.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -42,7 +41,7 @@ export default function DonnerCoursPage() {
 
   const handleToggleModule = (mod: string) => {
     if (selectedSubjects.includes(mod)) {
-      if (selectedSubjects.length === 1) return; // Empêche de décocher la matière principale de départ
+      if (selectedSubjects.length === 1) return; 
       setSelectedSubjects(selectedSubjects.filter((s) => s !== mod));
     } else {
       if (selectedSubjects.length < 5) {
@@ -51,17 +50,33 @@ export default function DonnerCoursPage() {
     }
   };
 
-  const handleNext = () => {
-    router.push(`/donner-cours/etape-suivante?matieres=${encodeURIComponent(selectedSubjects.join(','))}`);
+  // Enregistrement dans Supabase et passage à l'étape du titre
+  const handleNext = async () => {
+    setIsLoading(true);
+    try {
+      // Exemple d'appel Supabase (ajuste selon ton client supabase configuré)
+      /*
+      const { error } = await supabase
+        .from('teacher_ads')
+        .upsert({ subjects: selectedSubjects }, { onConflict: 'user_id' });
+      if (error) throw error;
+      */
+
+      // Pour l'instant, on passe les matières via l'URL ou un store global vers la page titre
+      const subjectsParam = encodeURIComponent(JSON.stringify(selectedSubjects));
+      router.push(`/donner-cours/titre?matieres=${subjectsParam}`);
+    } catch (err) {
+      console.error("Erreur lors de l'enregistrement des matières", err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <main className="min-h-screen bg-[#FCFCFD] text-gray-900 font-sans flex flex-col justify-between selection:bg-[#FF5A5F] selection:text-white relative overflow-hidden">
       
-      {/* Éléments de fond décoratifs */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[350px] bg-gradient-to-b from-red-50/60 to-transparent rounded-full blur-3xl pointer-events-none -z-10" />
 
-      {/* Header minimaliste */}
       <header className="w-full max-w-6xl mx-auto px-6 py-6 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2 group">
           <span className="text-2xl font-black text-gray-900 tracking-tight">
@@ -70,10 +85,9 @@ export default function DonnerCoursPage() {
         </Link>
       </header>
 
-      {/* Contenu principal */}
       <div className="flex-1 max-w-6xl mx-auto px-6 py-10 w-full grid grid-cols-1 lg:grid-cols-12 gap-12 items-start my-auto">
         
-        {/* Colonne de gauche : Bloc "À savoir" */}
+        {/* Bloc À savoir */}
         <div className="lg:col-span-5 bg-white border border-red-100 p-8 rounded-[2.5rem] shadow-xl shadow-red-500/5 space-y-6 sticky top-8 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-red-50 to-orange-50 rounded-bl-full pointer-events-none -z-10" />
           
@@ -107,11 +121,10 @@ export default function DonnerCoursPage() {
           </div>
         </div>
 
-        {/* Colonne de droite : Sélection dynamique */}
+        {/* Sélection */}
         <div className="lg:col-span-7 bg-white p-8 sm:p-10 rounded-[2.5rem] border border-gray-200/80 shadow-xl shadow-gray-200/40 space-y-6">
           
           {isMainStep ? (
-            // --- ÉTAPE 1 : CHOIX DE LA MATIÈRE PRINCIPALE ---
             <>
               <div className="space-y-2">
                 <span className="text-xs font-bold text-[#FF5A5F] uppercase tracking-wider">Spécialité</span>
@@ -120,7 +133,6 @@ export default function DonnerCoursPage() {
                 </h1>
               </div>
 
-              {/* Barre de recherche */}
               <div className="relative pt-2">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input 
@@ -138,7 +150,6 @@ export default function DonnerCoursPage() {
                 </span>
               </div>
 
-              {/* Liste des 8 matières */}
               <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
                 {filteredSubjects.length > 0 ? (
                   filteredSubjects.map((sub, index) => (
@@ -163,7 +174,6 @@ export default function DonnerCoursPage() {
               </div>
             </>
           ) : (
-            // --- ÉTAPE 2 : AJOUT DES AUTRES MATIÈRES DU CATALOGUE (MAX 5) ---
             <>
               <div className="space-y-1">
                 <span className="text-xs font-bold text-[#FF5A5F] uppercase tracking-wider">Sélection active</span>
@@ -172,7 +182,6 @@ export default function DonnerCoursPage() {
                 </h1>
               </div>
 
-              {/* Matières choisies en haut (en rouge) */}
               <div className="space-y-3 pt-2">
                 {selectedSubjects.map((sub, index) => (
                   <div 
@@ -188,7 +197,6 @@ export default function DonnerCoursPage() {
                 ))}
               </div>
 
-              {/* Autres matières de la plateforme à ajouter en plus */}
               <div className="space-y-3 pt-4">
                 <div className="flex items-center justify-between">
                   <h2 className="text-base font-extrabold text-gray-900">
@@ -228,7 +236,6 @@ export default function DonnerCoursPage() {
                 </div>
               </div>
 
-              {/* Boutons de navigation */}
               <div className="pt-6 flex items-center gap-4 border-t border-gray-100">
                 <button
                   onClick={() => setSelectedSubjects([])}
@@ -237,10 +244,11 @@ export default function DonnerCoursPage() {
                   Retour
                 </button>
                 <button
+                  disabled={isLoading}
                   onClick={handleNext}
-                  className="flex-1 py-4 bg-[#FF5A5F] hover:bg-[#E0484C] text-white font-bold text-sm rounded-xl transition shadow-lg shadow-red-500/20 flex items-center justify-center gap-2 cursor-pointer"
+                  className="flex-1 py-4 bg-[#FF5A5F] hover:bg-[#E0484C] text-white font-bold text-sm rounded-xl transition shadow-lg shadow-red-500/20 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                 >
-                  <span>Suivant</span>
+                  <span>{isLoading ? 'Enregistrement...' : 'Suivant'}</span>
                   <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
@@ -251,7 +259,6 @@ export default function DonnerCoursPage() {
 
       </div>
 
-      {/* Footer */}
       <footer className="w-full py-6 text-center text-xs text-gray-400 font-medium border-t border-gray-100">
         © 2026 ProfMaroc — Tous droits réservés.
       </footer>

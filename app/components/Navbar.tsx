@@ -118,9 +118,9 @@ export default function Navbar({
           <HelpCircle className="w-6 h-6 stroke-[1.8]" />
         </button>
 
-        {/* Lien vers la page de sélection des cours */}
+        {/* Redirige vers la page de profil/sécurité pour collecter nom, prénom et domaine */}
         <Link 
-          href="/donner-cours" 
+          href="/donner-cours/profil" 
           className="text-gray-900 font-bold hover:text-[#FF5A5F] transition text-sm"
         >
           Donner des cours
