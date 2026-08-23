@@ -1,97 +1,69 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import Navbar from './components/Navbar';
 import StickyHeader from './components/StickyHeader';
-import SearchSection from './components/SearchSection';
-import HowItWorks from './components/HowItWorks';
 import Footer from './components/Footer';
 import HelpModal from './components/HelpModal';
-import ProfessorCard from './components/ProfessorCard';
-import { Professor } from '@/types/professor';
-import { BookOpen, ChevronLeft, ChevronRight, Check, Repeat, ShieldAlert, ArrowRight } from 'lucide-react';
+import { Search, MapPin, Star, CheckCircle, Filter, BookOpen, Bookmark, ArrowRight, ShieldCheck, Zap } from 'lucide-react';
 
-const SUPABASE_URL = 'https://ydrswexzawreqrnuqwkh.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_tiN8U5jsxtqe-F10_98DTw_jdcEf-IX';
-
-// Mets ici vos VRAIS emails d'administrateurs
-const ADMIN_EMAILS = ['ton.email@gmail.com', 'email.de.ton.collegue@gmail.com'];
+const MOCK_PROFS = [
+  {
+    id: 1,
+    name: "Meriem",
+    city: "Casablanca, Maârif",
+    subject: "Soutien Scolaire Collège & Lycée",
+    price: "150 DH",
+    rating: 4.9,
+    reviews: 18,
+    isPremium: false,
+    avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=300",
+    title: "Je suis une jeune étudiante motivée en Master Énergie à l'Université",
+    bio: "Pour nos cours nous allons voir le nécessaire pour réussir vos études bien sur d'une façon amusante pour ne pas s'ennuyer et approfondir vos connaissances..."
+  },
+  {
+    id: 2,
+    name: "Youssef",
+    city: "Rabat, Agdal",
+    subject: "Mathématiques & Physique",
+    price: "120 DH",
+    rating: 5.0,
+    reviews: 12,
+    isPremium: false,
+    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=300",
+    title: "Ingénieur d'État donne cours de soutien en Maths et Physique",
+    bio: "Excellente pédagogie axée sur la résolution des examens nationaux et concours. Préparation au Bac avec suivi personnalisé..."
+  },
+  {
+    id: 3,
+    name: "Murielle",
+    city: "Marrakech (En ligne)",
+    subject: "Soutien Scolaire Primaire",
+    price: "200 DH",
+    rating: 5.0,
+    reviews: 3,
+    isPremium: true,
+    avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=300",
+    title: "Aide aux devoirs et boost pédagogique pour préparer vos enfants",
+    bio: "Diplômée BAC + 5 dans les domaines scientifiques. Passionnée par le partage de connaissances et la pédagogie adaptée à chaque enfant..."
+  }
+];
 
 export default function Home() {
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [locationTerm, setLocationTerm] = useState('');
-  
+  const [subject, setSubject] = useState('');
+  const [location, setLocation] = useState('');
   const [isScrolled, setIsScrolled] = useState(false);
-  const [currentSlide, setCurrentSlide] = useState<0 | 1>(0);
-  
-  const touchStartX = useRef<number>(0);
-  const touchEndX = useRef<number>(0);
-
-  const [professors, setProfessors] = useState<Professor[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  // États pour détecter si l'utilisateur connecté est admin
-  const [isAdmin, setIsAdmin] = useState(false);
 
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [helpSection, setHelpSection] = useState<'recherche' | 'acceptee' | 'refusee' | 'avis' | 'inscription' | 'compte'>('acceptee');
-
-  // Vérification de la session et des droits admin au chargement
-  useEffect(() => {
-    const email = localStorage.getItem('user_email');
-    if (email && ADMIN_EMAILS.includes(email)) {
-      setIsAdmin(true);
-    }
-  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('user_email');
     router.replace('/connexion');
   };
-
-  const handleTouchStart = (e: React.TouchEvent | React.MouseEvent) => {
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    touchStartX.current = clientX;
-  };
-
-  const handleTouchEnd = (e: React.TouchEvent | React.MouseEvent) => {
-    const clientX = 'changedTouches' in e ? e.changedTouches[0].clientX : e.clientX;
-    touchEndX.current = clientX;
-    
-    const swipeDistance = touchStartX.current - touchEndX.current;
-    if (swipeDistance > 50) {
-      setCurrentSlide(1);
-    } else if (swipeDistance < -50) {
-      setCurrentSlide(0);
-    }
-  };
-
-  useEffect(() => {
-    async function fetchProfessors() {
-      setLoading(true);
-      try {
-        const response = await fetch(`${SUPABASE_URL}/rest/v1/professors?select=*`, {
-          headers: {
-            'apikey': SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-          }
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setProfessors(data);
-        }
-      } catch (error) {
-        console.error('Erreur chargement professeurs :', error);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchProfessors();
-  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -103,161 +75,245 @@ export default function Home() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
+    router.push(`/professeurs?subject=${encodeURIComponent(subject)}&location=${encodeURIComponent(location)}`);
+  };
+
+  // Clic sur un prof -> Page détail / Contact
+  const handleProfClick = (profId: number) => {
+    router.push(`/professeurs/${profId}`);
+  };
+
+  // Clic Professeur -> Redirection vers la Page Marketing dédiée aux Profs
+  const handleGoToProfMarketing = () => {
+    router.push('/donner-des-cours');
   };
 
   return (
-    <main className="min-h-screen bg-[#F5F5F7] text-gray-900 font-sans flex flex-col justify-between overflow-x-hidden relative">
+    <main className="min-h-screen bg-[#F4F5F7] text-gray-900 font-sans flex flex-col justify-between overflow-x-hidden relative">
       <StickyHeader 
         isScrolled={isScrolled}
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
-        locationTerm={locationTerm}
-        setLocationTerm={setLocationTerm}
+        searchTerm={subject}
+        setSearchTerm={setSubject}
+        locationTerm={location}
+        setLocationTerm={setLocation}
         onSearch={handleSearch}
         onLogoutClick={handleLogout}
         onOpenHelp={() => setIsHelpOpen(true)}
       />
 
-      <div className="min-h-screen flex flex-col relative select-none">
-        <Navbar 
-          isLoggedIn={true}
-          isMenuOpen={isMenuOpen}
-          setIsMenuOpen={setIsMenuOpen}
-          onLogoutClick={handleLogout}
-          onOpenHelp={() => setIsHelpOpen(true)}
-        />
+      <Navbar 
+        isLoggedIn={true}
+        isMenuOpen={isMenuOpen}
+        setIsMenuOpen={setIsMenuOpen}
+        onLogoutClick={handleLogout}
+        onOpenHelp={() => setIsHelpOpen(true)}
+      />
 
-        {/* 🛡️ BOUTON ACCÈS ADMIN : S'affiche uniquement sur l'accueil si c'est toi ou ton collègue */}
-        {isAdmin && (
-          <div className="max-w-7xl mx-auto px-6 w-full pt-4">
-            <Link 
-              href="/admin"
-              className="bg-gradient-to-r from-gray-900 to-gray-800 text-white p-5 rounded-2xl shadow-lg flex items-center justify-between hover:from-black hover:to-gray-900 transition group cursor-pointer"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-[#FF5A5F]/20 flex items-center justify-center text-[#FF5A5F]">
-                  <ShieldAlert className="w-6 h-6" />
-                </div>
-                <div>
-                  <h2 className="text-base font-bold">Panneau d'administration disponible</h2>
-                  <p className="text-xs text-gray-300">Cliquez ici pour accéder à l'espace de modération et valider les profs.</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 bg-[#FF5A5F] hover:bg-[#E0484C] text-white px-4 py-2 rounded-xl text-xs font-bold transition shadow-md">
-                <span>Ouvrir l'admin</span>
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </div>
-            </Link>
-          </div>
-        )}
+      {/* BANNIÈRE HAUT : EN-TÊTE DE LA PAGE DE RECHERCHE */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-6 pb-2 w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-[#1E293B] tracking-tight">
+            Cours de soutien scolaire
+          </h1>
+          <p className="text-gray-600 text-sm mt-1">
+            Sur profmaroc, trouvez le prof particulier idéal pour du soutien scolaire en ligne ou à domicile.
+          </p>
+        </div>
 
-        <div 
-          className="flex-1 relative w-full overflow-hidden"
-          onTouchStart={handleTouchStart}
-          onTouchEnd={handleTouchEnd}
+        {/* Bouton stratégique pour capter les Professeurs */}
+        <button 
+          onClick={handleGoToProfMarketing}
+          className="border-2 border-[#1E40AF] text-[#1E40AF] hover:bg-[#1E40AF] hover:text-white font-bold px-4 py-2 rounded-xl text-xs transition shrink-0 cursor-pointer flex items-center gap-2"
         >
-          <div 
-            className="flex w-[200%] h-full transition-transform duration-500 ease-out"
-            style={{ transform: `translateX(-${currentSlide * 50}%)` }}
-          >
-            <div className="w-1/2 flex flex-col items-center justify-center px-4 py-8 text-center max-w-5xl mx-auto">
-              <SearchSection
-                searchTerm={searchTerm}
-                setSearchTerm={setSearchTerm}
-                onSearch={handleSearch}
-                onViewAllSubjects={() => {}}
-              />
-            </div>
-            <HowItWorks />
-          </div>
-
-          {currentSlide === 0 ? (
-            <button 
-              onClick={() => setCurrentSlide(1)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-gray-700 p-2.5 rounded-full shadow-md transition border border-gray-100 hidden sm:flex items-center justify-center z-30"
-              title="Comment ça marche ?"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
-          ) : (
-            <button 
-              onClick={() => setCurrentSlide(0)}
-              className="absolute left-3 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-gray-700 p-2.5 rounded-full shadow-md transition border border-gray-100 hidden sm:flex items-center justify-center z-30"
-              title="Retour à la recherche"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-          )}
-        </div>
-
-        <div className="py-6 flex items-center justify-center gap-2 z-20">
-          <button 
-            onClick={() => setCurrentSlide(0)}
-            className={`h-2.5 rounded-full transition-all duration-300 ${currentSlide === 0 ? 'w-8 bg-[#FF5A5F]' : 'w-2.5 bg-gray-300 hover:bg-gray-400'}`}
-          />
-          <button 
-            onClick={() => setCurrentSlide(1)}
-            className={`h-2.5 rounded-full transition-all duration-300 ${currentSlide === 1 ? 'w-8 bg-[#FF5A5F]' : 'w-2.5 bg-gray-300 hover:bg-gray-400'}`}
-          />
-        </div>
+          <span>Donner des cours particuliers</span>
+          <ArrowRight className="w-3.5 h-3.5" />
+        </button>
       </div>
 
-      {currentSlide === 0 && (
-        <div className="max-w-7xl mx-auto px-6 py-8 w-full space-y-12">
-          <div className="bg-gradient-to-r from-[#2A2B88] via-[#3B38B0] to-[#2E2882] rounded-3xl p-8 sm:p-10 text-white shadow-xl relative overflow-hidden">
-            <h2 className="text-2xl sm:text-3xl font-extrabold mb-8 tracking-tight leading-snug">
-              Des professeurs certifiés que vous pouvez vraiment choisir
-            </h2>
-            <div className="space-y-5">
-              <div className="flex items-center gap-4">
-                <div className="w-8 h-8 rounded-full bg-[#FF7A30] flex items-center justify-center shrink-0 shadow-md">
-                  <Check className="w-5 h-5 text-white stroke-[3]" />
-                </div>
-                <p className="text-sm sm:text-base font-medium text-gray-100">
-                  <strong className="text-white font-extrabold">Seulement 8%</strong> des profs passent notre sélection rigoureuse
-                </p>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="w-8 h-8 rounded-full bg-[#FF7A30] flex items-center justify-center shrink-0 shadow-md">
-                  <BookOpen className="w-4 h-4 text-white" />
-                </div>
-                <p className="text-sm sm:text-base font-medium text-gray-100">
-                  Ils maîtrisent le système scolaire marocain et enseignent <strong className="text-white font-extrabold">plus de 30 matières</strong>
-                </p>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="w-8 h-8 rounded-full bg-[#FF7A30] flex items-center justify-center shrink-0 shadow-md">
-                  <Repeat className="w-4 h-4 text-white stroke-[2.5]" />
-                </div>
-                <p className="text-sm sm:text-base font-medium text-gray-100">
-                  Vous pouvez changer si ça ne vous convient pas — <strong className="text-white font-extrabold">gratuitement</strong>
-                </p>
+      {/* CONTENU : FILTRES + CARTES STYLE VOSCOURS */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 w-full flex flex-col md:flex-row gap-6">
+        
+        {/* --- FILTRES DU CÔTÉ ÉLÈVE (GAUCHE) --- */}
+        <aside className="w-full md:w-64 shrink-0 space-y-4">
+          <button className="w-full border border-[#1E40AF] text-[#1E40AF] bg-white font-bold py-2.5 rounded-lg text-xs flex items-center justify-center gap-2 shadow-sm hover:bg-blue-50 transition">
+            <Bookmark className="w-4 h-4" />
+            <span>Sauvegarder recherche</span>
+          </button>
+
+          <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm space-y-4 text-left">
+            <div>
+              <label className="text-xs font-bold text-gray-700 block mb-1">Quelle matière ?</label>
+              <input 
+                type="text"
+                placeholder="Ex: Soutien scolaire, maths..."
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                className="w-full bg-white border border-[#1E40AF] rounded-lg px-3 py-2 text-xs text-gray-800 focus:outline-none focus:ring-1 focus:ring-[#1E40AF]"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-gray-700 block mb-1">Où ?</label>
+              <input 
+                type="text"
+                placeholder="Ex: Casablanca, Rabat..."
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-xs text-gray-800 focus:outline-none focus:border-[#1E40AF]"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-gray-700 block mb-2">Lieu du cours</label>
+              <div className="space-y-1.5 text-xs text-gray-600">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" className="rounded text-[#1E40AF]" defaultChecked />
+                  <span>je me déplace</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" className="rounded text-[#1E40AF]" defaultChecked />
+                  <span>à mon domicile</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" className="rounded text-[#1E40AF]" defaultChecked />
+                  <span>cours en ligne</span>
+                </label>
               </div>
             </div>
+
+            <div>
+              <label className="text-xs font-bold text-gray-700 block mb-2">Niveau des cours</label>
+              <div className="space-y-1.5 text-xs text-gray-600">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" className="rounded text-[#1E40AF]" defaultChecked />
+                  <span>de primaire</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" className="rounded text-[#1E40AF]" defaultChecked />
+                  <span>du collège</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" className="rounded text-[#1E40AF]" defaultChecked />
+                  <span>du lycée</span>
+                </label>
+              </div>
+            </div>
+
+            <button 
+              onClick={handleSearch}
+              className="w-full bg-[#1E40AF] hover:bg-blue-800 text-white font-bold py-2 rounded-lg text-xs transition flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <Search className="w-3.5 h-3.5" />
+              <span>Filtrer</span>
+            </button>
+          </div>
+        </aside>
+
+        {/* --- LISTE DES PROFESSEURS (EXACTEMENT COMME IMAGE 1) --- */}
+        <section className="flex-1 space-y-4">
+          
+          {MOCK_PROFS.map((prof) => (
+            <div 
+              key={prof.id} 
+              onClick={() => handleProfClick(prof.id)}
+              className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm hover:shadow-md transition cursor-pointer relative flex flex-col sm:flex-row items-start gap-5 overflow-hidden text-left"
+            >
+              {/* Badge Premium en ruban bleu sur le coin supérieur (exactement comme VosCours) */}
+              {prof.isPremium && (
+                <div className="absolute top-0 left-0 bg-[#3B82F6] text-white text-[11px] font-bold px-8 py-0.5 rounded-br-lg shadow-sm">
+                  Premium
+                </div>
+              )}
+
+              {/* Photo Ronde à gauche */}
+              <div className={`shrink-0 mx-auto sm:mx-0 ${prof.isPremium ? 'mt-4 sm:mt-2' : ''}`}>
+                <img 
+                  src={prof.avatar} 
+                  alt={prof.name} 
+                  className="w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover border border-gray-100 shadow-inner"
+                />
+              </div>
+
+              {/* Détails du Professeur au milieu */}
+              <div className={`flex-1 space-y-1.5 w-full ${prof.isPremium ? 'mt-2 sm:mt-0' : ''}`}>
+                
+                {/* Ligne Nom, Ville & Prix */}
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <h3 className="text-base font-bold text-gray-900 flex items-center gap-1.5">
+                      {prof.name}
+                      {prof.isPremium && <CheckCircle className="w-4 h-4 text-emerald-500 fill-emerald-100" />}
+                    </h3>
+                    
+                    <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
+                      <span className="flex items-center gap-1">
+                        <MapPin className="w-3 h-3 text-gray-400" />
+                        {prof.city}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1 text-xs text-gray-600 mt-1">
+                      <BookOpen className="w-3.5 h-3.5 text-blue-600" />
+                      <span>{prof.subject}</span>
+                    </div>
+                  </div>
+
+                  {/* Prix en haut à droite */}
+                  <div className="text-right shrink-0">
+                    <span className="text-lg font-extrabold text-gray-900 block">{prof.price}<span className="text-xs font-normal text-gray-500">/h</span></span>
+                    <span className="text-[11px] font-bold text-[#1E40AF]">Premier cours offert</span>
+                    
+                    {prof.rating > 0 && (
+                      <div className="flex items-center justify-end gap-1 text-xs text-amber-500 mt-0.5">
+                        <Star className="w-3.5 h-3.5 fill-amber-400" />
+                        <span className="font-bold text-gray-800">{prof.rating}</span>
+                        <span className="text-gray-400">({prof.reviews} avis)</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Titre de l'annonce (en Gras Bleu comme VosCours) */}
+                <h4 className="text-sm font-bold text-[#1E3A8A] line-clamp-1 pt-1">
+                  {prof.title}
+                </h4>
+
+                {/* Description courte */}
+                <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">
+                  {prof.bio}
+                </p>
+
+              </div>
+
+            </div>
+          ))}
+
+        </section>
+
+      </div>
+
+      {/* --- BANNIÈRE MARKETING EN BAS : REDIRIGE VERS LA PAGE MARKETING PROF --- */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 my-8 w-full">
+        <div className="bg-[#0B132B] rounded-2xl p-6 sm:p-8 text-white flex flex-col md:flex-row items-center justify-between gap-6 shadow-md text-left">
+          <div className="space-y-2">
+            <span className="bg-amber-400/20 text-amber-300 text-[10px] font-black px-2.5 py-1 rounded-md uppercase tracking-wider">
+              Enseignants / Professeurs
+            </span>
+            <h3 className="text-xl sm:text-2xl font-bold">Vous souhaitez donner des cours et trouver des élèves ?</h3>
+            <p className="text-xs sm:text-sm text-gray-300 max-w-2xl">
+              Découvrez notre plateforme. Recevez des demandes d'élèves en direct sans abonnement mensuel obligatoire.
+            </p>
           </div>
 
-          <section className="w-full">
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-8 flex items-center gap-2">
-              <span>Nos professeurs particuliers évalués</span>
-              <span className="text-[#FF5A5F] text-xl">★★★★★</span>
-            </h2>
-
-            {loading ? (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {[1, 2, 3].map((n) => (
-                  <div key={n} className="h-96 bg-gray-200 rounded-3xl animate-pulse" />
-                ))}
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {professors.map((prof) => (
-                  <ProfessorCard key={prof.id} prof={prof} />
-                ))}
-              </div>
-            )}
-          </section>
+          <button 
+            onClick={handleGoToProfMarketing}
+            className="bg-[#FF5A5F] hover:bg-[#e0484d] text-white font-bold px-6 py-3 rounded-xl text-xs transition shadow-md shrink-0 cursor-pointer flex items-center gap-2"
+          >
+            <span>Découvrir l'Espace Profs</span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
         </div>
-      )}
+      </section>
 
       <Footer 
         onNavigateHome={() => window.scrollTo({ top: 0, behavior: 'smooth' })} 
