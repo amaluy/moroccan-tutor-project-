@@ -6,13 +6,16 @@ import Navbar from './components/Navbar';
 import StickyHeader from './components/StickyHeader';
 import Footer from './components/Footer';
 import HelpModal from './components/HelpModal';
-import { Search, MapPin, Star, CheckCircle, Filter, BookOpen, Bookmark, ArrowRight, ShieldCheck, Zap } from 'lucide-react';
+import { 
+  Search, MapPin, Star, CheckCircle, BookOpen, Bookmark, 
+  ArrowRight
+} from 'lucide-react';
 
 const MOCK_PROFS = [
   {
     id: 1,
     name: "Meriem",
-    city: "Casablanca, Maârif",
+    city: "Casablanca, Maârif (20250)",
     subject: "Soutien Scolaire Collège & Lycée",
     price: "150 DH",
     rating: 4.9,
@@ -25,7 +28,7 @@ const MOCK_PROFS = [
   {
     id: 2,
     name: "Youssef",
-    city: "Rabat, Agdal",
+    city: "Rabat, Agdal (10090)",
     subject: "Mathématiques & Physique",
     price: "120 DH",
     rating: 5.0,
@@ -48,6 +51,30 @@ const MOCK_PROFS = [
     title: "Aide aux devoirs et boost pédagogique pour préparer vos enfants",
     bio: "Diplômée BAC + 5 dans les domaines scientifiques. Passionnée par le partage de connaissances et la pédagogie adaptée à chaque enfant..."
   }
+];
+
+const VILLES_COL_1 = [
+  "Agadir", "Beni Mellal", "Casablanca", "El Jadida", 
+  "Fès", "Kénitra", "Khouribga", "Marrakech", 
+  "Meknès", "Mohammedia", "Nador", "Oujda"
+];
+
+const VILLES_COL_2 = [
+  "Rabat", "Safi", "Salé", "Settat", 
+  "Tanger", "Taza", "Témara", "Tétouan", 
+  "En ligne", "Aïn Sebaâ", "Maârif", "Agdal"
+];
+
+const MATIERES_COL_1 = [
+  "Maths", "Physique", "Chimie", "SVT / Biologie", 
+  "Français", "Anglais", "Arabe", "Espagnol", 
+  "Allemand", "Philosophie", "Histoire-Géo", "Soutien scolaire"
+];
+
+const MATIERES_COL_2 = [
+  "Économie", "Comptabilité", "Informatique", "Programmation", 
+  "Statistiques", "Algèbre", "Analyse", "Prépa Concours", 
+  "Aide aux devoirs", "Droit", "Gestion", "Marketing"
 ];
 
 export default function Home() {
@@ -73,23 +100,21 @@ export default function Home() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSearch = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     router.push(`/professeurs?subject=${encodeURIComponent(subject)}&location=${encodeURIComponent(location)}`);
   };
 
-  // Clic sur un prof -> Page détail / Contact
   const handleProfClick = (profId: number) => {
     router.push(`/professeurs/${profId}`);
   };
 
-  // Clic Professeur -> Redirection vers la Page Marketing dédiée aux Profs
   const handleGoToProfMarketing = () => {
     router.push('/donner-des-cours');
   };
 
   return (
-    <main className="min-h-screen bg-[#F4F5F7] text-gray-900 font-sans flex flex-col justify-between overflow-x-hidden relative">
+    <main className="min-h-screen bg-[#F8F9FA] text-gray-900 font-sans flex flex-col justify-between overflow-x-hidden relative">
       <StickyHeader 
         isScrolled={isScrolled}
         searchTerm={subject}
@@ -109,18 +134,17 @@ export default function Home() {
         onOpenHelp={() => setIsHelpOpen(true)}
       />
 
-      {/* BANNIÈRE HAUT : EN-TÊTE DE LA PAGE DE RECHERCHE */}
+      {/* EN-TÊTE PRINCIPALE */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-6 pb-2 w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-[#1E293B] tracking-tight">
-            Cours de soutien scolaire
+            Cours de soutien scolaire au Maroc
           </h1>
           <p className="text-gray-600 text-sm mt-1">
-            Sur profmaroc, trouvez le prof particulier idéal pour du soutien scolaire en ligne ou à domicile.
+            Trouvez les meilleurs professeurs particuliers certifiés à domicile ou en ligne.
           </p>
         </div>
 
-        {/* Bouton stratégique pour capter les Professeurs */}
         <button 
           onClick={handleGoToProfMarketing}
           className="border-2 border-[#1E40AF] text-[#1E40AF] hover:bg-[#1E40AF] hover:text-white font-bold px-4 py-2 rounded-xl text-xs transition shrink-0 cursor-pointer flex items-center gap-2"
@@ -130,10 +154,10 @@ export default function Home() {
         </button>
       </div>
 
-      {/* CONTENU : FILTRES + CARTES STYLE VOSCOURS */}
+      {/* CONTENU : FILTRES + LISTE DES PROFS */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 w-full flex flex-col md:flex-row gap-6">
         
-        {/* --- FILTRES DU CÔTÉ ÉLÈVE (GAUCHE) --- */}
+        {/* FILTRES ÉLÈVE (GAUCHE) */}
         <aside className="w-full md:w-64 shrink-0 space-y-4">
           <button className="w-full border border-[#1E40AF] text-[#1E40AF] bg-white font-bold py-2.5 rounded-lg text-xs flex items-center justify-center gap-2 shadow-sm hover:bg-blue-50 transition">
             <Bookmark className="w-4 h-4" />
@@ -153,10 +177,10 @@ export default function Home() {
             </div>
 
             <div>
-              <label className="text-xs font-bold text-gray-700 block mb-1">Où ?</label>
+              <label className="text-xs font-bold text-gray-700 block mb-1">Où (Ville ou Code Postal) ?</label>
               <input 
                 type="text"
-                placeholder="Ex: Casablanca, Rabat..."
+                placeholder="Ex: Casablanca, 20250..."
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
                 className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-xs text-gray-800 focus:outline-none focus:border-[#1E40AF]"
@@ -181,26 +205,8 @@ export default function Home() {
               </div>
             </div>
 
-            <div>
-              <label className="text-xs font-bold text-gray-700 block mb-2">Niveau des cours</label>
-              <div className="space-y-1.5 text-xs text-gray-600">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" className="rounded text-[#1E40AF]" defaultChecked />
-                  <span>de primaire</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" className="rounded text-[#1E40AF]" defaultChecked />
-                  <span>du collège</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" className="rounded text-[#1E40AF]" defaultChecked />
-                  <span>du lycée</span>
-                </label>
-              </div>
-            </div>
-
             <button 
-              onClick={handleSearch}
+              onClick={() => handleSearch()}
               className="w-full bg-[#1E40AF] hover:bg-blue-800 text-white font-bold py-2 rounded-lg text-xs transition flex items-center justify-center gap-2 cursor-pointer"
             >
               <Search className="w-3.5 h-3.5" />
@@ -209,23 +215,20 @@ export default function Home() {
           </div>
         </aside>
 
-        {/* --- LISTE DES PROFESSEURS (EXACTEMENT COMME IMAGE 1) --- */}
+        {/* LISTE DES PROFESSEURS */}
         <section className="flex-1 space-y-4">
-          
           {MOCK_PROFS.map((prof) => (
             <div 
               key={prof.id} 
               onClick={() => handleProfClick(prof.id)}
               className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm hover:shadow-md transition cursor-pointer relative flex flex-col sm:flex-row items-start gap-5 overflow-hidden text-left"
             >
-              {/* Badge Premium en ruban bleu sur le coin supérieur (exactement comme VosCours) */}
               {prof.isPremium && (
                 <div className="absolute top-0 left-0 bg-[#3B82F6] text-white text-[11px] font-bold px-8 py-0.5 rounded-br-lg shadow-sm">
                   Premium
                 </div>
               )}
 
-              {/* Photo Ronde à gauche */}
               <div className={`shrink-0 mx-auto sm:mx-0 ${prof.isPremium ? 'mt-4 sm:mt-2' : ''}`}>
                 <img 
                   src={prof.avatar} 
@@ -234,10 +237,7 @@ export default function Home() {
                 />
               </div>
 
-              {/* Détails du Professeur au milieu */}
               <div className={`flex-1 space-y-1.5 w-full ${prof.isPremium ? 'mt-2 sm:mt-0' : ''}`}>
-                
-                {/* Ligne Nom, Ville & Prix */}
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <h3 className="text-base font-bold text-gray-900 flex items-center gap-1.5">
@@ -258,7 +258,6 @@ export default function Home() {
                     </div>
                   </div>
 
-                  {/* Prix en haut à droite */}
                   <div className="text-right shrink-0">
                     <span className="text-lg font-extrabold text-gray-900 block">{prof.price}<span className="text-xs font-normal text-gray-500">/h</span></span>
                     <span className="text-[11px] font-bold text-[#1E40AF]">Premier cours offert</span>
@@ -273,46 +272,125 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* Titre de l'annonce (en Gras Bleu comme VosCours) */}
                 <h4 className="text-sm font-bold text-[#1E3A8A] line-clamp-1 pt-1">
                   {prof.title}
                 </h4>
 
-                {/* Description courte */}
                 <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">
                   {prof.bio}
                 </p>
-
               </div>
-
             </div>
           ))}
-
         </section>
-
       </div>
 
-      {/* --- BANNIÈRE MARKETING EN BAS : REDIRIGE VERS LA PAGE MARKETING PROF --- */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 my-8 w-full">
-        <div className="bg-[#0B132B] rounded-2xl p-6 sm:p-8 text-white flex flex-col md:flex-row items-center justify-between gap-6 shadow-md text-left">
-          <div className="space-y-2">
-            <span className="bg-amber-400/20 text-amber-300 text-[10px] font-black px-2.5 py-1 rounded-md uppercase tracking-wider">
-              Enseignants / Professeurs
-            </span>
-            <h3 className="text-xl sm:text-2xl font-bold">Vous souhaitez donner des cours et trouver des élèves ?</h3>
-            <p className="text-xs sm:text-sm text-gray-300 max-w-2xl">
-              Découvrez notre plateforme. Recevez des demandes d'élèves en direct sans abonnement mensuel obligatoire.
-            </p>
+      {/* --- SECTION : RÉPERTOIRE SOUTIEN SCOLAIRE À... & COURS DE... --- */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 my-8 w-full text-left">
+        
+        {/* CARTE D'EN-TÊTE DUO */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          
+          {/* Bloc Gauche : Soutien scolaire à... */}
+          <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm flex items-center justify-between">
+            <h2 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">
+              Soutien scolaire à...
+            </h2>
           </div>
 
+          {/* Bloc Droite : Cours de... avec illustration */}
+          <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm flex items-center justify-between relative overflow-hidden">
+            <h2 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">
+              Cours de...
+            </h2>
+            
+            <div className="w-14 h-12 relative flex items-center justify-center">
+              <svg viewBox="0 0 100 80" className="w-full h-full text-blue-500">
+                <path d="M20,30 L50,15 L50,65 L20,50 Z" fill="#3B82F6" />
+                <rect x="10" y="30" width="10" height="20" rx="2" fill="#60A5FA" />
+                <path d="M50,25 C65,20 75,10 80,10 L85,20 C75,30 65,35 50,35 Z" fill="#93C5FD" />
+                <circle cx="25" cy="15" r="4" fill="#F59E0B" />
+                <circle cx="75" cy="60" r="3" fill="#10B981" />
+                <circle cx="85" cy="45" r="2" fill="#EF4444" />
+              </svg>
+            </div>
+          </div>
+
+        </div>
+
+        {/* LISTES DE LIENS VILLES ET MATIÈRES */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 px-2">
+          
+          {/* LIENS VILLES (2 COLONNES) */}
+          <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+            <div className="space-y-2">
+              {VILLES_COL_1.map((ville, i) => (
+                <button
+                  key={i}
+                  onClick={() => { setLocation(ville); handleSearch(); }}
+                  className="block text-sm font-medium text-blue-700 hover:text-blue-900 hover:underline transition text-left"
+                >
+                  {ville}
+                </button>
+              ))}
+            </div>
+
+            <div className="space-y-2">
+              {VILLES_COL_2.map((ville, i) => (
+                <button
+                  key={i}
+                  onClick={() => { setLocation(ville); handleSearch(); }}
+                  className="block text-sm font-medium text-blue-700 hover:text-blue-900 hover:underline transition text-left"
+                >
+                  {ville}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* LIENS MATIÈRES (2 COLONNES) */}
+          <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+            <div className="space-y-2">
+              {MATIERES_COL_1.map((mat, i) => (
+                <button
+                  key={i}
+                  onClick={() => { setSubject(mat); handleSearch(); }}
+                  className="block text-sm font-medium text-blue-700 hover:text-blue-900 hover:underline transition text-left"
+                >
+                  {mat}
+                </button>
+              ))}
+            </div>
+
+            <div className="space-y-2">
+              {MATIERES_COL_2.map((mat, i) => (
+                <button
+                  key={i}
+                  onClick={() => { setSubject(mat); handleSearch(); }}
+                  className="block text-sm font-medium text-blue-700 hover:text-blue-900 hover:underline transition text-left"
+                >
+                  {mat}
+                </button>
+              ))}
+            </div>
+          </div>
+
+        </div>
+
+        {/* BANNIÈRE APPEL À L'ACTION PROFESSEURS */}
+        <div className="mt-12 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-2xl p-6 text-white flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="space-y-1">
+            <h4 className="text-sm font-bold text-amber-400 uppercase tracking-wider">Vous êtes enseignant ou étudiant diplômé ?</h4>
+            <p className="text-xs text-gray-300">Rejoignez plus de 1 200 professeurs particuliers au Maroc et commencez à recevoir des élèves.</p>
+          </div>
           <button 
             onClick={handleGoToProfMarketing}
-            className="bg-[#FF5A5F] hover:bg-[#e0484d] text-white font-bold px-6 py-3 rounded-xl text-xs transition shadow-md shrink-0 cursor-pointer flex items-center gap-2"
+            className="bg-[#1E40AF] hover:bg-blue-800 text-white font-extrabold px-5 py-2.5 rounded-xl text-xs transition shrink-0 cursor-pointer shadow-md"
           >
-            <span>Découvrir l'Espace Profs</span>
-            <ArrowRight className="w-4 h-4" />
+            Rejoindre nos professeurs
           </button>
         </div>
+
       </section>
 
       <Footer 
