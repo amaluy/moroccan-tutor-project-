@@ -154,6 +154,100 @@ export default function Home() {
         </button>
       </div>
 
+      {/* --- SECTION HAUTE : RÉPERTOIRE (PLONGÉE DIRECTE POUR LE CLIENT) --- */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 mt-4 mb-8 w-full text-left">
+        
+        {/* CARTE D'EN-TÊTE DUO */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          
+          {/* Bloc Gauche : Soutien scolaire à... */}
+          <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm flex items-center justify-between">
+            <h2 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">
+              Soutien scolaire à...
+            </h2>
+          </div>
+
+          {/* Bloc Droite : Cours de... avec illustration */}
+          <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm flex items-center justify-between relative overflow-hidden">
+            <h2 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">
+              Cours de...
+            </h2>
+            
+            <div className="w-14 h-12 relative flex items-center justify-center">
+              <svg viewBox="0 0 100 80" className="w-full h-full text-blue-500">
+                <path d="M20,30 L50,15 L50,65 L20,50 Z" fill="#3B82F6" />
+                <rect x="10" y="30" width="10" height="20" rx="2" fill="#60A5FA" />
+                <path d="M50,25 C65,20 75,10 80,10 L85,20 C75,30 65,35 50,35 Z" fill="#93C5FD" />
+                <circle cx="25" cy="15" r="4" fill="#F59E0B" />
+                <circle cx="75" cy="60" r="3" fill="#10B981" />
+                <circle cx="85" cy="45" r="2" fill="#EF4444" />
+              </svg>
+            </div>
+          </div>
+
+        </div>
+
+        {/* LISTES DE LIENS VILLES ET MATIÈRES (CLIQUABLES POUR REMPLIR LE FILTRE DIRECTEMENT) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 px-2">
+          
+          {/* LIENS VILLES (2 COLONNES) */}
+          <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+            <div className="space-y-2">
+              {VILLES_COL_1.map((ville, i) => (
+                <button
+                  key={i}
+                  onClick={() => { setLocation(ville); handleSearch(); }}
+                  className="block text-sm font-medium text-blue-700 hover:text-blue-900 hover:underline transition text-left"
+                >
+                  {ville}
+                </button>
+              ))}
+            </div>
+
+            <div className="space-y-2">
+              {VILLES_COL_2.map((ville, i) => (
+                <button
+                  key={i}
+                  onClick={() => { setLocation(ville); handleSearch(); }}
+                  className="block text-sm font-medium text-blue-700 hover:text-blue-900 hover:underline transition text-left"
+                >
+                  {ville}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* LIENS MATIÈRES (2 COLONNES) */}
+          <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+            <div className="space-y-2">
+              {MATIERES_COL_1.map((mat, i) => (
+                <button
+                  key={i}
+                  onClick={() => { setSubject(mat); handleSearch(); }}
+                  className="block text-sm font-medium text-blue-700 hover:text-blue-900 hover:underline transition text-left"
+                >
+                  {mat}
+                </button>
+              ))}
+            </div>
+
+            <div className="space-y-2">
+              {MATIERES_COL_2.map((mat, i) => (
+                <button
+                  key={i}
+                  onClick={() => { setSubject(mat); handleSearch(); }}
+                  className="block text-sm font-medium text-blue-700 hover:text-blue-900 hover:underline transition text-left"
+                >
+                  {mat}
+                </button>
+              ))}
+            </div>
+          </div>
+
+        </div>
+
+      </section>
+
       {/* CONTENU : FILTRES + LISTE DES PROFS */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 w-full flex flex-col md:flex-row gap-6">
         
@@ -285,101 +379,10 @@ export default function Home() {
         </section>
       </div>
 
-      {/* --- SECTION : RÉPERTOIRE SOUTIEN SCOLAIRE À... & COURS DE... --- */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 my-8 w-full text-left">
-        
-        {/* CARTE D'EN-TÊTE DUO */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          
-          {/* Bloc Gauche : Soutien scolaire à... */}
-          <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm flex items-center justify-between">
-            <h2 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">
-              Soutien scolaire à...
-            </h2>
-          </div>
-
-          {/* Bloc Droite : Cours de... avec illustration */}
-          <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm flex items-center justify-between relative overflow-hidden">
-            <h2 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">
-              Cours de...
-            </h2>
-            
-            <div className="w-14 h-12 relative flex items-center justify-center">
-              <svg viewBox="0 0 100 80" className="w-full h-full text-blue-500">
-                <path d="M20,30 L50,15 L50,65 L20,50 Z" fill="#3B82F6" />
-                <rect x="10" y="30" width="10" height="20" rx="2" fill="#60A5FA" />
-                <path d="M50,25 C65,20 75,10 80,10 L85,20 C75,30 65,35 50,35 Z" fill="#93C5FD" />
-                <circle cx="25" cy="15" r="4" fill="#F59E0B" />
-                <circle cx="75" cy="60" r="3" fill="#10B981" />
-                <circle cx="85" cy="45" r="2" fill="#EF4444" />
-              </svg>
-            </div>
-          </div>
-
-        </div>
-
-        {/* LISTES DE LIENS VILLES ET MATIÈRES */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 px-2">
-          
-          {/* LIENS VILLES (2 COLONNES) */}
-          <div className="grid grid-cols-2 gap-x-6 gap-y-2">
-            <div className="space-y-2">
-              {VILLES_COL_1.map((ville, i) => (
-                <button
-                  key={i}
-                  onClick={() => { setLocation(ville); handleSearch(); }}
-                  className="block text-sm font-medium text-blue-700 hover:text-blue-900 hover:underline transition text-left"
-                >
-                  {ville}
-                </button>
-              ))}
-            </div>
-
-            <div className="space-y-2">
-              {VILLES_COL_2.map((ville, i) => (
-                <button
-                  key={i}
-                  onClick={() => { setLocation(ville); handleSearch(); }}
-                  className="block text-sm font-medium text-blue-700 hover:text-blue-900 hover:underline transition text-left"
-                >
-                  {ville}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* LIENS MATIÈRES (2 COLONNES) */}
-          <div className="grid grid-cols-2 gap-x-6 gap-y-2">
-            <div className="space-y-2">
-              {MATIERES_COL_1.map((mat, i) => (
-                <button
-                  key={i}
-                  onClick={() => { setSubject(mat); handleSearch(); }}
-                  className="block text-sm font-medium text-blue-700 hover:text-blue-900 hover:underline transition text-left"
-                >
-                  {mat}
-                </button>
-              ))}
-            </div>
-
-            <div className="space-y-2">
-              {MATIERES_COL_2.map((mat, i) => (
-                <button
-                  key={i}
-                  onClick={() => { setSubject(mat); handleSearch(); }}
-                  className="block text-sm font-medium text-blue-700 hover:text-blue-900 hover:underline transition text-left"
-                >
-                  {mat}
-                </button>
-              ))}
-            </div>
-          </div>
-
-        </div>
-
-        {/* BANNIÈRE APPEL À L'ACTION PROFESSEURS */}
-        <div className="mt-12 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-2xl p-6 text-white flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="space-y-1">
+      {/* BANNIÈRE APPEL À L'ACTION PROFESSEURS (BAS DE PAGE) */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 my-8 w-full">
+        <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-2xl p-6 text-white flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="space-y-1 text-left">
             <h4 className="text-sm font-bold text-amber-400 uppercase tracking-wider">Vous êtes enseignant ou étudiant diplômé ?</h4>
             <p className="text-xs text-gray-300">Rejoignez plus de 1 200 professeurs particuliers au Maroc et commencez à recevoir des élèves.</p>
           </div>
@@ -390,7 +393,6 @@ export default function Home() {
             Rejoindre nos professeurs
           </button>
         </div>
-
       </section>
 
       <Footer 
