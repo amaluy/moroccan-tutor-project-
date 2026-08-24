@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { 
   MapPin, BookOpen, ChevronDown, 
-  ShieldAlert, LogOut, HelpCircle, Menu, X, GraduationCap 
+  ShieldAlert, LogOut, HelpCircle, Menu, X, GraduationCap, Sparkles 
 } from 'lucide-react';
 
 const VILLES = [
@@ -129,12 +129,12 @@ export default function Navbar({
             </button>
           </div>
 
-          {/* Actions Côté Droit */}
+          {/* Actions Côté Droit Desktop */}
           <div className="hidden md:flex items-center gap-3">
             
-            {/* Bouton Donner des cours */}
+            {/* Bouton Donner des cours clean */}
             <Link 
-              href="/donner-des-cours"
+              href="/donner-cours"
               className="border border-[#FF5733] text-[#FF5733] hover:bg-[#FF5733] hover:text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow-sm"
             >
               Donner des cours
@@ -161,7 +161,7 @@ export default function Navbar({
             )}
           </div>
 
-          {/* Bouton Mobile */}
+          {/* Bouton Mobile Hamburger */}
           <div className="md:hidden flex items-center">
             <button 
               onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -173,6 +173,72 @@ export default function Navbar({
 
         </div>
       </div>
+
+      {/* --- MENU MOBILE SLIDE-DOWN --- */}
+      {isMenuOpen && (
+        <div className="md:hidden bg-white border-b border-gray-200 px-4 pt-2 pb-6 space-y-4 animate-in slide-in-from-top-2 duration-200">
+          <div className="flex flex-col space-y-3 font-bold text-sm text-gray-700 pt-2">
+            <Link 
+              href="/" 
+              onClick={() => setIsMenuOpen(false)}
+              className="hover:text-[#FF5733] transition py-1"
+            >
+              ACCUEIL
+            </Link>
+
+            <Link 
+              href="/qui-sommes-nous" 
+              onClick={() => setIsMenuOpen(false)}
+              className="hover:text-[#FF5733] transition py-1"
+            >
+              QUI SOMMES NOUS ?
+            </Link>
+
+            <button 
+              onClick={() => {
+                setIsMenuOpen(false);
+                onOpenHelp();
+              }} 
+              className="text-left hover:text-[#FF5733] transition flex items-center gap-2 py-1"
+            >
+              <HelpCircle className="w-4 h-4 text-[#FF5733]" />
+              <span>AIDE</span>
+            </button>
+          </div>
+
+          <div className="pt-2 border-t border-gray-100 flex flex-col gap-2.5">
+            <Link 
+              href="/donner-cours"
+              onClick={() => setIsMenuOpen(false)}
+              className="w-full bg-[#FF5733] text-white font-extrabold text-xs py-3 rounded-xl text-center shadow-sm flex items-center justify-center gap-2"
+            >
+              Devenir Enseignant
+            </Link>
+
+            <Link
+              href="/admin"
+              onClick={() => setIsMenuOpen(false)}
+              className="w-full bg-slate-900 text-white text-xs font-bold py-2.5 rounded-xl text-center flex items-center justify-center gap-2"
+            >
+              <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
+              <span>Espace Admin</span>
+            </Link>
+
+            {isLoggedIn && (
+              <button
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  onLogoutClick();
+                }}
+                className="w-full text-red-600 bg-red-50 hover:bg-red-100 font-bold text-xs py-2.5 rounded-xl flex items-center justify-center gap-2 transition"
+              >
+                <LogOut className="w-4 h-4" />
+                Déconnexion
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </nav>
   );
 }
