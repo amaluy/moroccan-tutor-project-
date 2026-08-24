@@ -7,7 +7,8 @@ import Footer from './components/Footer';
 import HelpModal from './components/HelpModal';
 import { 
   Search, MapPin, BookOpen, CheckCircle2, Star, 
-  Sparkles, Filter, ChevronRight, ShieldCheck, PhoneCall
+  Sparkles, Filter, ChevronRight, ShieldCheck, PhoneCall,
+  GraduationCap, DollarSign, Laptop, Home
 } from 'lucide-react';
 
 export default function HomePage() {
@@ -15,10 +16,32 @@ export default function HomePage() {
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [helpSection, setHelpSection] = useState<'recherche' | 'acceptee' | 'refusee' | 'avis' | 'inscription' | 'compte'>('recherche');
 
-  // Filtres de recherche
+  // Filtres de recherche uniques
   const [selectedSubject, setSelectedSubject] = useState('');
   const [selectedCity, setSelectedCity] = useState('');
-  const [selectedLocation, setSelectedLocation] = useState<'all' | 'deplacement' | 'domicile'>('all');
+  const [selectedLevel, setSelectedLevel] = useState('');
+  const [priceRange, setPriceRange] = useState('');
+  const [locationType, setLocationType] = useState('');
+
+  // Options prédéfinies pour les filtres
+  const subjects = [
+    "Maths", 
+    "Physique", 
+    "Physique et Chimie", 
+    "Arabe", 
+    "Anglais", 
+    "Français", 
+    "Coach sportif", 
+    "SVT", 
+    "Étude supérieur"
+  ];
+
+  const levels = [
+    "Primaire", 
+    "Collège", 
+    "Secondaire", 
+    "Niveau Supérieur"
+  ];
 
   // Liste de professeurs
   const professors = [
@@ -27,41 +50,52 @@ export default function HomePage() {
       name: "Meriem",
       avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=400",
       city: "Casablanca, Maârif",
-      level: "Soutien Scolaire Collège & Lycée",
+      level: "Collège & Secondaire",
+      subject: "Physique et Chimie",
       title: "Je suis une jeune étudiante motivée en Master Énergie à l'Université",
       price: "150 DH/h",
       rating: 4.9,
       reviewsCount: 18,
       firstLessonFree: true,
-      description: "Pour nos cours nous allons voir le nécessaire pour réussir vos études bien sur d'une façon amusante..."
+      mode: "À domicile & En ligne"
     },
     {
       id: '2',
       name: "Youssef",
       avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=400",
       city: "Rabat, Agdal",
-      level: "Mathématiques & Physique",
+      level: "Niveau Supérieur",
+      subject: "Maths",
       title: "Ingénieur d'État expérimenté donne cours particuliers personnalisés",
       price: "200 DH/h",
       rating: 5.0,
       reviewsCount: 24,
       firstLessonFree: true,
-      description: "Méthodologie axée sur la compréhension approfondie et la résolution intensive d'exercices d'examen."
+      mode: "À domicile"
     },
     {
       id: '3',
       name: "Fatima-Zohra",
       avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&q=80&w=400",
       city: "Marrakech, Guéliz",
-      level: "Français & Arabe",
+      level: "Secondaire",
+      subject: "Français",
       title: "Professeur certifiée avec 8 ans d'expérience en enseignement secondaire",
       price: "120 DH/h",
       rating: 4.8,
       reviewsCount: 12,
       firstLessonFree: false,
-      description: "Accompagnement pédagogique sur mesure pour maîtriser les langues et réussir les épreuves orales et écrites."
+      mode: "En ligne"
     }
   ];
+
+  const handleReset = () => {
+    setSelectedSubject('');
+    setSelectedCity('');
+    setSelectedLevel('');
+    setPriceRange('');
+    setLocationType('');
+  };
 
   return (
     <main className="min-h-screen bg-white text-gray-900 font-sans flex flex-col justify-between">
@@ -74,12 +108,12 @@ export default function HomePage() {
         onOpenHelp={() => setIsHelpOpen(true)}
       />
 
-      {/* --- HERO SECTION BLANCHE AVEC ACCENTS ORANGE (#FF5733 / #FF4500) --- */}
+      {/* --- HERO SECTION BLANCHE (SANS DEUXIÈME BARRE DE RECHERCHE) --- */}
       <section className="bg-white border-b border-gray-100 py-12 lg:py-16 px-4 sm:px-8 relative overflow-hidden">
         
         <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
           
-          {/* Colonne Gauche : Titre + Barre de Recherche */}
+          {/* Colonne Gauche : Titre & Badges uniquement */}
           <div className="lg:col-span-7 space-y-6 text-center lg:text-left">
             
             {/* Tag Badge Orange */}
@@ -88,7 +122,7 @@ export default function HomePage() {
               <span>Plateforme 100% Gratuite pour les Élèves & Parents</span>
             </div>
 
-            {/* Main Title avec accent Orange */}
+            {/* Main Title */}
             <h1 className="text-3xl sm:text-5xl font-black text-gray-900 leading-tight tracking-tight">
               Trouvez le <span className="text-[#FF5733]">Professeur Particulier Idéal</span> au Maroc.
             </h1>
@@ -97,43 +131,8 @@ export default function HomePage() {
               Recherchez librement parmi des centaines de professeurs qualifiés. <strong className="text-gray-900">Aucun frais d'agence, aucun paiement requis de la part de l'élève</strong> : contactez directement votre professeur pour des cours à domicile ou en ligne.
             </p>
 
-            {/* BARRE DE RECHERCHE PRINCIPALE (BORDURE ORANGE) */}
-            <div className="bg-white p-2.5 rounded-2xl border-2 border-orange-100 shadow-xl flex flex-col sm:flex-row gap-2">
-              
-              {/* Input Matière */}
-              <div className="flex-1 flex items-center gap-2 bg-gray-50 px-3.5 py-3 rounded-xl border border-gray-100 focus-within:bg-white focus-within:border-orange-300 transition">
-                <BookOpen className="w-4 h-4 text-[#FF5733] shrink-0" />
-                <input 
-                  type="text" 
-                  placeholder="Matière (ex: Maths, Physique...)" 
-                  value={selectedSubject}
-                  onChange={(e) => setSelectedSubject(e.target.value)}
-                  className="w-full text-xs text-gray-800 bg-transparent focus:outline-none placeholder-gray-400 font-medium"
-                />
-              </div>
-
-              {/* Input Ville */}
-              <div className="flex-1 flex items-center gap-2 bg-gray-50 px-3.5 py-3 rounded-xl border border-gray-100 focus-within:bg-white focus-within:border-orange-300 transition">
-                <MapPin className="w-4 h-4 text-[#FF5733] shrink-0" />
-                <input 
-                  type="text" 
-                  placeholder="Ville (ex: Casablanca, Rabat...)" 
-                  value={selectedCity}
-                  onChange={(e) => setSelectedCity(e.target.value)}
-                  className="w-full text-xs text-gray-800 bg-transparent focus:outline-none placeholder-gray-400 font-medium"
-                />
-              </div>
-
-              {/* Bouton Orange */}
-              <button className="bg-[#FF5733] hover:bg-[#e04824] text-white font-extrabold px-6 py-3 rounded-xl text-xs transition shadow-md flex items-center justify-center gap-2 shrink-0 cursor-pointer">
-                <Search className="w-4 h-4" />
-                <span>Trouver un prof</span>
-              </button>
-
-            </div>
-
             {/* Badges de Réassurance */}
-            <div className="flex flex-wrap items-center justify-center lg:justify-start gap-6 text-xs text-gray-600 pt-1 font-semibold">
+            <div className="flex flex-wrap items-center justify-center lg:justify-start gap-6 text-xs text-gray-600 pt-2 font-semibold">
               <span className="flex items-center gap-1.5 text-emerald-600">
                 <ShieldCheck className="w-4 h-4" />
                 Profils Vérifiés
@@ -161,7 +160,7 @@ export default function HomePage() {
               />
             </div>
 
-            {/* Floating Badge 1: Profs dispo */}
+            {/* Floating Badge 1 */}
             <div className="absolute -top-3 -right-2 bg-white text-gray-800 px-4 py-2.5 rounded-2xl shadow-lg flex items-center gap-3 border border-orange-100">
               <div className="flex -space-x-2">
                 <img className="w-7 h-7 rounded-full border-2 border-white object-cover" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100" />
@@ -173,7 +172,7 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Floating Badge 2: Premier cours offert */}
+            {/* Floating Badge 2 */}
             <div className="absolute -bottom-3 -left-2 bg-white text-gray-800 px-4 py-3 rounded-2xl shadow-lg flex items-center gap-3 border border-orange-100">
               <div className="w-8 h-8 rounded-xl bg-orange-50 text-[#FF5733] flex items-center justify-center font-bold text-xs">
                 🎁
@@ -190,12 +189,12 @@ export default function HomePage() {
 
       </section>
 
-      {/* --- SECTION CONTENU PRINCIPAL --- */}
+      {/* --- SECTION PRINCIPALE AVEC L'UNIQUE FILTRE VERTICAL ET LES RÉSULTATS --- */}
       <section className="max-w-6xl mx-auto px-4 sm:px-8 py-10 w-full grid grid-cols-1 lg:grid-cols-12 gap-8">
         
-        {/* FILTRES LATÉRAUX (GAUCHE) */}
+        {/* LE SEUL ET UNIQUE FILTRE VERTICAL (GAUCHE) */}
         <aside className="lg:col-span-4 space-y-6">
-          <div className="bg-white p-6 rounded-2xl border border-gray-200/80 shadow-sm space-y-6">
+          <div className="bg-white p-6 rounded-2xl border border-gray-200/80 shadow-sm space-y-5 sticky top-6">
             
             <div className="flex items-center justify-between border-b border-gray-100 pb-4">
               <h3 className="font-bold text-gray-900 flex items-center gap-2 text-sm">
@@ -203,66 +202,118 @@ export default function HomePage() {
                 Filtrer les professeurs
               </h3>
               <button 
-                onClick={() => { setSelectedSubject(''); setSelectedCity(''); setSelectedLocation('all'); }}
-                className="text-[11px] text-[#FF5733] hover:underline font-medium"
+                onClick={handleReset}
+                className="text-[11px] text-[#FF5733] hover:underline font-medium cursor-pointer"
               >
                 Réinitialiser
               </button>
             </div>
 
-            {/* Filtre Matière */}
+            {/* 1. Matière */}
             <div className="space-y-2">
-              <label className="text-xs font-bold text-gray-700">Quelle matière ?</label>
-              <input 
-                type="text" 
-                placeholder="Ex: Soutien scolaire, maths..." 
+              <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
+                <BookOpen className="w-3.5 h-3.5 text-[#FF5733]" />
+                Matière
+              </label>
+              <select 
                 value={selectedSubject}
                 onChange={(e) => setSelectedSubject(e.target.value)}
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs text-gray-800 focus:bg-white focus:border-[#FF5733] focus:outline-none transition"
-              />
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs text-gray-800 focus:bg-white focus:border-[#FF5733] focus:outline-none transition cursor-pointer"
+              >
+                <option value="">Toutes les matières</option>
+                {subjects.map((sub, idx) => (
+                  <option key={idx} value={sub}>{sub}</option>
+                ))}
+              </select>
             </div>
 
-            {/* Filtre Ville */}
+            {/* 2. Ville */}
             <div className="space-y-2">
-              <label className="text-xs font-bold text-gray-700">Où (Ville ou Code Postal) ?</label>
+              <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5 text-[#FF5733]" />
+                Ville
+              </label>
               <input 
                 type="text" 
-                placeholder="Ex: Casablanca, 20250..." 
+                placeholder="Ex: Casablanca, Rabat, Marrakech..." 
                 value={selectedCity}
                 onChange={(e) => setSelectedCity(e.target.value)}
                 className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs text-gray-800 focus:bg-white focus:border-[#FF5733] focus:outline-none transition"
               />
             </div>
 
-            {/* Lieu du cours */}
-            <div className="space-y-2 pt-2">
+            {/* 3. Niveau d'études */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
+                <GraduationCap className="w-3.5 h-3.5 text-[#FF5733]" />
+                Niveau d'études
+              </label>
+              <select 
+                value={selectedLevel}
+                onChange={(e) => setSelectedLevel(e.target.value)}
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs text-gray-800 focus:bg-white focus:border-[#FF5733] focus:outline-none transition cursor-pointer"
+              >
+                <option value="">Tous les niveaux</option>
+                {levels.map((lvl, idx) => (
+                  <option key={idx} value={lvl}>{lvl}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* 4. Tarif horaire */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
+                <DollarSign className="w-3.5 h-3.5 text-[#FF5733]" />
+                Tarif horaire (DH/h)
+              </label>
+              <select 
+                value={priceRange}
+                onChange={(e) => setPriceRange(e.target.value)}
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs text-gray-800 focus:bg-white focus:border-[#FF5733] focus:outline-none transition cursor-pointer"
+              >
+                <option value="">Tous les tarifs</option>
+                <option value="0-100">Moins de 100 DH/h</option>
+                <option value="100-150">100 DH - 150 DH/h</option>
+                <option value="150-200">150 DH - 200 DH/h</option>
+                <option value="200+">Plus de 200 DH/h</option>
+              </select>
+            </div>
+
+            {/* 5. Lieu du cours */}
+            <div className="space-y-2">
               <label className="text-xs font-bold text-gray-700">Lieu du cours</label>
-              <div className="space-y-2 text-xs text-gray-600">
-                <label className="flex items-center gap-2.5 cursor-pointer">
-                  <input 
-                    type="checkbox" 
-                    checked={selectedLocation === 'deplacement'}
-                    onChange={() => setSelectedLocation(selectedLocation === 'deplacement' ? 'all' : 'deplacement')}
-                    className="rounded border-gray-300 text-[#FF5733] focus:ring-[#FF5733]" 
-                  />
-                  <span>Je me déplace chez le professeur</span>
-                </label>
-                <label className="flex items-center gap-2.5 cursor-pointer">
-                  <input 
-                    type="checkbox" 
-                    checked={selectedLocation === 'domicile'}
-                    onChange={() => setSelectedLocation(selectedLocation === 'domicile' ? 'all' : 'domicile')}
-                    className="rounded border-gray-300 text-[#FF5733] focus:ring-[#FF5733]" 
-                  />
-                  <span>À mon domicile</span>
-                </label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setLocationType(locationType === 'domicile' ? '' : 'domicile')}
+                  className={`flex flex-col items-center justify-center p-2.5 rounded-xl border text-xs font-semibold transition cursor-pointer ${
+                    locationType === 'domicile'
+                      ? 'bg-orange-50 border-[#FF5733] text-[#FF5733]'
+                      : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  <Home className="w-4 h-4 mb-1" />
+                  À domicile
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLocationType(locationType === 'en_ligne' ? '' : 'en_ligne')}
+                  className={`flex flex-col items-center justify-center p-2.5 rounded-xl border text-xs font-semibold transition cursor-pointer ${
+                    locationType === 'en_ligne'
+                      ? 'bg-orange-50 border-[#FF5733] text-[#FF5733]'
+                      : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  <Laptop className="w-4 h-4 mb-1" />
+                  En ligne
+                </button>
               </div>
             </div>
 
-            {/* Bouton Sauvegarder recherche */}
-            <button className="w-full border border-[#FF5733] text-[#FF5733] hover:bg-orange-50 font-bold py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-2">
-              <BookOpen className="w-3.5 h-3.5" />
-              Sauvegarder cette recherche
+            {/* Bouton Appliquer */}
+            <button className="w-full bg-[#FF5733] hover:bg-[#e04824] text-white font-extrabold py-3 rounded-xl text-xs transition shadow-sm flex items-center justify-center gap-2 cursor-pointer pt-2">
+              <Search className="w-4 h-4" />
+              Appliquer les filtres
             </button>
 
           </div>
@@ -278,7 +329,7 @@ export default function HomePage() {
             <span>Affichage de {professors.length} professeurs</span>
           </div>
 
-          {/* LISTE CARDS */}
+          {/* CARTE PROFESSEUR */}
           <div className="space-y-4">
             {professors.map((prof) => (
               <div 
@@ -304,9 +355,15 @@ export default function HomePage() {
                       {prof.city}
                     </p>
 
-                    <p className="text-xs text-[#FF5733] font-semibold">
-                      📚 {prof.level}
-                    </p>
+                    <div className="flex flex-wrap gap-1.5 items-center text-[11px]">
+                      <span className="bg-gray-100 text-gray-700 font-semibold px-2 py-0.5 rounded-md">
+                        {prof.subject}
+                      </span>
+                      <span className="text-gray-400">•</span>
+                      <span className="text-[#FF5733] font-semibold">
+                        {prof.level}
+                      </span>
+                    </div>
 
                     <p className="text-xs font-semibold text-gray-800 line-clamp-1 max-w-md">
                       {prof.title}
@@ -314,7 +371,7 @@ export default function HomePage() {
                   </div>
                 </div>
 
-                {/* Bloc Prix & Bouton */}
+                {/* Bloc Prix & Bouton Action */}
                 <div className="w-full sm:w-auto flex sm:flex-col justify-between items-end gap-2 border-t sm:border-t-0 pt-3 sm:pt-0 border-gray-100 shrink-0">
                   
                   <div className="text-left sm:text-right">

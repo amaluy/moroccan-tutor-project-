@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { 
   MapPin, BookOpen, ChevronDown, 
-  ShieldAlert, LogOut, HelpCircle, Menu, X 
+  ShieldAlert, LogOut, HelpCircle, Menu, X, GraduationCap 
 } from 'lucide-react';
 
 const VILLES = [
@@ -43,16 +43,19 @@ export default function Navbar({
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-16">
           
-          {/* Logo */}
+          {/* Logo en Orange */}
           <Link href="/" className="flex items-center gap-2 group">
-            <span className="text-2xl font-black tracking-tight text-blue-900 group-hover:text-blue-700 transition">
-              prof<span className="text-blue-600">maroc</span>
+            <div className="bg-orange-50 p-1.5 rounded-xl border border-orange-100 group-hover:bg-orange-100 transition">
+              <GraduationCap className="w-6 h-6 text-[#FF5733]" />
+            </div>
+            <span className="text-2xl font-black tracking-tight text-gray-900">
+              prof<span className="text-[#FF5733]">maroc</span>
             </span>
           </Link>
 
           {/* Navigation Principale Desktop */}
           <div className="hidden md:flex items-center gap-6 text-xs font-bold text-gray-700">
-            <Link href="/" className="hover:text-blue-600 transition">
+            <Link href="/" className="hover:text-[#FF5733] transition">
               ACCUEIL
             </Link>
 
@@ -62,8 +65,8 @@ export default function Navbar({
               onMouseEnter={() => setOpenDropdown('villes')}
               onMouseLeave={() => setOpenDropdown(null)}
             >
-              <button className="flex items-center gap-1 hover:text-blue-600 py-2 transition cursor-pointer">
-                <MapPin className="w-3.5 h-3.5 text-blue-600" />
+              <button className="flex items-center gap-1 hover:text-[#FF5733] py-2 transition cursor-pointer">
+                <MapPin className="w-3.5 h-3.5 text-[#FF5733]" />
                 <span>VILLES</span>
                 <ChevronDown className={`w-3 h-3 transition-transform ${openDropdown === 'villes' ? 'rotate-180' : ''}`} />
               </button>
@@ -77,7 +80,7 @@ export default function Navbar({
                         if (onSelectCity) onSelectCity(v);
                         setOpenDropdown(null);
                       }}
-                      className="text-left px-2.5 py-1.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition"
+                      className="text-left px-2.5 py-1.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-orange-50 hover:text-[#FF5733] transition cursor-pointer"
                     >
                       {v}
                     </button>
@@ -92,8 +95,8 @@ export default function Navbar({
               onMouseEnter={() => setOpenDropdown('matieres')}
               onMouseLeave={() => setOpenDropdown(null)}
             >
-              <button className="flex items-center gap-1 hover:text-blue-600 py-2 transition cursor-pointer">
-                <BookOpen className="w-3.5 h-3.5 text-indigo-600" />
+              <button className="flex items-center gap-1 hover:text-[#FF5733] py-2 transition cursor-pointer">
+                <BookOpen className="w-3.5 h-3.5 text-[#FF5733]" />
                 <span>MATIÈRES</span>
                 <ChevronDown className={`w-3 h-3 transition-transform ${openDropdown === 'matieres' ? 'rotate-180' : ''}`} />
               </button>
@@ -107,7 +110,7 @@ export default function Navbar({
                         if (onSelectSubject) onSelectSubject(m);
                         setOpenDropdown(null);
                       }}
-                      className="text-left px-2.5 py-1.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 transition"
+                      className="text-left px-2.5 py-1.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-orange-50 hover:text-[#FF5733] transition cursor-pointer"
                     >
                       {m}
                     </button>
@@ -116,12 +119,12 @@ export default function Navbar({
               )}
             </div>
 
-            <Link href="/qui-sommes-nous" className="hover:text-blue-600 transition">
+            <Link href="/qui-sommes-nous" className="hover:text-[#FF5733] transition">
               QUI SOMMES NOUS ?
             </Link>
 
-            <button onClick={onOpenHelp} className="hover:text-blue-600 transition flex items-center gap-1">
-              <HelpCircle className="w-3.5 h-3.5" />
+            <button onClick={onOpenHelp} className="hover:text-[#FF5733] transition flex items-center gap-1 cursor-pointer">
+              <HelpCircle className="w-3.5 h-3.5 text-[#FF5733]" />
               <span>AIDE</span>
             </button>
           </div>
@@ -132,12 +135,12 @@ export default function Navbar({
             {/* Bouton Donner des cours */}
             <Link 
               href="/donner-des-cours"
-              className="border border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow-sm"
+              className="border border-[#FF5733] text-[#FF5733] hover:bg-[#FF5733] hover:text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow-sm"
             >
               Donner des cours
             </Link>
 
-            {/* BOUTON ESPACE ADMIN (Restaure) */}
+            {/* BOUTON ESPACE ADMIN */}
             <Link
               href="/admin"
               className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition flex items-center gap-2 shadow-sm border border-slate-700"
@@ -162,7 +165,7 @@ export default function Navbar({
           <div className="md:hidden flex items-center">
             <button 
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg cursor-pointer"
             >
               {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
