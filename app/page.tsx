@@ -1,93 +1,106 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import HelpModal from './components/HelpModal';
+import { supabase } from '@/lib/supabase';
 import { 
-  Search, MapPin, BookOpen, CheckCircle2, Star, 
+  Search, MapPin, BookOpen, CheckCircle2, 
   Sparkles, Filter, ChevronRight, ShieldCheck, PhoneCall,
-  GraduationCap, DollarSign, Laptop, Home
+  GraduationCap, DollarSign, Laptop, Home, UserPlus,
+  Clock, Wallet, Award, Coins, Loader2, BadgeCheck
 } from 'lucide-react';
+
+interface Professor {
+  id: string;
+  name: string;
+  avatar_url?: string;
+  city?: string;
+  level?: string;
+  subject?: string;
+  title?: string;
+  price?: number | string;
+  badge?: string;
+}
 
 export default function HomePage() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [helpSection, setHelpSection] = useState<'recherche' | 'acceptee' | 'refusee' | 'avis' | 'inscription' | 'compte'>('recherche');
 
-  // Filtres de recherche uniques
+  // États pour les professeurs et le chargement
+  const [professors, setProfessors] = useState<Professor[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  // Filtres
   const [selectedSubject, setSelectedSubject] = useState('');
   const [selectedCity, setSelectedCity] = useState('');
   const [selectedLevel, setSelectedLevel] = useState('');
   const [priceRange, setPriceRange] = useState('');
   const [locationType, setLocationType] = useState('');
 
-  // Options prédéfinies pour les filtres
   const subjects = [
-    "Maths", 
-    "Physique", 
-    "Physique et Chimie", 
-    "Arabe", 
-    "Anglais", 
-    "Français", 
-    "Coach sportif", 
-    "SVT", 
-    "Étude supérieur"
+    "Maths", "Physique", "Physique et Chimie", "Arabe", "Anglais", 
+    "Français", "Coach sportif", "SVT", "Étude supérieur"
   ];
 
   const levels = [
-    "Primaire", 
-    "Collège", 
-    "Secondaire", 
-    "Niveau Supérieur"
+    "Primaire", "Collège", "Secondaire", "Niveau Supérieur"
   ];
 
-  // Liste de professeurs
-  const professors = [
-    {
-      id: '1',
-      name: "Meriem",
-      avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=400",
-      city: "Casablanca, Maârif",
-      level: "Collège & Secondaire",
-      subject: "Physique et Chimie",
-      title: "Je suis une jeune étudiante motivée en Master Énergie à l'Université",
-      price: "150 DH/h",
-      rating: 4.9,
-      reviewsCount: 18,
-      firstLessonFree: true,
-      mode: "À domicile & En ligne"
-    },
-    {
-      id: '2',
-      name: "Youssef",
-      avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=400",
-      city: "Rabat, Agdal",
-      level: "Niveau Supérieur",
-      subject: "Maths",
-      title: "Ingénieur d'État expérimenté donne cours particuliers personnalisés",
-      price: "200 DH/h",
-      rating: 5.0,
-      reviewsCount: 24,
-      firstLessonFree: true,
-      mode: "À domicile"
-    },
-    {
-      id: '3',
-      name: "Fatima-Zohra",
-      avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&q=80&w=400",
-      city: "Marrakech, Guéliz",
-      level: "Secondaire",
-      subject: "Français",
-      title: "Professeur certifiée avec 8 ans d'expérience en enseignement secondaire",
-      price: "120 DH/h",
-      rating: 4.8,
-      reviewsCount: 12,
-      firstLessonFree: false,
-      mode: "En ligne"
+  // Fonction de récupération des professeurs depuis Supabase
+  const fetchProfessors = async () => {
+    setLoading(true);
+    try {
+      let query = supabase.from('professors').select('*');
+
+      // Filtrage par matière
+      if (selectedSubject) {
+        query = query.ilike('subject', `%${selectedSubject}%`);
+      }
+
+      // Filtrage par ville
+      if (selectedCity) {
+        query = query.ilike('city', `%${selectedCity}%`);
+      }
+
+      // Filtrage par niveau
+      if (selectedLevel) {
+        query = query.ilike('level', `%${selectedLevel}%`);
+      }
+
+      // Filtrage par tranche de prix
+      if (priceRange) {
+        if (priceRange === '0-100') query = query.lte('price', 100);
+        if (priceRange === '100-150') query = query.gte('price', 100).lte('price', 150);
+        if (priceRange === '150-200') query = query.gte('price', 150).lte('price', 200);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Erreur Supabase:', error);
+      } else {
+        setProfessors(data || []);
+      }
+    } catch (err) {
+      console.error('Erreur de chargement:', err);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
+
+  // Chargement initial au montage de la page
+  useEffect(() => {
+    fetchProfessors();
+  }, []);
+
+  const handleApplyFilters = (e: React.FormEvent) => {
+    e.preventDefault();
+    fetchProfessors();
+  };
 
   const handleReset = () => {
     setSelectedSubject('');
@@ -95,6 +108,9 @@ export default function HomePage() {
     setSelectedLevel('');
     setPriceRange('');
     setLocationType('');
+    setTimeout(() => {
+      fetchProfessors();
+    }, 100);
   };
 
   return (
@@ -105,33 +121,29 @@ export default function HomePage() {
         isLoggedIn={false}
         isMenuOpen={isMenuOpen}
         setIsMenuOpen={setIsMenuOpen}
+        onLogoutClick={() => {}}
         onOpenHelp={() => setIsHelpOpen(true)}
       />
 
-      {/* --- HERO SECTION BLANCHE (SANS DEUXIÈME BARRE DE RECHERCHE) --- */}
+      {/* --- HERO SECTION --- */}
       <section className="bg-white border-b border-gray-100 py-12 lg:py-16 px-4 sm:px-8 relative overflow-hidden">
-        
         <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
           
-          {/* Colonne Gauche : Titre & Badges uniquement */}
+          {/* Gauche */}
           <div className="lg:col-span-7 space-y-6 text-center lg:text-left">
-            
-            {/* Tag Badge Orange */}
             <div className="inline-flex items-center gap-2 bg-orange-50 text-[#FF5733] border border-orange-200/60 px-3.5 py-1.5 rounded-full text-xs font-bold shadow-sm">
               <Sparkles className="w-3.5 h-3.5 text-[#FF5733]" />
               <span>Plateforme 100% Gratuite pour les Élèves & Parents</span>
             </div>
 
-            {/* Main Title */}
             <h1 className="text-3xl sm:text-5xl font-black text-gray-900 leading-tight tracking-tight">
               Trouvez le <span className="text-[#FF5733]">Professeur Particulier Idéal</span> au Maroc.
             </h1>
 
             <p className="text-sm sm:text-base text-gray-600 leading-relaxed max-w-2xl mx-auto lg:mx-0">
-              Recherchez librement parmi des centaines de professeurs qualifiés. <strong className="text-gray-900">Aucun frais d'agence, aucun paiement requis de la part de l'élève</strong> : contactez directement votre professeur pour des cours à domicile ou en ligne.
+              Recherchez librement parmi nos meilleurs professeurs qualifiés. <strong className="text-gray-900">Aucun frais d'agence, aucun paiement requis de la part de l'élève</strong> : contactez directement votre professeur.
             </p>
 
-            {/* Badges de Réassurance */}
             <div className="flex flex-wrap items-center justify-center lg:justify-start gap-6 text-xs text-gray-600 pt-2 font-semibold">
               <span className="flex items-center gap-1.5 text-emerald-600">
                 <ShieldCheck className="w-4 h-4" />
@@ -146,21 +158,18 @@ export default function HomePage() {
                 Contact Direct
               </span>
             </div>
-
           </div>
 
-          {/* Colonne Droite : Image Hero */}
+          {/* Droite */}
           <div className="lg:col-span-5 relative flex justify-center">
-            
             <div className="relative rounded-3xl overflow-hidden shadow-xl border border-gray-100 max-w-md w-full">
               <img 
                 src="https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&q=80&w=800" 
-                alt="Étudiants en cours particulier" 
+                alt="Cours particulier" 
                 className="w-full h-80 object-cover"
               />
             </div>
 
-            {/* Floating Badge 1 */}
             <div className="absolute -top-3 -right-2 bg-white text-gray-800 px-4 py-2.5 rounded-2xl shadow-lg flex items-center gap-3 border border-orange-100">
               <div className="flex -space-x-2">
                 <img className="w-7 h-7 rounded-full border-2 border-white object-cover" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100" />
@@ -172,44 +181,38 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Floating Badge 2 */}
             <div className="absolute -bottom-3 -left-2 bg-white text-gray-800 px-4 py-3 rounded-2xl shadow-lg flex items-center gap-3 border border-orange-100">
               <div className="w-8 h-8 rounded-xl bg-orange-50 text-[#FF5733] flex items-center justify-center font-bold text-xs">
                 🎁
               </div>
               <div className="text-left">
-                <p className="text-xs font-bold text-gray-900">Premier cours offert</p>
-                <p className="text-[10px] text-gray-500">Par la plupart des enseignants</p>
+                <p className="text-xs font-bold text-gray-900">Mise en relation directe</p>
+                <p className="text-[10px] text-gray-500">Sans intermédiaire</p>
               </div>
             </div>
-
           </div>
 
         </div>
-
       </section>
 
-      {/* --- SECTION PRINCIPALE AVEC L'UNIQUE FILTRE VERTICAL ET LES RÉSULTATS --- */}
+      {/* --- SECTION FILTRES & LISTE SUPABASE --- */}
       <section className="max-w-6xl mx-auto px-4 sm:px-8 py-10 w-full grid grid-cols-1 lg:grid-cols-12 gap-8">
         
-        {/* LE SEUL ET UNIQUE FILTRE VERTICAL (GAUCHE) */}
+        {/* PANNEAU FILTRE VERTICAL */}
         <aside className="lg:col-span-4 space-y-6">
-          <div className="bg-white p-6 rounded-2xl border border-gray-200/80 shadow-sm space-y-5 sticky top-6">
+          <form onSubmit={handleApplyFilters} className="bg-white p-6 rounded-2xl border border-gray-200/80 shadow-sm space-y-5 sticky top-20">
             
             <div className="flex items-center justify-between border-b border-gray-100 pb-4">
               <h3 className="font-bold text-gray-900 flex items-center gap-2 text-sm">
                 <Filter className="w-4 h-4 text-[#FF5733]" />
                 Filtrer les professeurs
               </h3>
-              <button 
-                onClick={handleReset}
-                className="text-[11px] text-[#FF5733] hover:underline font-medium cursor-pointer"
-              >
+              <button type="button" onClick={handleReset} className="text-[11px] text-[#FF5733] hover:underline font-medium cursor-pointer">
                 Réinitialiser
               </button>
             </div>
 
-            {/* 1. Matière */}
+            {/* Matières */}
             <div className="space-y-2">
               <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
                 <BookOpen className="w-3.5 h-3.5 text-[#FF5733]" />
@@ -227,7 +230,7 @@ export default function HomePage() {
               </select>
             </div>
 
-            {/* 2. Ville */}
+            {/* Ville */}
             <div className="space-y-2">
               <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
                 <MapPin className="w-3.5 h-3.5 text-[#FF5733]" />
@@ -235,14 +238,14 @@ export default function HomePage() {
               </label>
               <input 
                 type="text" 
-                placeholder="Ex: Casablanca, Rabat, Marrakech..." 
+                placeholder="Ex: Casablanca, Rabat..." 
                 value={selectedCity}
                 onChange={(e) => setSelectedCity(e.target.value)}
                 className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs text-gray-800 focus:bg-white focus:border-[#FF5733] focus:outline-none transition"
               />
             </div>
 
-            {/* 3. Niveau d'études */}
+            {/* Niveau d'études */}
             <div className="space-y-2">
               <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
                 <GraduationCap className="w-3.5 h-3.5 text-[#FF5733]" />
@@ -260,11 +263,11 @@ export default function HomePage() {
               </select>
             </div>
 
-            {/* 4. Tarif horaire */}
+            {/* Tarif */}
             <div className="space-y-2">
               <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
                 <DollarSign className="w-3.5 h-3.5 text-[#FF5733]" />
-                Tarif horaire (DH/h)
+                Tarif horaire
               </label>
               <select 
                 value={priceRange}
@@ -275,11 +278,10 @@ export default function HomePage() {
                 <option value="0-100">Moins de 100 DH/h</option>
                 <option value="100-150">100 DH - 150 DH/h</option>
                 <option value="150-200">150 DH - 200 DH/h</option>
-                <option value="200+">Plus de 200 DH/h</option>
               </select>
             </div>
 
-            {/* 5. Lieu du cours */}
+            {/* Lieu */}
             <div className="space-y-2">
               <label className="text-xs font-bold text-gray-700">Lieu du cours</label>
               <div className="grid grid-cols-2 gap-2">
@@ -287,9 +289,7 @@ export default function HomePage() {
                   type="button"
                   onClick={() => setLocationType(locationType === 'domicile' ? '' : 'domicile')}
                   className={`flex flex-col items-center justify-center p-2.5 rounded-xl border text-xs font-semibold transition cursor-pointer ${
-                    locationType === 'domicile'
-                      ? 'bg-orange-50 border-[#FF5733] text-[#FF5733]'
-                      : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+                    locationType === 'domicile' ? 'bg-orange-50 border-[#FF5733] text-[#FF5733]' : 'bg-gray-50 border-gray-200 text-gray-600'
                   }`}
                 >
                   <Home className="w-4 h-4 mb-1" />
@@ -299,9 +299,7 @@ export default function HomePage() {
                   type="button"
                   onClick={() => setLocationType(locationType === 'en_ligne' ? '' : 'en_ligne')}
                   className={`flex flex-col items-center justify-center p-2.5 rounded-xl border text-xs font-semibold transition cursor-pointer ${
-                    locationType === 'en_ligne'
-                      ? 'bg-orange-50 border-[#FF5733] text-[#FF5733]'
-                      : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+                    locationType === 'en_ligne' ? 'bg-orange-50 border-[#FF5733] text-[#FF5733]' : 'bg-gray-50 border-gray-200 text-gray-600'
                   }`}
                 >
                   <Laptop className="w-4 h-4 mb-1" />
@@ -310,98 +308,194 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Bouton Appliquer */}
-            <button className="w-full bg-[#FF5733] hover:bg-[#e04824] text-white font-extrabold py-3 rounded-xl text-xs transition shadow-sm flex items-center justify-center gap-2 cursor-pointer pt-2">
+            <button type="submit" className="w-full bg-[#FF5733] hover:bg-[#e04824] text-white font-extrabold py-3 rounded-xl text-xs transition shadow-sm flex items-center justify-center gap-2 cursor-pointer">
               <Search className="w-4 h-4" />
               Appliquer les filtres
             </button>
 
-          </div>
+          </form>
         </aside>
 
-        {/* LISTE DES PROFESSEURS (DROITE) */}
+        {/* AFFICHAGE DES PROFESSEURS DEPUIS SUPABASE */}
         <div className="lg:col-span-8 space-y-6">
           
           <div className="flex items-center justify-between text-xs text-gray-500">
-            <h2 className="text-lg font-black text-gray-900">
-              Professeurs disponibles au Maroc
+            <h2 className="text-lg font-black text-gray-900 flex items-center gap-2">
+              <Award className="w-5 h-5 text-[#FF5733]" />
+              Nos Professeurs au Maroc
             </h2>
-            <span>Affichage de {professors.length} professeurs</span>
+            <span className="font-semibold text-gray-400">{professors.length} professeur(s) trouvé(s)</span>
           </div>
 
-          {/* CARTE PROFESSEUR */}
-          <div className="space-y-4">
-            {professors.map((prof) => (
-              <div 
-                key={prof.id} 
-                className="bg-white rounded-2xl border border-gray-200/80 p-5 shadow-sm hover:shadow-md transition flex flex-col sm:flex-row gap-5 items-start sm:items-center justify-between"
-              >
-                
-                <div className="flex gap-4 items-start sm:items-center">
-                  <img 
-                    src={prof.avatar} 
-                    alt={prof.name} 
-                    className="w-20 h-20 rounded-full object-cover shrink-0 border-2 border-orange-100"
-                  />
-
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-base font-bold text-gray-900">{prof.name}</h3>
-                      <span className="text-[10px] bg-orange-50 text-[#FF5733] font-bold px-2 py-0.5 rounded-full border border-orange-100">Vérifié</span>
-                    </div>
-
-                    <p className="text-xs text-gray-500 flex items-center gap-1">
-                      <MapPin className="w-3 h-3 text-[#FF5733]" />
-                      {prof.city}
-                    </p>
-
-                    <div className="flex flex-wrap gap-1.5 items-center text-[11px]">
-                      <span className="bg-gray-100 text-gray-700 font-semibold px-2 py-0.5 rounded-md">
-                        {prof.subject}
-                      </span>
-                      <span className="text-gray-400">•</span>
-                      <span className="text-[#FF5733] font-semibold">
-                        {prof.level}
-                      </span>
-                    </div>
-
-                    <p className="text-xs font-semibold text-gray-800 line-clamp-1 max-w-md">
-                      {prof.title}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Bloc Prix & Bouton Action */}
-                <div className="w-full sm:w-auto flex sm:flex-col justify-between items-end gap-2 border-t sm:border-t-0 pt-3 sm:pt-0 border-gray-100 shrink-0">
-                  
-                  <div className="text-left sm:text-right">
-                    <span className="text-base font-black text-gray-900">{prof.price}</span>
-                    {prof.firstLessonFree && (
-                      <p className="text-[10px] font-bold text-[#FF5733]">Premier cours offert</p>
+          {loading ? (
+            <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center flex flex-col items-center justify-center gap-3">
+              <Loader2 className="w-8 h-8 text-[#FF5733] animate-spin" />
+              <p className="text-sm font-semibold text-gray-600">Chargement des professeurs depuis Supabase...</p>
+            </div>
+          ) : professors.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center space-y-3">
+              <p className="text-base font-bold text-gray-800">Aucun professeur trouvé</p>
+              <p className="text-xs text-gray-500">Essayez de réinitialiser vos filtres de recherche.</p>
+              <button onClick={handleReset} className="bg-orange-50 text-[#FF5733] text-xs font-bold px-4 py-2 rounded-xl border border-orange-200 hover:bg-orange-100 transition cursor-pointer">
+                Réinitialiser la recherche
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {professors.map((prof) => (
+                <div 
+                  key={prof.id} 
+                  className="bg-white rounded-2xl border border-gray-200/80 p-5 shadow-sm hover:shadow-md transition flex flex-col sm:flex-row gap-5 items-start sm:items-center justify-between relative overflow-hidden"
+                >
+                  <div className="flex gap-4 items-start sm:items-center">
+                    
+                    {/* AVATAR SUPABASE OU INITIALES AUTOMATIQUES */}
+                    {prof.avatar_url ? (
+                      <img 
+                        src={prof.avatar_url} 
+                        alt={prof.name} 
+                        className="w-20 h-20 rounded-full object-cover shrink-0 border-2 border-orange-100 shadow-sm"
+                      />
+                    ) : (
+                      <div className="w-20 h-20 rounded-full bg-gradient-to-br from-orange-400 to-[#FF5733] text-white flex items-center justify-center text-xl font-black shrink-0 border-2 border-orange-100 shadow-sm">
+                        {prof.name ? prof.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'P'}
+                      </div>
                     )}
-                    <div className="flex items-center gap-1 text-[11px] text-gray-500 sm:justify-end mt-0.5">
-                      <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
-                      <span className="font-bold text-gray-800">{prof.rating}</span>
-                      <span>({prof.reviewsCount} avis)</span>
+
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-base font-bold text-gray-900">{prof.name}</h3>
+                        <span className="text-[10px] bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
+                          <BadgeCheck className="w-3 h-3 text-emerald-600" /> Profil Vérifié
+                        </span>
+                      </div>
+
+                      <p className="text-xs text-gray-500 flex items-center gap-1">
+                        <MapPin className="w-3 h-3 text-[#FF5733]" />
+                        {prof.city || "Maroc"}
+                      </p>
+
+                      <div className="flex flex-wrap gap-1.5 items-center text-[11px]">
+                        {prof.subject && (
+                          <span className="bg-gray-100 text-gray-700 font-semibold px-2 py-0.5 rounded-md">
+                            {prof.subject}
+                          </span>
+                        )}
+                        {prof.level && (
+                          <>
+                            <span className="text-gray-400">•</span>
+                            <span className="text-[#FF5733] font-semibold">
+                              {prof.level}
+                            </span>
+                          </>
+                        )}
+                      </div>
+
+                      {prof.title && (
+                        <p className="text-xs font-semibold text-gray-800 line-clamp-1 max-w-md">
+                          {prof.title}
+                        </p>
+                      )}
                     </div>
                   </div>
 
-                  <Link 
-                    href={`/professeurs/${prof.id}`}
-                    className="bg-[#FF5733] hover:bg-[#e04824] text-white text-xs font-bold px-4 py-2 rounded-xl transition flex items-center gap-1 shadow-sm"
-                  >
-                    Voir le profil
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </Link>
+                  {/* TARIF & BOUTON VOIR LE PROFIL */}
+                  <div className="w-full sm:w-auto flex sm:flex-col justify-between items-end gap-3 border-t sm:border-t-0 pt-3 sm:pt-0 border-gray-100 shrink-0">
+                    <div className="text-left sm:text-right">
+                      <span className="text-base font-black text-gray-900">
+                        {prof.price ? `${prof.price} DH/h` : "Prix sur demande"}
+                      </span>
+                    </div>
 
+                    <Link 
+                      href={`/professeurs/${prof.id}`}
+                      className="bg-[#FF5733] hover:bg-[#e04824] text-white text-xs font-bold px-4 py-2.5 rounded-xl transition flex items-center gap-1 shadow-sm"
+                    >
+                      Voir le profil
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </Link>
+                  </div>
                 </div>
-
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
 
         </div>
 
+      </section>
+
+      {/* --- SECTION DEVENIR PROFESSEUR & FONCTIONNEMENT --- */}
+      <section className="bg-gradient-to-br from-orange-50 via-white to-orange-50/30 border-y border-orange-100/80 py-16 px-4 sm:px-8 my-6">
+        <div className="max-w-6xl mx-auto space-y-12">
+          
+          <div className="text-center space-y-4 max-w-3xl mx-auto">
+            <span className="bg-white text-[#FF5733] font-extrabold text-xs px-3.5 py-1.5 rounded-full border border-orange-200 shadow-sm inline-flex items-center gap-1.5">
+              <UserPlus className="w-4 h-4 text-[#FF5733]" />
+              Rejoignez notre réseau
+            </span>
+
+            <h2 className="text-2xl sm:text-4xl font-black text-gray-900 leading-tight">
+              Vous êtes enseignant ou vous avez un <span className="text-[#FF5733]">savoir-faire à partager</span> ?
+            </h2>
+
+            <p className="text-sm sm:text-base text-gray-600 leading-relaxed">
+              Rejoignez notre groupe et inscrivez-vous sur notre site pour être mis en avant ! Faites-vous connaître auprès de nombreux élèves recherchant votre expertise.
+            </p>
+
+            <div className="pt-2">
+              <Link 
+                href="/donner-des-cours"
+                className="inline-flex items-center gap-2 bg-[#FF5733] hover:bg-[#e04824] text-white font-extrabold px-8 py-4 rounded-2xl text-sm transition shadow-lg hover:shadow-orange-200 transform hover:-translate-y-0.5 cursor-pointer"
+              >
+                <UserPlus className="w-5 h-5" />
+                Devenir Professeur Particulier Maintenant
+              </Link>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 pt-4">
+            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-orange-100 text-[#FF5733] flex items-center justify-center font-bold">
+                <Wallet className="w-5 h-5" />
+              </div>
+              <h3 className="font-bold text-gray-900 text-sm">Fixez votre tarif</h3>
+              <p className="text-xs text-gray-500 leading-relaxed">
+                Vous définissez votre tarif horaire en toute liberté selon votre expérience et la matière enseignée.
+              </p>
+            </div>
+
+            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-orange-100 text-[#FF5733] flex items-center justify-center font-bold">
+                <Coins className="w-5 h-5" />
+              </div>
+              <h3 className="font-bold text-gray-900 text-sm">Votre revenu vous revient</h3>
+              <p className="text-xs text-gray-500 leading-relaxed">
+                Le montant total de vos heures de cours vous est versé directement par vos élèves, sans intermédiaire.
+              </p>
+            </div>
+
+            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-orange-100 text-[#FF5733] flex items-center justify-center font-bold">
+                <Award className="w-5 h-5" />
+              </div>
+              <h3 className="font-bold text-gray-900 text-sm">Seulement 10 DH / Lead</h3>
+              <p className="text-xs text-gray-500 leading-relaxed">
+                Pas de pourcentage sur vos cours. Nous prélevons uniquement une faible commission de 10 DH par lead qualifié.
+              </p>
+            </div>
+
+            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-orange-100 text-[#FF5733] flex items-center justify-center font-bold">
+                <Clock className="w-5 h-5" />
+              </div>
+              <h3 className="font-bold text-gray-900 text-sm">Planning Sur-Mesure</h3>
+              <p className="text-xs text-gray-500 leading-relaxed">
+                Choisissez vos créneaux et vos heures de travail. Enseignez selon votre propre emploi du temps.
+              </p>
+            </div>
+          </div>
+
+        </div>
       </section>
 
       {/* FOOTER */}
