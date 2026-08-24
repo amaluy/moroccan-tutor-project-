@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
@@ -12,9 +13,15 @@ import {
 } from 'lucide-react';
 
 export default function TeachPage() {
+  const router = useRouter(); // Initialisation du routeur pour la navigation
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [helpSection, setHelpSection] = useState<'recherche' | 'acceptee' | 'refusee' | 'avis' | 'inscription' | 'compte'>('inscription');
+
+  // Fonction de redirection vers la page de paiement
+  const handleGoToPayment = () => {
+    router.push('/donner-cours/payement');
+  };
 
   return (
     <main className="min-h-screen bg-white text-gray-900 font-sans flex flex-col justify-between">
@@ -34,12 +41,12 @@ export default function TeachPage() {
           <GraduationCap className="w-4 h-4 text-[#FF5733]" />
           Vous êtes enseignant ou étudiant tutorat ?
         </span>
-        <Link 
-          href="/inscription-professeur"
-          className="bg-[#FF5733] hover:bg-[#e04824] text-white px-3 py-1 rounded-lg font-bold text-xs transition shadow-sm inline-flex items-center gap-1"
+        <button 
+          onClick={handleGoToPayment}
+          className="bg-[#FF5733] hover:bg-[#e04824] text-white px-3 py-1 rounded-lg font-bold text-xs transition shadow-sm inline-flex items-center gap-1 cursor-pointer"
         >
           Devenir prof <ArrowRight className="w-3 h-3" />
-        </Link>
+        </button>
       </div>
 
       {/* --- HERO SECTION --- */}
@@ -70,13 +77,13 @@ export default function TeachPage() {
 
           {/* DOUBLE BOUTON D'ACTION */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
-            <Link
-              href="/inscription-professeur" 
+            <button
+              onClick={handleGoToPayment} 
               className="w-full sm:w-auto bg-[#FF5733] hover:bg-[#e04824] text-white font-extrabold px-8 py-4 rounded-2xl text-base transition shadow-lg hover:shadow-orange-200 flex items-center justify-center gap-2 cursor-pointer"
             >
               <GraduationCap className="w-5 h-5" />
               Devenir prof maintenant
-            </Link>
+            </button>
           </div>
 
           {/* BÉNÉFICES CLÉS */}
@@ -146,13 +153,13 @@ export default function TeachPage() {
                 </li>
               </ul>
 
-              <Link
-                href="/inscription-professeur" 
+              <button
+                onClick={handleGoToPayment} 
                 className="w-full bg-[#FF5733] hover:bg-[#e04824] text-white font-extrabold py-3.5 rounded-2xl text-sm transition shadow-lg hover:shadow-orange-200 flex items-center justify-center gap-2 cursor-pointer"
               >
                 <UserPlus className="w-4 h-4" />
                 Devenir Prof (Essai 10 DH)
-              </Link>
+              </button>
             </div>
           </div>
 
@@ -279,13 +286,13 @@ export default function TeachPage() {
           </div>
 
           <div className="pt-4">
-            <Link 
-              href="/inscription-professeur"
-              className="inline-flex items-center gap-2 bg-[#FF5733] hover:bg-[#e04824] text-white font-extrabold px-8 py-3.5 rounded-2xl text-sm transition shadow-md"
+            <button 
+              onClick={handleGoToPayment}
+              className="inline-flex items-center gap-2 bg-[#FF5733] hover:bg-[#e04824] text-white font-extrabold px-8 py-3.5 rounded-2xl text-sm transition shadow-md cursor-pointer"
             >
               Devenir Professeur
               <ArrowRight className="w-4 h-4 text-white" />
-            </Link>
+            </button>
           </div>
 
         </div>
