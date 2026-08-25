@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import { 
   BookOpen, Award, Briefcase, 
   User, Calendar, UserCheck, ChevronRight, Camera, X, Upload, Mail, Phone, AlertCircle,
@@ -214,7 +214,7 @@ export default function ProfilProfesseurPage() {
         statut: currentBadge?.label, distanceMax: `${distanceMax} km`, fraisDeplacement: `${fraisDeplacement} DH`, 
         disponibilites, email, telephone: fullPhone, imagePreview 
       });
-      router.push('/donner-cours/description');
+      router.push('/donner-cours/payement');
     } catch (err) {
       console.error("Erreur :", err);
     } finally {
