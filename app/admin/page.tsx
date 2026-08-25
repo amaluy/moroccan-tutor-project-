@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, BookOpen, Users, Sparkles, Bot, Send, RefreshCw, CheckCircle, Trash2 } from 'lucide-react';
+import { ArrowLeft, BookOpen, Users, Sparkles, Bot, Send, RefreshCw, CheckCircle, Trash2, CreditCard, Building2, User, Hash } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -43,10 +43,9 @@ export default function AdminDashboardPage() {
       if (profsError) setDbError(profsError.message);
       else if (profsData) setProfesseursExistants(profsData);
 
-      // 2. Demandes en attente
+      // 2. Demandes en attente (avec les infos de paiement)
       const { data: reqsData, error: reqsError } = await supabase.from('requests').select('*');
       if (reqsError) {
-        // Fallback localStorage si requests vide
         const localSubmissions = localStorage.getItem('professeurs_soumissions') || localStorage.getItem('donner_cours_list');
         if (localSubmissions) setProfesseursNouveaux(JSON.parse(localSubmissions));
       } else if (reqsData) {
@@ -59,6 +58,55 @@ export default function AdminDashboardPage() {
     }
   };
 
+  // Valider une demande spécifique manuellement
+  const handleApproveRequest = async (reqItem: any) => {
+    try {
+      const newProf = {
+        name: reqItem.name || reqItem.nomExpediteur || reqItem.nom || 'Nouveau Professeur',
+        subject: reqItem.subject || reqItem.matiere || 'Soutien scolaire',
+        location: reqItem.location || reqItem.ville || 'Casablanca',
+        price: reqItem.price || reqItem.tarif || 200,
+        description: reqItem.description || 'Professeur qualifié vérifié et validé.',
+        rating: 5.0,
+        reviewsCount: 1,
+        isConfirmed: true,
+        firstLessonFree: true
+      };
+
+      // 1. Insérer dans la table professors
+      const { error: insertError } = await supabase.from('professors').insert([newProf]);
+      if (insertError) throw insertError;
+
+      // 2. Supprimer de la table requests
+      if (reqItem.id) {
+        await supabase.from('requests').delete().eq('id', reqItem.id);
+      }
+
+      // 3. Envoyer la notification par email au professeur (via une API interne)
+      await fetch('/api/notify-professor', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: reqItem.email, name: newProf.name })
+      }).catch(() => {}); // Fallback silencieux si l'API mail n'est pas encore configurée
+
+      await fetchDataFromSupabase();
+      alert(`Le profil de ${newProf.name} a été activé avec succès et publié sur le site !`);
+    } catch (err: any) {
+      alert(`Erreur lors de la validation : ${err.message}`);
+    }
+  };
+
+  // Supprimer / Rejeter une demande
+  const handleRejectRequest = async (id: string) => {
+    if (!confirm("Voulez-vous vraiment rejeter cette demande ?")) return;
+    try {
+      await supabase.from('requests').delete().eq('id', id);
+      await fetchDataFromSupabase();
+    } catch (err: any) {
+      alert(`Erreur : ${err.message}`);
+    }
+  };
+
   // Fonction de validation automatisée par l'IA
   const handleAiValidateAll = async () => {
     if (professeursNouveaux.length === 0) {
@@ -67,31 +115,11 @@ export default function AdminDashboardPage() {
 
     try {
       for (const reqItem of professeursNouveaux) {
-        const newProf = {
-          name: reqItem.name || reqItem.nom || reqItem.profil?.nom || 'Nouveau Professeur',
-          subject: reqItem.subject || reqItem.matiere || reqItem.titre || 'Soutien scolaire',
-          location: reqItem.location || reqItem.lieu || reqItem.ville || 'Casablanca',
-          price: reqItem.price || reqItem.tarif || 200,
-          description: reqItem.description || 'Professeur qualifié validé par l\'IA.',
-          rating: 5.0,
-          reviewsCount: 1,
-          isConfirmed: true,
-          firstLessonFree: true
-        };
-
-        // Insertion dans professors
-        await supabase.from('professors').insert([newProf]);
-
-        // Suppression de requests si l'ID existe
-        if (reqItem.id) {
-          await supabase.from('requests').delete().eq('id', reqItem.id);
-        }
+        await handleApproveRequest(reqItem);
       }
-
-      await fetchDataFromSupabase();
-      return `✨ Mission accomplie ! J'ai validé et transféré avec succès ${professeursNouveaux.length} professeur(s) directement dans la table 'professors'. Ils sont en ligne sur le site !`;
+      return `✨ Mission accomplie ! J'ai validé et transféré avec succès ${professeursNouveaux.length} professeur(s) dans la table 'professors'. Ils sont en ligne sur le site !`;
     } catch (err: any) {
-      return `Oups, une erreur est survenue lors du transfert : ${err.message}`;
+      return `Oups, une erreur est survenue : ${err.message}`;
     }
   };
 
@@ -104,14 +132,13 @@ export default function AdminDashboardPage() {
     setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
     setChatInput('');
 
-    // Analyse de la demande par l'IA
     const lower = userMsg.toLowerCase();
     let aiReply = "";
 
-    if (lower.includes('valide') || lower.includes('confirme') || lower.includes('transfert') || lower.includes('tout')) {
+    if (lower.includes('valide') || lower.includes('confirme') || lower.includes('tout')) {
       aiReply = await handleAiValidateAll();
-    } else if (lower.includes('combien') || lower.includes('statistiques') || lower.includes('bilan')) {
-      aiReply = `📊 Actuellement, la base contient ${professeursExistants.length} professeur(s) actif(s) et il y a ${professeursNouveaux.length} demande(s) en attente dans la table 'requests'.`;
+    } else if (lower.includes('combien') || lower.includes('statistiques')) {
+      aiReply = `📊 Actuellement, la base contient ${professeursExistants.length} professeur(s) actif(s) et ${professeursNouveaux.length} demande(s) en attente de paiement/validation.`;
     } else if (lower.includes('bonjour') || lower.includes('salut')) {
       aiReply = `Bonjour Amal ! Comment puis-je t'aider à gérer tes professeurs aujourd'hui ?`;
     } else {
@@ -153,7 +180,7 @@ export default function AdminDashboardPage() {
           <button
             onClick={() => setActiveTab('ia_agent')}
             className={`px-6 py-3 rounded-2xl font-bold text-sm transition cursor-pointer flex items-center gap-2 ${
-              activeTab === 'ia_agent' ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-purple-200 shadow-sm' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
+              activeTab === 'ia_agent' ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-sm' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
             }`}
           >
             <Bot className="w-4 h-4" />
@@ -177,11 +204,11 @@ export default function AdminDashboardPage() {
             }`}
           >
             <BookOpen className="w-4 h-4 text-[#FF5A5F]" />
-            <span>Demandes ({professeursNouveaux.length})</span>
+            <span>Demandes & Paiements ({professeursNouveaux.length})</span>
           </button>
         </div>
 
-        {/* SECTION : ASSISTANT IA (ACTIF & TRAVAILLE) */}
+        {/* SECTION : ASSISTANT IA */}
         {activeTab === 'ia_agent' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-1 space-y-6">
@@ -191,7 +218,7 @@ export default function AdminDashboardPage() {
                 </span>
                 <h2 className="text-xl font-black mb-2">Commandes Rapides</h2>
                 <p className="text-purple-200 text-xs mb-5 leading-relaxed">
-                  Discute avec l'IA dans le chat pour valider instantanément les demandes en attente et les envoyer dans la base de données.
+                  Discute avec l'IA pour valider instantanément les demandes en attente et les envoyer dans la base de données.
                 </p>
 
                 <button
@@ -230,7 +257,7 @@ export default function AdminDashboardPage() {
                   type="text"
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
-                  placeholder="Ex: 'Valide tous les nouveaux profs' ou 'Combien y a-t-il de profs ?'..."
+                  placeholder="Ex: 'Valide tous les nouveaux profs'..."
                   className="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-purple-500"
                 />
                 <button
@@ -244,7 +271,7 @@ export default function AdminDashboardPage() {
           </div>
         )}
 
-        {/* SECTION : PROFESSEURS */}
+        {/* SECTION : PROFESSEURS EXISTANTS */}
         {activeTab === 'existants' && (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
             <div className="flex justify-between items-center mb-6">
@@ -268,20 +295,80 @@ export default function AdminDashboardPage() {
           </div>
         )}
 
-        {/* SECTION : DEMANDES */}
+        {/* SECTION : DEMANDES & PAIEMENTS (Affichage complet avec infos de paiement) */}
         {activeTab === 'nouveaux' && (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-            <h2 className="text-lg font-black text-gray-900 mb-4">Demandes en attente</h2>
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 space-y-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-lg font-black text-gray-900">Demandes de professeurs & Preuves de paiement</h2>
+                <p className="text-xs text-gray-500">Vérifiez les informations de paiement (10 DH) avant d'activer les profils sur le site.</p>
+              </div>
+              <button onClick={fetchDataFromSupabase} className="px-4 py-2 bg-blue-50 text-blue-700 font-bold text-xs rounded-xl flex items-center gap-2 cursor-pointer">
+                <RefreshCw className={`w-3.5 h-3.5 ${isLoadingDb ? 'animate-spin' : ''}`} />
+                <span>Actualiser</span>
+              </button>
+            </div>
+
             {professeursNouveaux.length === 0 ? (
-              <p className="text-gray-400 text-sm py-8 text-center">Aucune nouvelle demande en attente.</p>
+              <p className="text-gray-400 text-sm py-12 text-center">Aucune nouvelle demande en attente.</p>
             ) : (
-              <div className="space-y-3">
+              <div className="grid grid-cols-1 gap-6">
                 {professeursNouveaux.map((req, i) => (
-                  <div key={req.id || i} className="flex justify-between items-center p-4 bg-gray-50 rounded-xl border border-gray-100">
-                    <div>
-                      <h3 className="font-bold text-gray-900">{req.name || req.nom || 'Anonyme'}</h3>
-                      <p className="text-xs text-gray-500">{req.subject || req.matiere} • {req.location || req.lieu}</p>
+                  <div key={req.id || i} className="bg-gray-50 border border-gray-200 rounded-2xl p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 shadow-xs">
+                    
+                    {/* Aperçu du profil du professeur */}
+                    <div className="space-y-1.5 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="bg-red-50 text-[#FF5A5F] text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full border border-red-100">
+                          En attente d'activation
+                        </span>
+                        <span className="text-xs text-gray-400 font-medium">Soumis récemment</span>
+                      </div>
+                      <h3 className="text-base font-extrabold text-gray-900">{req.name || req.nom || req.nomExpediteur || 'Nom non spécifié'}</h3>
+                      <p className="text-xs text-gray-600 font-medium">
+                        {req.subject || req.matiere || 'Matière non spécifiée'} • <span className="text-gray-900 font-bold">{req.location || req.ville || 'Casablanca'}</span>
+                      </p>
+                      <p className="text-xs text-gray-500 line-clamp-2 pt-1">{req.description || 'Aucune description fournie.'}</p>
                     </div>
+
+                    {/* Détails du paiement soumis */}
+                    <div className="bg-white p-4 rounded-xl border border-gray-200/80 min-w-[280px] space-y-2 text-xs">
+                      <div className="font-black text-gray-900 uppercase tracking-wider text-[10px] flex items-center gap-1.5 border-b pb-1.5">
+                        <CreditCard className="w-3.5 h-3.5 text-[#FF5A5F]" />
+                        Détails du Paiement (10 DH)
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-500">Méthode :</span>
+                        <span className="font-bold text-gray-800 uppercase">{req.methode || 'Virement / Cash'}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-500">Expéditeur :</span>
+                        <span className="font-bold text-gray-800">{req.nomExpediteur || req.name || 'N/A'}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-500">Référence / Code :</span>
+                        <span className="font-mono font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded">{req.reference || req.codeTransfert || 'N/A'}</span>
+                      </div>
+                    </div>
+
+                    {/* Actions d'acceptation / rejet */}
+                    <div className="flex flex-row md:flex-col gap-2 w-full md:w-auto">
+                      <button
+                        onClick={() => handleApproveRequest(req)}
+                        className="flex-1 md:flex-none px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+                      >
+                        <CheckCircle className="w-4 h-4" />
+                        <span>Accepter & Activer</span>
+                      </button>
+                      <button
+                        onClick={() => handleRejectRequest(req.id)}
+                        className="px-4 py-2.5 bg-white border border-red-200 text-red-600 hover:bg-red-50 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        <span>Rejeter</span>
+                      </button>
+                    </div>
+
                   </div>
                 ))}
               </div>

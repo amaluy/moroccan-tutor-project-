@@ -1,9 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Wallet, CheckCircle2, ArrowRight, Building2, User, Hash, CreditCard, Copy, Check } from 'lucide-react';
 import Link from 'next/link';
+import { createClient } from '@supabase/supabase-js';
+
+// Initialisation de Supabase
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export default function PagePaiementProf() {
   const router = useRouter();
@@ -15,11 +21,21 @@ export default function PagePaiementProf() {
   const [nomExpediteur, setNomExpediteur] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  // Tes informations personnelles pour recevoir les paiements des 10 DH
+  // Données provisoires récupérées du localStorage
+  const [formData, setFormData] = useState<any>({});
+
+  useEffect(() => {
+    const savedData = localStorage.getItem('professor_registration');
+    if (savedData) {
+      setFormData(JSON.parse(savedData));
+    }
+  }, []);
+
   const mesCoordonnees = {
     nomComplet: "Émil Berrada", 
-    telephone: "0600000000",       
+    telephone: "0600000000",        
     rib: "0123 4567 8901 2345 6789 0123", 
     ville: "Casablanca"
   };
@@ -34,17 +50,46 @@ export default function PagePaiementProf() {
 
   const isValid = codeTransfert.trim().length >= 4 && nomExpediteur.trim().length > 2;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isValid) return;
 
-    console.log("Validation de paiement enregistrée :", {
-      methode: methode === 'cash' ? modeEspeces : `virement-${modeCarte}`,
-      reference: codeTransfert,
-      expediteur: nomExpediteur
-    });
+    setLoading(true);
 
-    setIsSubmitted(true);
+    try {
+      // Insertion sécurisée vers la table requests
+      const payload = {
+        Nom: formData.nom || nomExpediteur,
+        Prénom: formData.prenom || '',
+        age: formData.age ? String(formData.age) : '',
+        ville: formData.ville || '',
+        matiere: formData.matiere || '',
+        'dernier diplome': formData.dernierDiplome || '',
+        tarif: formData.tarif ? parseFloat(formData.tarif) : 10,
+        email: formData.email || '',
+        telephone: formData.telephone ? String(formData.telephone) : null,
+        'numero de transaction': methode === 'carte' ? codeTransfert : null,
+        'numero de recu': methode === 'cash' ? codeTransfert : null,
+        'date de demande': new Date().toISOString(),
+        photo_URL: formData.photoUrl || ''
+      };
+
+      const { error } = await supabase.from('requests').insert([payload]);
+
+      if (error) {
+        console.error("Erreur Supabase détaillée :", error);
+        alert("Erreur lors de l'enregistrement : " + error.message);
+        setLoading(false);
+        return;
+      }
+
+      // Nettoyage du localStorage après succès
+      localStorage.removeItem('professor_registration');
+      setIsSubmitted(true);
+    } catch (err) {
+      console.error("Erreur inattendue :", err);
+      setLoading(false);
+    }
   };
 
   return (
@@ -248,7 +293,7 @@ export default function PagePaiementProf() {
                     <span className="px-3.5 text-gray-400"><Hash className="w-4 h-4" /></span>
                     <input 
                       type="text"
-                      placeholder={methode === 'cash' ? "Ex : 123456789" : "Ex : REF98765432"}
+                      placeholder={methode === 'cash' ? "Ex : 123456789" : "Ex : 98765432"}
                       value={codeTransfert}
                       onChange={(e) => setCodeTransfert(e.target.value)}
                       className="w-full p-3.5 text-sm font-medium focus:outline-none"
@@ -259,20 +304,19 @@ export default function PagePaiementProf() {
 
               <button
                 type="submit"
-                disabled={!isValid}
+                disabled={!isValid || loading}
                 className={`w-full py-4 font-bold text-sm rounded-xl transition shadow-lg flex items-center justify-center gap-2 cursor-pointer ${
-                  isValid 
+                  isValid && !loading
                     ? 'bg-[#FF5A5F] hover:bg-[#E0484C] text-white shadow-red-500/20' 
                     : 'bg-gray-100 text-gray-400 cursor-not-allowed shadow-none'
                 }`}
               >
-                <span>Soumettre ma preuve de paiement</span>
-                <ArrowRight className="w-4 h-4" />
+                <span>{loading ? "Enregistrement en cours..." : "Soumettre ma preuve de paiement"}</span>
+                {!loading && <ArrowRight className="w-4 h-4" />}
               </button>
             </form>
           </>
         ) : (
-          /* Écran de succès après validation */
           <div className="bg-white border border-gray-200 rounded-3xl p-8 text-center space-y-4 shadow-sm animate-in fade-in zoom-in-95">
             <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
               <CheckCircle2 className="w-8 h-8" />
@@ -294,7 +338,6 @@ export default function PagePaiementProf() {
 
       </div>
 
-      {/* Footer */}
       <footer className="w-full py-5 text-center text-xs text-gray-400 font-medium border-t border-gray-100">
         © 2026 ProfMaroc — Tous droits réservés.
       </footer>
