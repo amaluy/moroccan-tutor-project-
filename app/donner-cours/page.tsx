@@ -18,9 +18,9 @@ export default function TeachPage() {
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [helpSection, setHelpSection] = useState<'recherche' | 'acceptee' | 'refusee' | 'avis' | 'inscription' | 'compte'>('inscription');
 
-  // Fonction de redirection vers la page de paiement
+  // MODIFIÉ : Redirige vers le formulaire de profil au lieu du paiement direct
   const handleGoToPayment = () => {
-    router.push('/donner-cours/payement');
+    router.push('/donner-cours/titre');
   };
 
   return (
@@ -217,113 +217,6 @@ export default function TeachPage() {
             </p>
           </div>
 
-        </div>
-      </section>
-
-      {/* --- TARIFS ET PACKS DE RECHARGE --- */}
-      <section className="bg-orange-50/40 py-16 px-4 sm:px-8 border-y border-orange-100">
-        <div className="max-w-4xl mx-auto space-y-8 text-center">
-          
-          <div className="space-y-3">
-            <span className="bg-[#FF5733] text-white font-black text-xs px-3.5 py-1 rounded-full uppercase tracking-wider">
-              Recharges Ultérieures
-            </span>
-            <h2 className="text-2xl sm:text-4xl font-black text-gray-900">
-              Rechargez selon <span className="text-[#FF5733]">vos besoins en élèves</span>
-            </h2>
-            <p className="text-sm text-gray-600 max-w-xl mx-auto font-medium">
-              Après votre premier test à 10 DH, achetez vos crédits sous forme de packs (10 DH / lead débloqué).
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto text-left">
-            
-            {/* PACK MINIMUM : 5 LEADS */}
-            <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm space-y-4">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="font-extrabold text-gray-900 text-lg">Pack Standard</h3>
-                  <p className="text-xs text-gray-500">Recharge minimum</p>
-                </div>
-                <span className="text-2xl font-black text-gray-900">50 DH</span>
-              </div>
-              <div className="border-t border-gray-100 pt-3 space-y-2 text-xs text-gray-600 font-medium">
-                <p className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-                  <span><strong>5 Contacts élèves</strong> (10 DH / contact)</span>
-                </p>
-                <p className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-                  <span>Valable sans limite de temps</span>
-                </p>
-              </div>
-            </div>
-
-            {/* PACK MAX : 10 LEADS */}
-            <div className="bg-white p-6 rounded-3xl border-2 border-[#FF5733] shadow-md space-y-4 relative">
-              <div className="absolute top-0 right-0 bg-[#FF5733] text-white text-[9px] font-black px-2.5 py-0.5 rounded-bl-lg uppercase">
-                Recommandé
-              </div>
-              <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="font-extrabold text-gray-900 text-lg">Pack Pro</h3>
-                  <p className="text-xs text-gray-500">Recharge maximum</p>
-                </div>
-                <span className="text-2xl font-black text-[#FF5733]">100 DH</span>
-              </div>
-              <div className="border-t border-gray-100 pt-3 space-y-2 text-xs text-gray-600 font-medium">
-                <p className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-                  <span><strong>10 Contacts élèves</strong> (10 DH / contact)</span>
-                </p>
-                <p className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-                  <span>Pour remplir rapidement tout votre emploi du temps</span>
-                </p>
-              </div>
-            </div>
-
-          </div>
-
-          <div className="pt-4">
-            <button 
-              onClick={handleGoToPayment}
-              className="inline-flex items-center gap-2 bg-[#FF5733] hover:bg-[#e04824] text-white font-extrabold px-8 py-3.5 rounded-2xl text-sm transition shadow-md cursor-pointer"
-            >
-              Devenir Professeur
-              <ArrowRight className="w-4 h-4 text-white" />
-            </button>
-          </div>
-
-        </div>
-      </section>
-
-      {/* --- FAQ --- */}
-      <section className="py-16 px-4 sm:px-8 max-w-4xl mx-auto w-full space-y-8">
-        <div className="text-center space-y-2">
-          <h2 className="text-2xl font-black text-gray-900">Questions fréquentes</h2>
-        </div>
-
-        <div className="space-y-4">
-          <div className="bg-white p-5 rounded-xl border border-gray-200 space-y-2">
-            <h4 className="font-bold text-sm text-gray-900 flex items-center gap-2">
-              <HelpCircle className="w-4 h-4 text-[#FF5733]" />
-              Pourquoi le premier accès est-il à 10 DH ?
-            </h4>
-            <p className="text-xs text-gray-600 leading-relaxed pl-6">
-              Les 10 DH couvrent la vérification et l'activation de votre profil. En échange, vous obtenez un premier contact élève offert pour valider le fonctionnement de la plateforme.
-            </p>
-          </div>
-
-          <div className="bg-white p-5 rounded-xl border border-gray-200 space-y-2">
-            <h4 className="font-bold text-sm text-gray-900 flex items-center gap-2">
-              <HelpCircle className="w-4 h-4 text-[#FF5733]" />
-              Comment se passent les recharges par la suite ?
-            </h4>
-            <p className="text-xs text-gray-600 leading-relaxed pl-6">
-              Vous pouvez recharger votre compte par packs allant de 5 leads (50 DH) à 10 leads (100 DH). Vous ne dépensez vos crédits que lorsque la demande d'un élève correspond à vos critères.
-            </p>
-          </div>
         </div>
       </section>
 

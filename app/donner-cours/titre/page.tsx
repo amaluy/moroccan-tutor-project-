@@ -679,7 +679,7 @@ export default function ProfilProfesseurPage() {
         {/* Boutons de navigation */}
         <div className="pt-6 flex items-center gap-4 border-t border-gray-100">
           <button
-            onClick={() => router.back()}
+            onClick={() => router.push('/donner-cours')}
             className="px-6 py-3.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-sm rounded-xl transition cursor-pointer"
           >
             Retour
