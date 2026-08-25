@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Wallet, CheckCircle2, ArrowRight, Building2, User, Hash, CreditCard } from 'lucide-react';
+import { Wallet, CheckCircle2, ArrowRight, Building2, User, Hash, CreditCard, Copy, Check } from 'lucide-react';
 import Link from 'next/link';
 
 export default function PagePaiementProf() {
@@ -14,13 +14,22 @@ export default function PagePaiementProf() {
   const [codeTransfert, setCodeTransfert] = useState('');
   const [nomExpediteur, setNomExpediteur] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
 
   // Tes informations personnelles pour recevoir les paiements des 10 DH
   const mesCoordonnees = {
-    nomComplet: "Votre Nom Prénom", // Remplace par ton vrai nom (ex: Youssef El Amrani)
-    telephone: "0600000000",       // Ton numéro pour CashPlus, WafaCash ou virement par téléphone
-    rib: "0123 4567 8901 2345 6789 0123", // Ton RIB bancaire (ex: CIH Bank ou autre)
+    nomComplet: "Émil Berrada", 
+    telephone: "0600000000",       
+    rib: "0123 4567 8901 2345 6789 0123", 
     ville: "Casablanca"
+  };
+
+  const handleCopy = (text: string, fieldKey: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedField(fieldKey);
+    setTimeout(() => {
+      setCopiedField(null);
+    }, 2000);
   };
 
   const isValid = codeTransfert.trim().length >= 4 && nomExpediteur.trim().length > 2;
@@ -29,7 +38,6 @@ export default function PagePaiementProf() {
     e.preventDefault();
     if (!isValid) return;
 
-    // Simulation d'enregistrement de la preuve de paiement dans ta base de données
     console.log("Validation de paiement enregistrée :", {
       methode: methode === 'cash' ? modeEspeces : `virement-${modeCarte}`,
       reference: codeTransfert,
@@ -127,10 +135,21 @@ export default function PagePaiementProf() {
                   <h2 className="text-xs font-black uppercase tracking-wider text-gray-500">
                     1. Envoyez 10 DH en agence {modeEspeces} à :
                   </h2>
-                  <div className="bg-white p-3.5 rounded-xl border border-gray-200/60 space-y-1.5 text-xs">
-                    <div className="flex justify-between"><span className="text-gray-500">Nom :</span><span className="font-bold">{mesCoordonnees.nomComplet}</span></div>
-                    <div className="flex justify-between"><span className="text-gray-500">Téléphone :</span><span className="font-bold">+212 {mesCoordonnees.telephone}</span></div>
-                    <div className="flex justify-between"><span className="text-gray-500">Ville :</span><span className="font-bold">{mesCoordonnees.ville}</span></div>
+                  <div className="bg-white p-3.5 rounded-xl border border-gray-200/60 space-y-2 text-xs">
+                    <div className="flex justify-between items-center"><span className="text-gray-500">Nom :</span><span className="font-bold">{mesCoordonnees.nomComplet}</span></div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-500">Téléphone :</span>
+                      <button 
+                        type="button"
+                        onClick={() => handleCopy(`+212 ${mesCoordonnees.telephone}`, 'tel-cash')}
+                        className="flex items-center gap-1.5 font-bold text-gray-900 hover:text-[#FF5A5F] transition cursor-pointer"
+                        title="Cliquer pour copier"
+                      >
+                        <span>+212 {mesCoordonnees.telephone}</span>
+                        {copiedField === 'tel-cash' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-gray-400" />}
+                      </button>
+                    </div>
+                    <div className="flex justify-between items-center"><span className="text-gray-500">Ville :</span><span className="font-bold">{mesCoordonnees.ville}</span></div>
                   </div>
                 </div>
               </div>
@@ -166,14 +185,32 @@ export default function PagePaiementProf() {
                   </h2>
                   <div className="bg-white p-3.5 rounded-xl border border-gray-200/60 space-y-1.5 text-xs">
                     {modeCarte === 'rib' ? (
-                      <div className="space-y-1">
-                        <span className="text-gray-500">Votre RIB :</span>
-                        <p className="font-mono font-bold text-gray-900 bg-gray-50 p-2 rounded border">{mesCoordonnees.rib}</p>
+                      <div className="space-y-1.5">
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-500">Notre RIB :</span>
+                          {copiedField === 'rib' && <span className="text-emerald-600 font-bold text-[10px]">Copié !</span>}
+                        </div>
+                        <div 
+                          onClick={() => handleCopy(mesCoordonnees.rib, 'rib')}
+                          className="font-mono font-bold text-gray-900 bg-gray-50 p-2.5 rounded border flex items-center justify-between cursor-pointer hover:bg-gray-100 transition group"
+                          title="Cliquer pour copier le RIB"
+                        >
+                          <span>{mesCoordonnees.rib}</span>
+                          <Copy className="w-4 h-4 text-gray-400 group-hover:text-gray-700" />
+                        </div>
                       </div>
                     ) : (
                       <div className="flex justify-between items-center">
                         <span className="text-gray-500">Numéro de compte (App Mobile) :</span>
-                        <span className="font-bold">+212 {mesCoordonnees.telephone}</span>
+                        <button 
+                          type="button"
+                          onClick={() => handleCopy(`+212 ${mesCoordonnees.telephone}`, 'tel-mobile')}
+                          className="flex items-center gap-1.5 font-bold text-gray-900 hover:text-[#FF5A5F] transition cursor-pointer"
+                          title="Cliquer pour copier"
+                        >
+                          <span>+212 {mesCoordonnees.telephone}</span>
+                          {copiedField === 'tel-mobile' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-gray-400" />}
+                        </button>
                       </div>
                     )}
                   </div>
