@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, BookOpen, Users, Sparkles, Bot, Send, RefreshCw, CheckCircle, Trash2, Image as ImageIcon, Eye, X } from 'lucide-react';
+import { ArrowLeft, BookOpen, Users, Sparkles, Bot, Send, RefreshCw, CheckCircle, Trash2, Image as ImageIcon, Eye, X, Clock } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -20,7 +20,6 @@ export default function AdminDashboardPage() {
   const [isLoadingDb, setIsLoadingDb] = useState(true);
   const [dbError, setDbError] = useState<string | null>(null);
 
-  // Modal de détail pour un professeur en attente
   const [selectedRequest, setSelectedRequest] = useState<any | null>(null);
   
   const [chatInput, setChatInput] = useState('');
@@ -92,7 +91,7 @@ export default function AdminDashboardPage() {
         }).catch(() => {});
       }
 
-      setSelectedRequest(null); // Fermer la modale si ouverte
+      setSelectedRequest(null);
       await fetchDataFromSupabase();
       alert(`Le profil de ${fullName} a été activé avec succès et publié sur le site !`);
     } catch (err: any) {
@@ -145,6 +144,77 @@ export default function AdminDashboardPage() {
     setTimeout(() => {
       setMessages(prev => [...prev, { role: 'assistant', text: aiReply }]);
     }, 500);
+  };
+
+  // Grille des disponibilités sécurisée contre les erreurs de type
+  const renderAvailabilityGrid = (dispoString: any) => {
+    const days = [
+      { key: 'lu', label: 'Lu' },
+      { key: 'ma', label: 'Ma' },
+      { key: 'me', label: 'Me' },
+      { key: 'je', label: 'Je' },
+      { key: 've', label: 'Ve' },
+      { key: 'sa', label: 'Sa' },
+      { key: 'di', label: 'Di' },
+    ];
+
+    const slots = [
+      { key: 'matin', label: 'Matin' },
+      { key: 'midi', label: 'Midi' },
+      { key: 'apresmidi', label: 'Après-midi' },
+    ];
+
+    // Transformation sécurisée en string peu importe le format en base
+    let safeString = "";
+    if (typeof dispoString === 'string') {
+      safeString = dispoString;
+    } else if (Array.isArray(dispoString)) {
+      safeString = dispoString.join('-');
+    } else if (dispoString && typeof dispoString === 'object') {
+      safeString = JSON.stringify(dispoString);
+    }
+    const lowerDispo = safeString.toLowerCase();
+
+    return (
+      <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-xs">
+        <div className="flex items-center gap-2 mb-3 text-red-500 font-bold text-xs">
+          <Clock className="w-4 h-4" />
+          <span>Disponibilité</span>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-center text-xs">
+            <thead>
+              <tr>
+                <th className="p-2 text-left text-gray-400 font-medium"></th>
+                {days.map(d => (
+                  <th key={d.key} className="p-2 font-bold text-gray-700">{d.label}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {slots.map(s => (
+                <tr key={s.key}>
+                  <td className="p-2 text-left font-medium text-gray-700 whitespace-nowrap">{s.label}</td>
+                  {days.map(d => {
+                    const combination1 = `${d.key}${s.key}`;
+                    const combination2 = `${d.key}-${s.key}`;
+                    const isAvailable = lowerDispo.includes(combination1) || lowerDispo.includes(combination2) || (lowerDispo.includes(d.key) && lowerDispo.includes(s.key));
+
+                    return (
+                      <td key={d.key} className="p-2">
+                        <div className={`w-7 h-7 mx-auto rounded-full flex items-center justify-center transition ${isAvailable ? 'bg-sky-200/80 shadow-xs' : 'bg-gray-100/60 opacity-40'}`}>
+                          {isAvailable && <div className="w-3 h-3 rounded-full bg-sky-400"></div>}
+                        </div>
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
   };
 
   if (!authorized) return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500 font-medium">Chargement...</div>;
@@ -336,7 +406,7 @@ export default function AdminDashboardPage() {
         )}
       </main>
 
-      {/* MODALE DE DÉTAIL AGRANDIE */}
+      {/* MODALE DE DÉTAIL AGRANDIE AVEC PLANNING GRAPHIQUE */}
       {selectedRequest && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-200 p-8 relative animate-in fade-in zoom-in duration-200">
@@ -365,7 +435,7 @@ export default function AdminDashboardPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 text-xs mb-8">
+            <div className="grid grid-cols-2 gap-4 text-xs mb-6">
               <div className="bg-gray-50 p-3.5 rounded-2xl border border-gray-100">
                 <span className="text-gray-400 block font-medium mb-0.5">Âge</span>
                 <span className="font-bold text-gray-800 text-sm">{selectedRequest.age || 'N/A'} ans</span>
@@ -386,10 +456,12 @@ export default function AdminDashboardPage() {
                 <span className="text-gray-400 block font-medium mb-0.5">Dernier diplôme</span>
                 <span className="font-bold text-gray-800 text-sm">{selectedRequest['dernier diplome'] || 'N/A'}</span>
               </div>
-              <div className="col-span-2 bg-gray-50 p-3.5 rounded-2xl border border-gray-100">
-                <span className="text-gray-400 block font-medium mb-0.5">Disponibilités</span>
-                <span className="font-bold text-gray-800 text-sm">{selectedRequest.disponibilites || selectedRequest.disponibilités || 'N/A'}</span>
+              
+              {/* DISPONIBILITÉS SOUS FORME DE GRAPHIQUE */}
+              <div className="col-span-2">
+                {renderAvailabilityGrid(selectedRequest.disponibilites || selectedRequest.disponibilités || '')}
               </div>
+
               <div className="bg-gray-50 p-3.5 rounded-2xl border border-gray-100">
                 <span className="text-gray-400 block font-medium mb-0.5">Email</span>
                 <span className="font-bold text-gray-800">{selectedRequest.email || 'N/A'}</span>
