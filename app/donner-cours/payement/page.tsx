@@ -23,18 +23,28 @@ export default function PagePaiementProf() {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Données provisoires récupérées du localStorage
+  // Données provisoires récupérées du localStorage sous 'pending_prof_data'
   const [formData, setFormData] = useState<any>({});
 
   useEffect(() => {
-    const savedData = localStorage.getItem('professor_registration');
+    const savedData = localStorage.getItem('pending_prof_data');
     if (savedData) {
-      setFormData(JSON.parse(savedData));
+      try {
+        const parsed = JSON.parse(savedData);
+        setFormData(parsed);
+        // Pré-remplir automatiquement le nom de l'expéditeur
+        const fullName = `${parsed.Prénom || parsed.prenom || ''} ${parsed.Nom || parsed.nom || ''}`.trim();
+        if (fullName) {
+          setNomExpediteur(fullName);
+        }
+      } catch (err) {
+        console.error("Erreur lors du parsing du localStorage :", err);
+      }
     }
   }, []);
 
   const mesCoordonnees = {
-    nomComplet: "Émil Berrada", 
+    nomComplet: "Amal Berrada", 
     telephone: "0600000000",        
     rib: "0123 4567 8901 2345 6789 0123", 
     ville: "Casablanca"
@@ -57,22 +67,37 @@ export default function PagePaiementProf() {
     setLoading(true);
 
     try {
-      // Insertion sécurisée vers la table requests
+      // 1. Récupération immédiate et directe depuis le localStorage au moment du clic
+      const rawStorageData = localStorage.getItem('pending_prof_data');
+      const dataFromStorage = rawStorageData ? JSON.parse(rawStorageData) : {};
+
+      console.log("Données récupérées pour l'envoi :", dataFromStorage);
+
+      // 2. Construction exhaustive du payload correspondant à toutes les colonnes de Supabase
       const payload = {
-        Nom: formData.nom || nomExpediteur,
-        Prénom: formData.prenom || '',
-        age: formData.age ? String(formData.age) : '',
-        ville: formData.ville || '',
-        matiere: formData.matiere || '',
-        'dernier diplome': formData.dernierDiplome || '',
-        tarif: formData.tarif ? parseFloat(formData.tarif) : 10,
-        email: formData.email || '',
-        telephone: formData.telephone ? String(formData.telephone) : null,
+        Nom: dataFromStorage.Nom || dataFromStorage.nom || nomExpediteur,
+        Prénom: dataFromStorage.Prénom || dataFromStorage.prenom || '',
+        age: dataFromStorage.age !== undefined && dataFromStorage.age !== '' ? Number(dataFromStorage.age) : null,
+        ville: dataFromStorage.ville || dataFromStorage.Ville || '',
+        profession: dataFromStorage.profession || '',
+        matiere: dataFromStorage.matiere || dataFromStorage.Matiere || '',
+        'dernier diplome': dataFromStorage['dernier diplome'] || dataFromStorage.dernierDiplome || dataFromStorage.diplome || '',
+        experience: dataFromStorage.experience || '',
+        statut: dataFromStorage.statut || '',
+        type_cours: dataFromStorage.type_cours || [],
+        tarif: dataFromStorage.tarif !== undefined ? Number(dataFromStorage.tarif) : 10,
+        distance_max: dataFromStorage.distance_max || '0',
+        frais_deplacement: dataFromStorage.frais_deplacement || '0',
+        disponibilites: dataFromStorage.disponibilites || [],
+        email: dataFromStorage.email || dataFromStorage.Email || '',
+        telephone: dataFromStorage.telephone ? String(dataFromStorage.telephone) : null,
         'numero de transaction': methode === 'carte' ? codeTransfert : null,
         'numero de recu': methode === 'cash' ? codeTransfert : null,
         'date de demande': new Date().toISOString(),
-        photo_URL: formData.photoUrl || ''
+        photo_URL: dataFromStorage.photo_URL || dataFromStorage.photoUrl || dataFromStorage.photo || ''
       };
+
+      console.log("Payload final envoyé à Supabase :", payload);
 
       const { error } = await supabase.from('requests').insert([payload]);
 
@@ -84,7 +109,7 @@ export default function PagePaiementProf() {
       }
 
       // Nettoyage du localStorage après succès
-      localStorage.removeItem('professor_registration');
+      localStorage.removeItem('pending_prof_data');
       setIsSubmitted(true);
     } catch (err) {
       console.error("Erreur inattendue :", err);
@@ -94,7 +119,7 @@ export default function PagePaiementProf() {
 
   return (
     <main className="min-h-screen bg-[#FCFCFD] text-gray-900 font-sans flex flex-col justify-between selection:bg-[#FF5A5F] selection:text-white relative overflow-hidden">
-      
+
       {/* Élément décoratif d'arrière-plan */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[350px] bg-gradient-to-b from-red-50/60 to-transparent rounded-full blur-3xl pointer-events-none -z-10" />
 
@@ -109,7 +134,7 @@ export default function PagePaiementProf() {
 
       {/* Contenu principal */}
       <div className="flex-1 max-w-lg mx-auto px-6 py-8 w-full my-auto space-y-6">
-        
+
         {!isSubmitted ? (
           <>
             <div className="text-center space-y-2">

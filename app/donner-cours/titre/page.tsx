@@ -74,8 +74,8 @@ export default function ProfilProfesseurPage() {
   const [diplome, setDiplome] = useState('');
   const [experience, setExperience] = useState('');
   
-  // Nouveaux états : Type de cours & Tarif
-  const [typeCours, setTypeCours] = useState<string[]>(['domicile', 'enligne']); // par défaut les deux
+  // Type de cours & Tarif
+  const [typeCours, setTypeCours] = useState<string[]>(['domicile', 'enligne']);
   const [tarifHoraire, setTarifHoraire] = useState('');
 
   // Déplacement & distance
@@ -99,7 +99,7 @@ export default function ProfilProfesseurPage() {
   // Gestion multi-sélection Type de cours
   const toggleTypeCours = (id: string) => {
     if (typeCours.includes(id)) {
-      if (typeCours.length === 1) return; // Empêcher de tout décocher
+      if (typeCours.length === 1) return;
       setTypeCours(typeCours.filter(item => item !== id));
     } else {
       setTypeCours([...typeCours, id]);
@@ -202,21 +202,51 @@ export default function ProfilProfesseurPage() {
 
   const currentBadge = experience ? EXPERIENCE_BADGES[experience] : null;
 
+  // Sauvegarde sécurisée dans le localStorage avec les clés exactes correspondantes à Supabase
   const handleNext = async () => {
     if (!isValid) return;
     setIsLoading(true);
 
     try {
       const fullPhone = `+212${telephone}`;
-      console.log("Profil prof créé :", { 
-        nom, prenom, age, ville, profession, matiere, diplome, experience, 
-        typeCours, tarifHoraire: `${tarifHoraire} DH/h`,
-        statut: currentBadge?.label, distanceMax: `${distanceMax} km`, fraisDeplacement: `${fraisDeplacement} DH`, 
-        disponibilites, email, telephone: fullPhone, imagePreview 
-      });
+      
+      // 1. Récupérer les données existantes pour ne pas perdre les étapes précédentes
+      const existingData = JSON.parse(localStorage.getItem('pending_prof_data') || '{}');
+
+      // 2. Regroupement des nouvelles données avec des clés exactes (Nom, Prénom, etc.)
+      const currentFormData = {
+        Nom: nom.trim(),
+        Prénom: prenom.trim(),
+        age: parseInt(age, 10) || 0,
+        ville: ville.trim(),
+        profession: profession.trim(),
+        matiere: matiere.trim(),
+        'dernier diplome': diplome.trim(),
+        experience,
+        statut: currentBadge?.label || '',
+        type_cours: typeCours,
+        tarif: parseFloat(tarifHoraire) || 0,
+        distance_max: distanceMax,
+        frais_deplacement: fraisDeplacement,
+        disponibilites,
+        email: email.trim(),
+        telephone: fullPhone,
+        photo_URL: imagePreview
+      };
+
+      // 3. Fusion des anciennes et nouvelles données
+      const mergedData = {
+        ...existingData,
+        ...currentFormData
+      };
+
+      // 4. Sauvegarde finale dans le localStorage pour la page de paiement
+      localStorage.setItem('pending_prof_data', JSON.stringify(mergedData));
+
+      // Redirection vers la page de paiement
       router.push('/donner-cours/payement');
     } catch (err) {
-      console.error("Erreur :", err);
+      console.error("Erreur lors de la sauvegarde temporaire :", err);
     } finally {
       setIsLoading(false);
     }

@@ -43,9 +43,10 @@ export default function AdminDashboardPage() {
       if (profsError) setDbError(profsError.message);
       else if (profsData) setProfesseursExistants(profsData);
 
-      // 2. Demandes en attente (avec les infos de paiement)
+      // 2. Demandes en attente (table requests)
       const { data: reqsData, error: reqsError } = await supabase.from('requests').select('*');
       if (reqsError) {
+        setDbError(reqsError.message);
         const localSubmissions = localStorage.getItem('professeurs_soumissions') || localStorage.getItem('donner_cours_list');
         if (localSubmissions) setProfesseursNouveaux(JSON.parse(localSubmissions));
       } else if (reqsData) {
@@ -58,15 +59,17 @@ export default function AdminDashboardPage() {
     }
   };
 
-  // Valider une demande spécifique manuellement
+  // Valider une demande spécifique manuellement en utilisant les colonnes exactes
   const handleApproveRequest = async (reqItem: any) => {
     try {
+      const fullName = `${reqItem.prenom || ''} ${reqItem.nom || ''}`.trim() || 'Nouveau Professeur';
+      
       const newProf = {
-        name: reqItem.name || reqItem.nomExpediteur || reqItem.nom || 'Nouveau Professeur',
-        subject: reqItem.subject || reqItem.matiere || 'Soutien scolaire',
-        location: reqItem.location || reqItem.ville || 'Casablanca',
-        price: reqItem.price || reqItem.tarif || 200,
-        description: reqItem.description || 'Professeur qualifié vérifié et validé.',
+        name: fullName,
+        subject: reqItem.matiere || 'Soutien scolaire',
+        location: reqItem.ville || 'Casablanca',
+        price: reqItem.tarif ? parseFloat(reqItem.tarif) : 200,
+        description: reqItem.dernier_diplome ? `Dernier diplôme : ${reqItem.dernier_diplome}` : 'Professeur qualifié vérifié et validé.',
         rating: 5.0,
         reviewsCount: 1,
         isConfirmed: true,
@@ -82,15 +85,15 @@ export default function AdminDashboardPage() {
         await supabase.from('requests').delete().eq('id', reqItem.id);
       }
 
-      // 3. Envoyer la notification par email au professeur (via une API interne)
+      // 3. Envoyer la notification par email au professeur
       await fetch('/api/notify-professor', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: reqItem.email, name: newProf.name })
-      }).catch(() => {}); // Fallback silencieux si l'API mail n'est pas encore configurée
+        body: JSON.stringify({ email: reqItem.email, name: fullName })
+      }).catch(() => {});
 
       await fetchDataFromSupabase();
-      alert(`Le profil de ${newProf.name} a été activé avec succès et publié sur le site !`);
+      alert(`Le profil de ${fullName} a été activé avec succès et publié sur le site !`);
     } catch (err: any) {
       alert(`Erreur lors de la validation : ${err.message}`);
     }
@@ -138,7 +141,7 @@ export default function AdminDashboardPage() {
     if (lower.includes('valide') || lower.includes('confirme') || lower.includes('tout')) {
       aiReply = await handleAiValidateAll();
     } else if (lower.includes('combien') || lower.includes('statistiques')) {
-      aiReply = `📊 Actuellement, la base contient ${professeursExistants.length} professeur(s) actif(s) et ${professeursNouveaux.length} demande(s) en attente de paiement/validation.`;
+      aiReply = `📊 Actuellement, la base contient ${professeursExistants.length} professeur(s) actif(s) et ${professeursNouveaux.length} demande(s) en attente.`;
     } else if (lower.includes('bonjour') || lower.includes('salut')) {
       aiReply = `Bonjour Amal ! Comment puis-je t'aider à gérer tes professeurs aujourd'hui ?`;
     } else {
@@ -173,7 +176,7 @@ export default function AdminDashboardPage() {
         </Link>
       </header>
 
-      <main className="max-w-7xl mx-auto px-6 py-10">
+      <main className="max-w-[95rem] mx-auto px-6 py-10">
         
         {/* Onglets */}
         <div className="flex gap-4 mb-8">
@@ -295,13 +298,13 @@ export default function AdminDashboardPage() {
           </div>
         )}
 
-        {/* SECTION : DEMANDES & PAIEMENTS (Affichage complet avec infos de paiement) */}
+        {/* SECTION : DEMANDES & PAIEMENTS SOUS FORME DE TABLEAU */}
         {activeTab === 'nouveaux' && (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 space-y-6">
             <div className="flex justify-between items-center">
               <div>
                 <h2 className="text-lg font-black text-gray-900">Demandes de professeurs & Preuves de paiement</h2>
-                <p className="text-xs text-gray-500">Vérifiez les informations de paiement (10 DH) avant d'activer les profils sur le site.</p>
+                <p className="text-xs text-gray-500">Visualisez l'ensemble des données de la table requests et gérez les validations.</p>
               </div>
               <button onClick={fetchDataFromSupabase} className="px-4 py-2 bg-blue-50 text-blue-700 font-bold text-xs rounded-xl flex items-center gap-2 cursor-pointer">
                 <RefreshCw className={`w-3.5 h-3.5 ${isLoadingDb ? 'animate-spin' : ''}`} />
@@ -312,65 +315,74 @@ export default function AdminDashboardPage() {
             {professeursNouveaux.length === 0 ? (
               <p className="text-gray-400 text-sm py-12 text-center">Aucune nouvelle demande en attente.</p>
             ) : (
-              <div className="grid grid-cols-1 gap-6">
-                {professeursNouveaux.map((req, i) => (
-                  <div key={req.id || i} className="bg-gray-50 border border-gray-200 rounded-2xl p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 shadow-xs">
-                    
-                    {/* Aperçu du profil du professeur */}
-                    <div className="space-y-1.5 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="bg-red-50 text-[#FF5A5F] text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full border border-red-100">
-                          En attente d'activation
-                        </span>
-                        <span className="text-xs text-gray-400 font-medium">Soumis récemment</span>
-                      </div>
-                      <h3 className="text-base font-extrabold text-gray-900">{req.name || req.nom || req.nomExpediteur || 'Nom non spécifié'}</h3>
-                      <p className="text-xs text-gray-600 font-medium">
-                        {req.subject || req.matiere || 'Matière non spécifiée'} • <span className="text-gray-900 font-bold">{req.location || req.ville || 'Casablanca'}</span>
-                      </p>
-                      <p className="text-xs text-gray-500 line-clamp-2 pt-1">{req.description || 'Aucune description fournie.'}</p>
-                    </div>
-
-                    {/* Détails du paiement soumis */}
-                    <div className="bg-white p-4 rounded-xl border border-gray-200/80 min-w-[280px] space-y-2 text-xs">
-                      <div className="font-black text-gray-900 uppercase tracking-wider text-[10px] flex items-center gap-1.5 border-b pb-1.5">
-                        <CreditCard className="w-3.5 h-3.5 text-[#FF5A5F]" />
-                        Détails du Paiement (10 DH)
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-500">Méthode :</span>
-                        <span className="font-bold text-gray-800 uppercase">{req.methode || 'Virement / Cash'}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-500">Expéditeur :</span>
-                        <span className="font-bold text-gray-800">{req.nomExpediteur || req.name || 'N/A'}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-500">Référence / Code :</span>
-                        <span className="font-mono font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded">{req.reference || req.codeTransfert || 'N/A'}</span>
-                      </div>
-                    </div>
-
-                    {/* Actions d'acceptation / rejet */}
-                    <div className="flex flex-row md:flex-col gap-2 w-full md:w-auto">
-                      <button
-                        onClick={() => handleApproveRequest(req)}
-                        className="flex-1 md:flex-none px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 shadow-sm cursor-pointer"
-                      >
-                        <CheckCircle className="w-4 h-4" />
-                        <span>Accepter & Activer</span>
-                      </button>
-                      <button
-                        onClick={() => handleRejectRequest(req.id)}
-                        className="px-4 py-2.5 bg-white border border-red-200 text-red-600 hover:bg-red-50 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                        <span>Rejeter</span>
-                      </button>
-                    </div>
-
-                  </div>
-                ))}
+              <div className="overflow-x-auto border border-gray-200 rounded-2xl">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-gray-50 text-gray-700 uppercase font-bold text-[10px] tracking-wider border-b border-gray-200">
+                      <th className="p-3">Date</th>
+                      <th className="p-3">Prénom & Nom</th>
+                      <th className="p-3">Âge</th>
+                      <th className="p-3">Ville</th>
+                      <th className="p-3">Matière</th>
+                      <th className="p-3">Diplôme</th>
+                      <th className="p-3">Tarif</th>
+                      <th className="p-3">Contact</th>
+                      <th className="p-3">Paiement / Reçu</th>
+                      <th className="p-3 text-center">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {professeursNouveaux.map((req, i) => (
+                      <tr key={req.id || i} className="hover:bg-gray-50/80 transition">
+                        <td className="p-3 text-gray-500 whitespace-nowrap">
+                          {req.date_de_demande ? new Date(req.date_de_demande).toLocaleDateString() : 'N/A'}
+                        </td>
+                        <td className="p-3 font-bold text-gray-900 whitespace-nowrap">
+                          {req.prenom || ''} {req.nom || ''}
+                        </td>
+                        <td className="p-3 text-gray-600">{req.age || 'N/A'}</td>
+                        <td className="p-3 font-medium text-gray-800">{req.ville || 'N/A'}</td>
+                        <td className="p-3 text-gray-800 font-semibold">{req.matiere || 'N/A'}</td>
+                        <td className="p-3 text-gray-600 truncate max-w-[150px]" title={req.dernier_diplome}>
+                          {req.dernier_diplome || 'N/A'}
+                        </td>
+                        <td className="p-3 font-bold text-emerald-600 whitespace-nowrap">
+                          {req.tarif ? `${req.tarif} MAD` : 'N/A'}
+                        </td>
+                        <td className="p-3 text-gray-600">
+                          <div>{req.email || 'N/A'}</div>
+                          <div className="text-gray-400 font-mono text-[11px]">{req.telephone ? `0${req.telephone}` : ''}</div>
+                        </td>
+                        <td className="p-3">
+                          <div className="space-y-0.5 whitespace-nowrap">
+                            <span className="font-bold text-gray-800 block">Reçu: #{req.numero_de_recu || 'N/A'}</span>
+                            <span className="text-purple-600 font-mono bg-purple-50 px-1.5 py-0.5 rounded text-[10px] inline-block">
+                              Trans: {req.numero_de_transaction || 'N/A'}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="p-3 whitespace-nowrap text-center">
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              onClick={() => handleApproveRequest(req)}
+                              title="Accepter & Activer"
+                              className="p-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition cursor-pointer shadow-xs"
+                            >
+                              <CheckCircle className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleRejectRequest(req.id)}
+                              title="Rejeter"
+                              className="p-2 bg-white border border-red-200 text-red-600 hover:bg-red-50 rounded-lg transition cursor-pointer"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>
