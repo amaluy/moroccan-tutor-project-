@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, BookOpen, Users, Sparkles, Bot, Send, RefreshCw, CheckCircle, Trash2 } from 'lucide-react';
+import { ArrowLeft, BookOpen, Users, Sparkles, Bot, Send, RefreshCw, CheckCircle, Trash2, Image as ImageIcon } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -70,7 +70,8 @@ export default function AdminDashboardPage() {
         rating: 5.0,
         reviewsCount: 1,
         isConfirmed: true,
-        firstLessonFree: true
+        firstLessonFree: true,
+        photo_URL: reqItem.photo_URL || reqItem['photo_url'] || ''
       };
 
       const { error: insertError } = await supabase.from('professors').insert([newProf]);
@@ -162,7 +163,7 @@ export default function AdminDashboardPage() {
         </Link>
       </header>
 
-      <main className="max-w-[95rem] mx-auto px-6 py-10">
+      <main className="max-w-[98rem] mx-auto px-6 py-10">
         <div className="flex gap-4 mb-8">
           <button onClick={() => setActiveTab('ia_agent')} className={`px-6 py-3 rounded-2xl font-bold text-sm transition cursor-pointer flex items-center gap-2 ${activeTab === 'ia_agent' ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-sm' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'}`}>
             <Bot className="w-4 h-4" /> <span>Assistant IA Actif</span>
@@ -207,9 +208,18 @@ export default function AdminDashboardPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {professeursExistants.map((p, i) => (
                 <div key={p.id || i} className="p-4 bg-gray-50 rounded-xl border border-gray-100 flex justify-between items-center">
-                  <div>
-                    <h3 className="font-bold text-gray-900 text-sm">{p.name}</h3>
-                    <p className="text-xs text-gray-500">{p.subject} • {p.location}</p>
+                  <div className="flex items-center gap-3">
+                    {p.photo_URL ? (
+                      <img src={p.photo_URL} alt={p.name} className="w-10 h-10 rounded-full object-cover border" />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 font-bold text-xs">
+                        {p.name ? p.name.charAt(0) : '?'}
+                      </div>
+                    )}
+                    <div>
+                      <h3 className="font-bold text-gray-900 text-sm">{p.name}</h3>
+                      <p className="text-xs text-gray-500">{p.subject} • {p.location}</p>
+                    </div>
                   </div>
                   <span className="font-bold text-sm text-emerald-600">{p.price} MAD/h</span>
                 </div>
@@ -234,30 +244,34 @@ export default function AdminDashboardPage() {
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
                     <tr className="bg-gray-50 text-gray-700 uppercase font-bold text-[10px] tracking-wider border-b border-gray-200">
-                      <th className="p-3">Date</th>
+                      <th className="p-3">Photo</th>
                       <th className="p-3">Prénom & Nom</th>
+                      <th className="p-3">Profession</th>
                       <th className="p-3">Âge</th>
                       <th className="p-3">Ville</th>
                       <th className="p-3">Matière</th>
                       <th className="p-3">Diplôme</th>
                       <th className="p-3">Tarif</th>
+                      <th className="p-3">Disponibilités</th>
                       <th className="p-3">Contact</th>
-                      <th className="p-3">Paiement / Reçu</th>
+                      <th className="p-3">Transaction / Reçu</th>
                       <th className="p-3 text-center">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {professeursNouveaux.map((req, i) => {
-                      const dateVal = req['date de demande'];
-                      const prenomVal = req['Prénom'] || '';
-                      const nomVal = req['Nom'] || '';
+                      const prenomVal = req['Prénom'] || req.prenom || '';
+                      const nomVal = req['Nom'] || req.nom || '';
                       const fullName = (`${prenomVal} ${nomVal}`).trim() || 'N/A';
                       
+                      const photoUrl = req.photo_URL || req['photo_url'] || '';
+                      const professionVal = req.profession || 'N/A';
                       const ageVal = req.age || 'N/A';
                       const villeVal = req.ville || 'N/A';
                       const matiereVal = req.matiere || 'N/A';
                       const diplomeVal = req['dernier diplome'] || 'N/A';
                       const tarifVal = req.tarif;
+                      const dispoVal = req.disponibilites || req.disponibilités || 'N/A';
                       const emailVal = req.email || 'N/A';
                       const telVal = req.telephone || '';
                       
@@ -266,29 +280,39 @@ export default function AdminDashboardPage() {
 
                       return (
                         <tr key={req.id || i} className="hover:bg-gray-50/80 transition">
-                          <td className="p-3 text-gray-500 whitespace-nowrap">
-                            {dateVal ? new Date(dateVal).toLocaleDateString() : 'N/A'}
+                          <td className="p-3 whitespace-nowrap">
+                            {photoUrl ? (
+                              <img src={photoUrl} alt={fullName} className="w-9 h-9 rounded-full object-cover border shadow-xs" />
+                            ) : (
+                              <div className="w-9 h-9 rounded-full bg-gray-200 flex items-center justify-center text-gray-400">
+                                <ImageIcon className="w-4 h-4" />
+                              </div>
+                            )}
                           </td>
                           <td className="p-3 font-bold text-gray-900 whitespace-nowrap">
                             {fullName}
                           </td>
+                          <td className="p-3 font-medium text-purple-700">{professionVal}</td>
                           <td className="p-3 text-gray-600">{ageVal}</td>
                           <td className="p-3 font-medium text-gray-800">{villeVal}</td>
                           <td className="p-3 text-gray-800 font-semibold">{matiereVal}</td>
-                          <td className="p-3 text-gray-600 truncate max-w-[150px]" title={diplomeVal}>
+                          <td className="p-3 text-gray-600 truncate max-w-[130px]" title={diplomeVal}>
                             {diplomeVal}
                           </td>
                           <td className="p-3 font-bold text-emerald-600 whitespace-nowrap">
                             {tarifVal ? `${tarifVal} MAD` : 'N/A'}
                           </td>
+                          <td className="p-3 text-gray-700 truncate max-w-[150px]" title={dispoVal}>
+                            {dispoVal}
+                          </td>
                           <td className="p-3 text-gray-600">
                             <div>{emailVal}</div>
                             <div className="text-gray-400 font-mono text-[11px]">{telVal}</div>
                           </td>
-                          <td className="p-3">
-                            <div className="space-y-0.5 whitespace-nowrap">
+                          <td className="p-3 whitespace-nowrap">
+                            <div className="space-y-0.5">
                               <span className="font-bold text-gray-800 block">Reçu: #{recuVal}</span>
-                              <span className="text-purple-600 font-mono bg-purple-50 px-1.5 py-0.5 rounded text-[10px] inline-block">
+                              <span className="text-indigo-600 font-mono bg-indigo-50 px-1.5 py-0.5 rounded text-[10px] inline-block" title={transVal}>
                                 Trans: {transVal}
                               </span>
                             </div>
