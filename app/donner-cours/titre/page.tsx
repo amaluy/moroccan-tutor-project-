@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { 
   BookOpen, Award, Briefcase, 
   User, Calendar, UserCheck, ChevronRight, Camera, X, Upload, Mail, Phone, AlertCircle,
-  Crown, Star, Award as AwardIcon, Sparkles, MapPin, Navigation, Coins, Clock, Info, Laptop, Home as HomeIcon
+  Crown, Star, Award as AwardIcon, Sparkles, MapPin, Navigation, Coins, Clock, Info, Laptop, Home as HomeIcon, GraduationCap
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -45,6 +45,13 @@ const EXPERIENCE_BADGES: Record<string, { label: string; icon: any; color: strin
   }
 };
 
+const NIVEAUX = [
+  { id: 'primaire', label: 'Primaire' },
+  { id: 'college', label: 'Collège' },
+  { id: 'lycee', label: 'Lycée' },
+  { id: 'superieure', label: 'Études supérieures' }
+];
+
 const DAYS = [
   { id: 'lu', label: 'Lu' },
   { id: 'ma', label: 'Ma' },
@@ -71,6 +78,7 @@ export default function ProfilProfesseurPage() {
   const [ville, setVille] = useState('');
   const [profession, setProfession] = useState('');
   const [matiere, setMatiere] = useState('');
+  const [niveau, setNiveau] = useState<string[]>([]);
   const [diplome, setDiplome] = useState('');
   const [experience, setExperience] = useState('');
   
@@ -95,6 +103,15 @@ export default function ProfilProfesseurPage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Gestion multi-sélection Niveau
+  const toggleNiveau = (id: string) => {
+    if (niveau.includes(id)) {
+      setNiveau(niveau.filter(item => item !== id));
+    } else {
+      setNiveau([...niveau, id]);
+    }
+  };
 
   // Gestion multi-sélection Type de cours
   const toggleTypeCours = (id: string) => {
@@ -192,6 +209,7 @@ export default function ProfilProfesseurPage() {
     ville.trim() !== '' &&
     profession.trim() !== '' && 
     matiere.trim() !== '' && 
+    niveau.length > 0 &&
     diplome.trim() !== '' && 
     experience.trim() !== '' &&
     tarifHoraire.trim() !== '' &&
@@ -202,7 +220,7 @@ export default function ProfilProfesseurPage() {
 
   const currentBadge = experience ? EXPERIENCE_BADGES[experience] : null;
 
-  // Sauvegarde sécurisée dans le localStorage avec les clés exactes correspondantes à Supabase
+  // Sauvegarde sécurisée dans le localStorage
   const handleNext = async () => {
     if (!isValid) return;
     setIsLoading(true);
@@ -210,10 +228,8 @@ export default function ProfilProfesseurPage() {
     try {
       const fullPhone = `+212${telephone}`;
       
-      // 1. Récupérer les données existantes pour ne pas perdre les étapes précédentes
       const existingData = JSON.parse(localStorage.getItem('pending_prof_data') || '{}');
 
-      // 2. Regroupement des nouvelles données avec des clés exactes (Nom, Prénom, etc.)
       const currentFormData = {
         Nom: nom.trim(),
         Prénom: prenom.trim(),
@@ -221,6 +237,7 @@ export default function ProfilProfesseurPage() {
         ville: ville.trim(),
         profession: profession.trim(),
         matiere: matiere.trim(),
+        niveau: niveau, // Stocke les niveaux sélectionnés (ex: ['primaire', 'college'])
         'dernier diplome': diplome.trim(),
         experience,
         statut: currentBadge?.label || '',
@@ -234,16 +251,13 @@ export default function ProfilProfesseurPage() {
         photo_URL: imagePreview
       };
 
-      // 3. Fusion des anciennes et nouvelles données
       const mergedData = {
         ...existingData,
         ...currentFormData
       };
 
-      // 4. Sauvegarde finale dans le localStorage pour la page de paiement
       localStorage.setItem('pending_prof_data', JSON.stringify(mergedData));
 
-      // Redirection vers la page de paiement
       router.push('/donner-cours/payement');
     } catch (err) {
       console.error("Erreur lors de la sauvegarde temporaire :", err);
@@ -269,7 +283,6 @@ export default function ProfilProfesseurPage() {
       {/* Contenu principal : Formulaire Centré */}
       <div className="flex-1 max-w-2xl mx-auto px-6 py-8 w-full my-auto space-y-8">
         
-        {/* Titre Centré */}
         <div className="text-center space-y-2">
           <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">
             Présentez-vous aux <span className="text-[#FF5A5F]">élèves</span>
@@ -279,7 +292,6 @@ export default function ProfilProfesseurPage() {
           </p>
         </div>
 
-        {/* Formulaire Aéré */}
         <div className="space-y-6">
           
           {/* 1. INFORMATIONS PERSONNELLES */}
@@ -359,7 +371,7 @@ export default function ProfilProfesseurPage() {
             />
           </div>
 
-          {/* 2. PARCOURS ACADÉMIQUE */}
+          {/* 2. PARCOURS ACADÉMIQUE & NIVEAU */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
               <BookOpen className="w-3.5 h-3.5 text-[#FF5A5F]" />
@@ -372,6 +384,33 @@ export default function ProfilProfesseurPage() {
               onChange={(e) => setMatiere(e.target.value)}
               className="w-full p-3.5 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:border-[#FF5A5F] focus:ring-4 focus:ring-red-500/10 shadow-sm transition"
             />
+          </div>
+
+          {/* SÉLECTION NIVEAU (Primaire, Collège, Lycée, Supérieur) */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
+              <GraduationCap className="w-3.5 h-3.5 text-[#FF5A5F]" />
+              Niveau(x) enseigné(s) (Plusieurs choix possibles)
+            </label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {NIVEAUX.map((item) => {
+                const isSelected = niveau.includes(item.id);
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => toggleNiveau(item.id)}
+                    className={`p-3 rounded-xl border text-xs font-bold transition flex items-center justify-center cursor-pointer ${
+                      isSelected 
+                        ? 'bg-white border-[#FF5A5F] text-[#FF5A5F] shadow-sm ring-2 ring-red-500/10' 
+                        : 'bg-white/80 border-gray-200 text-gray-600 hover:bg-white'
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           <div className="space-y-1.5">

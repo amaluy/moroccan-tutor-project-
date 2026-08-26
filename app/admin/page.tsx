@@ -146,8 +146,8 @@ export default function AdminDashboardPage() {
     }, 500);
   };
 
-  // Grille des disponibilités sécurisée contre les erreurs de type
-  const renderAvailabilityGrid = (dispoString: any) => {
+  // Grille des disponibilités analysant précisément le tableau text[] de Supabase
+  const renderAvailabilityGrid = (disponibilites: any) => {
     const days = [
       { key: 'lu', label: 'Lu' },
       { key: 'ma', label: 'Ma' },
@@ -158,22 +158,12 @@ export default function AdminDashboardPage() {
       { key: 'di', label: 'Di' },
     ];
 
-    const slots = [
-      { key: 'matin', label: 'Matin' },
-      { key: 'midi', label: 'Midi' },
-      { key: 'apresmidi', label: 'Après-midi' },
-    ];
-
-    // Transformation sécurisée en string peu importe le format en base
-    let safeString = "";
-    if (typeof dispoString === 'string') {
-      safeString = dispoString;
-    } else if (Array.isArray(dispoString)) {
-      safeString = dispoString.join('-');
-    } else if (dispoString && typeof dispoString === 'object') {
-      safeString = JSON.stringify(dispoString);
+    let items: string[] = [];
+    if (Array.isArray(disponibilites)) {
+      items = disponibilites.map(item => String(item).toLowerCase());
+    } else if (typeof disponibilites === 'string') {
+      items = disponibilites.split(',').map(item => item.trim().toLowerCase());
     }
-    const lowerDispo = safeString.toLowerCase();
 
     return (
       <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-xs">
@@ -192,24 +182,29 @@ export default function AdminDashboardPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {slots.map(s => (
-                <tr key={s.key}>
-                  <td className="p-2 text-left font-medium text-gray-700 whitespace-nowrap">{s.label}</td>
-                  {days.map(d => {
-                    const combination1 = `${d.key}${s.key}`;
-                    const combination2 = `${d.key}-${s.key}`;
-                    const isAvailable = lowerDispo.includes(combination1) || lowerDispo.includes(combination2) || (lowerDispo.includes(d.key) && lowerDispo.includes(s.key));
+              {['matin', 'midi', 'apres-midi'].map(slotKey => {
+                const slotLabel = slotKey === 'apres-midi' ? 'Après-midi' : slotKey.charAt(0).toUpperCase() + slotKey.slice(1);
+                
+                return (
+                  <tr key={slotKey}>
+                    <td className="p-2 text-left font-medium text-gray-700 whitespace-nowrap">{slotLabel}</td>
+                    {days.map(d => {
+                      const isAvailable = items.some(item => 
+                        (item.includes(slotKey) || item.includes(slotKey.replace('-', ''))) && 
+                        item.includes(d.key)
+                      );
 
-                    return (
-                      <td key={d.key} className="p-2">
-                        <div className={`w-7 h-7 mx-auto rounded-full flex items-center justify-center transition ${isAvailable ? 'bg-sky-200/80 shadow-xs' : 'bg-gray-100/60 opacity-40'}`}>
-                          {isAvailable && <div className="w-3 h-3 rounded-full bg-sky-400"></div>}
-                        </div>
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
+                      return (
+                        <td key={d.key} className="p-2">
+                          <div className={`w-7 h-7 mx-auto rounded-full flex items-center justify-center transition ${isAvailable ? 'bg-sky-200/80 shadow-xs' : 'bg-gray-100/60 opacity-40'}`}>
+                            {isAvailable && <div className="w-3 h-3 rounded-full bg-sky-400"></div>}
+                          </div>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -457,7 +452,7 @@ export default function AdminDashboardPage() {
                 <span className="font-bold text-gray-800 text-sm">{selectedRequest['dernier diplome'] || 'N/A'}</span>
               </div>
               
-              {/* DISPONIBILITÉS SOUS FORME DE GRAPHIQUE */}
+              {/* DISPONIBILITÉS SOUS FORME DE GRAPHIQUE INTELLIGENT */}
               <div className="col-span-2">
                 {renderAvailabilityGrid(selectedRequest.disponibilites || selectedRequest.disponibilités || '')}
               </div>
