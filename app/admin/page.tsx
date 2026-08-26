@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, BookOpen, Users, Sparkles, Bot, Send, RefreshCw, CheckCircle, Trash2, Image as ImageIcon } from 'lucide-react';
+import { ArrowLeft, BookOpen, Users, Sparkles, Bot, Send, RefreshCw, CheckCircle, Trash2, Image as ImageIcon, Eye, X } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -19,6 +19,9 @@ export default function AdminDashboardPage() {
   const [professeursExistants, setProfesseursExistants] = useState<any[]>([]);
   const [isLoadingDb, setIsLoadingDb] = useState(true);
   const [dbError, setDbError] = useState<string | null>(null);
+
+  // Modal de détail pour un professeur en attente
+  const [selectedRequest, setSelectedRequest] = useState<any | null>(null);
   
   const [chatInput, setChatInput] = useState('');
   const [messages, setMessages] = useState<any[]>([
@@ -89,6 +92,7 @@ export default function AdminDashboardPage() {
         }).catch(() => {});
       }
 
+      setSelectedRequest(null); // Fermer la modale si ouverte
       await fetchDataFromSupabase();
       alert(`Le profil de ${fullName} a été activé avec succès et publié sur le site !`);
     } catch (err: any) {
@@ -100,6 +104,7 @@ export default function AdminDashboardPage() {
     if (!confirm("Voulez-vous vraiment rejeter cette demande ?")) return;
     try {
       await supabase.from('requests').delete().eq('id', id);
+      setSelectedRequest(null);
       await fetchDataFromSupabase();
     } catch (err: any) {
       alert(`Erreur : ${err.message}`);
@@ -250,9 +255,7 @@ export default function AdminDashboardPage() {
                       <th className="p-3">Âge</th>
                       <th className="p-3">Ville</th>
                       <th className="p-3">Matière</th>
-                      <th className="p-3">Diplôme</th>
                       <th className="p-3">Tarif</th>
-                      <th className="p-3">Disponibilités</th>
                       <th className="p-3">Contact</th>
                       <th className="p-3">Transaction / Reçu</th>
                       <th className="p-3 text-center">Actions</th>
@@ -269,9 +272,7 @@ export default function AdminDashboardPage() {
                       const ageVal = req.age || 'N/A';
                       const villeVal = req.ville || 'N/A';
                       const matiereVal = req.matiere || 'N/A';
-                      const diplomeVal = req['dernier diplome'] || 'N/A';
                       const tarifVal = req.tarif;
-                      const dispoVal = req.disponibilites || req.disponibilités || 'N/A';
                       const emailVal = req.email || 'N/A';
                       const telVal = req.telephone || '';
                       
@@ -279,7 +280,7 @@ export default function AdminDashboardPage() {
                       const transVal = req['numero de transaction'] || 'N/A';
 
                       return (
-                        <tr key={req.id || i} className="hover:bg-gray-50/80 transition">
+                        <tr key={req.id || i} className="hover:bg-gray-50/80 transition cursor-pointer" onClick={() => setSelectedRequest(req)}>
                           <td className="p-3 whitespace-nowrap">
                             {photoUrl ? (
                               <img src={photoUrl} alt={fullName} className="w-9 h-9 rounded-full object-cover border shadow-xs" />
@@ -296,14 +297,8 @@ export default function AdminDashboardPage() {
                           <td className="p-3 text-gray-600">{ageVal}</td>
                           <td className="p-3 font-medium text-gray-800">{villeVal}</td>
                           <td className="p-3 text-gray-800 font-semibold">{matiereVal}</td>
-                          <td className="p-3 text-gray-600 truncate max-w-[130px]" title={diplomeVal}>
-                            {diplomeVal}
-                          </td>
                           <td className="p-3 font-bold text-emerald-600 whitespace-nowrap">
                             {tarifVal ? `${tarifVal} MAD` : 'N/A'}
-                          </td>
-                          <td className="p-3 text-gray-700 truncate max-w-[150px]" title={dispoVal}>
-                            {dispoVal}
                           </td>
                           <td className="p-3 text-gray-600">
                             <div>{emailVal}</div>
@@ -317,8 +312,11 @@ export default function AdminDashboardPage() {
                               </span>
                             </div>
                           </td>
-                          <td className="p-3 whitespace-nowrap text-center">
+                          <td className="p-3 whitespace-nowrap text-center" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-center gap-1.5">
+                              <button onClick={() => setSelectedRequest(req)} title="Voir tous les détails" className="p-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition cursor-pointer">
+                                <Eye className="w-4 h-4" />
+                              </button>
                               <button onClick={() => handleApproveRequest(req)} title="Accepter & Activer" className="p-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition cursor-pointer shadow-xs">
                                 <CheckCircle className="w-4 h-4" />
                               </button>
@@ -337,6 +335,91 @@ export default function AdminDashboardPage() {
           </div>
         )}
       </main>
+
+      {/* MODALE DE DÉTAIL AGRANDIE */}
+      {selectedRequest && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-200 p-8 relative animate-in fade-in zoom-in duration-200">
+            <button onClick={() => setSelectedRequest(null)} className="absolute top-6 right-6 p-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full transition cursor-pointer">
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-4 mb-6 pb-6 border-b border-gray-100">
+              {(selectedRequest.photo_URL || selectedRequest['photo_url']) ? (
+                <img 
+                  src={selectedRequest.photo_URL || selectedRequest['photo_url']} 
+                  alt="Profil" 
+                  className="w-20 h-20 rounded-2xl object-cover shadow-md border-2 border-purple-100" 
+                />
+              ) : (
+                <div className="w-20 h-20 rounded-2xl bg-purple-50 flex items-center justify-center text-purple-400 font-bold">
+                  <ImageIcon className="w-8 h-8" />
+                </div>
+              )}
+              <div>
+                <h3 className="text-2xl font-black text-gray-900">
+                  {`${selectedRequest['Prénom'] || selectedRequest.prenom || ''} ${selectedRequest['Nom'] || selectedRequest.nom || ''}`.trim() || 'Détails du Professeur'}
+                </h3>
+                <p className="text-purple-600 font-bold text-sm">{selectedRequest.profession || 'Profession non spécifiée'}</p>
+                <p className="text-xs text-gray-400 mt-1">Demande reçue le : {selectedRequest['date de demande'] ? new Date(selectedRequest['date de demande']).toLocaleDateString() : 'N/A'}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 text-xs mb-8">
+              <div className="bg-gray-50 p-3.5 rounded-2xl border border-gray-100">
+                <span className="text-gray-400 block font-medium mb-0.5">Âge</span>
+                <span className="font-bold text-gray-800 text-sm">{selectedRequest.age || 'N/A'} ans</span>
+              </div>
+              <div className="bg-gray-50 p-3.5 rounded-2xl border border-gray-100">
+                <span className="text-gray-400 block font-medium mb-0.5">Ville</span>
+                <span className="font-bold text-gray-800 text-sm">{selectedRequest.ville || 'N/A'}</span>
+              </div>
+              <div className="bg-gray-50 p-3.5 rounded-2xl border border-gray-100">
+                <span className="text-gray-400 block font-medium mb-0.5">Matière enseignée</span>
+                <span className="font-bold text-gray-800 text-sm">{selectedRequest.matiere || 'N/A'}</span>
+              </div>
+              <div className="bg-gray-50 p-3.5 rounded-2xl border border-gray-100">
+                <span className="text-gray-400 block font-medium mb-0.5">Tarif horaire</span>
+                <span className="font-bold text-emerald-600 text-sm">{selectedRequest.tarif ? `${selectedRequest.tarif} MAD` : 'N/A'}</span>
+              </div>
+              <div className="col-span-2 bg-gray-50 p-3.5 rounded-2xl border border-gray-100">
+                <span className="text-gray-400 block font-medium mb-0.5">Dernier diplôme</span>
+                <span className="font-bold text-gray-800 text-sm">{selectedRequest['dernier diplome'] || 'N/A'}</span>
+              </div>
+              <div className="col-span-2 bg-gray-50 p-3.5 rounded-2xl border border-gray-100">
+                <span className="text-gray-400 block font-medium mb-0.5">Disponibilités</span>
+                <span className="font-bold text-gray-800 text-sm">{selectedRequest.disponibilites || selectedRequest.disponibilités || 'N/A'}</span>
+              </div>
+              <div className="bg-gray-50 p-3.5 rounded-2xl border border-gray-100">
+                <span className="text-gray-400 block font-medium mb-0.5">Email</span>
+                <span className="font-bold text-gray-800">{selectedRequest.email || 'N/A'}</span>
+              </div>
+              <div className="bg-gray-50 p-3.5 rounded-2xl border border-gray-100">
+                <span className="text-gray-400 block font-medium mb-0.5">Téléphone</span>
+                <span className="font-bold text-gray-800">{selectedRequest.telephone || 'N/A'}</span>
+              </div>
+              <div className="bg-purple-50/60 p-3.5 rounded-2xl border border-purple-100">
+                <span className="text-purple-600 block font-medium mb-0.5">Numéro de reçu</span>
+                <span className="font-bold text-purple-900">#{selectedRequest['numero de recu'] || 'N/A'}</span>
+              </div>
+              <div className="bg-indigo-50/60 p-3.5 rounded-2xl border border-indigo-100">
+                <span className="text-indigo-600 block font-medium mb-0.5">Numéro de transaction</span>
+                <span className="font-bold text-indigo-900 font-mono">{selectedRequest['numero de transaction'] || 'N/A'}</span>
+              </div>
+            </div>
+
+            <div className="flex gap-3 justify-end pt-4 border-t border-gray-100">
+              <button onClick={() => handleRejectRequest(selectedRequest.id)} className="px-5 py-3 bg-white border border-red-200 text-red-600 hover:bg-red-50 font-bold text-xs rounded-xl transition cursor-pointer">
+                Rejeter la demande
+              </button>
+              <button onClick={() => handleApproveRequest(selectedRequest)} className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition shadow-md cursor-pointer flex items-center gap-2">
+                <CheckCircle className="w-4 h-4" />
+                <span>Accepter & Publier sur le site</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
