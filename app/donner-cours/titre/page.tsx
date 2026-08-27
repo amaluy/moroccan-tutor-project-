@@ -104,11 +104,15 @@ export default function ProfilProfesseurPage() {
   const [imageError, setImageError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Gestion multi-sélection Niveau
+  // Gestion multi-sélection Niveau (Maximum 2 choix)
   const toggleNiveau = (id: string) => {
     if (niveau.includes(id)) {
       setNiveau(niveau.filter(item => item !== id));
     } else {
+      if (niveau.length >= 2) {
+        alert("Vous pouvez sélectionner 2 niveaux maximum.");
+        return;
+      }
       setNiveau([...niveau, id]);
     }
   };
@@ -220,7 +224,7 @@ export default function ProfilProfesseurPage() {
 
   const currentBadge = experience ? EXPERIENCE_BADGES[experience] : null;
 
-  // Sauvegarde sécurisée dans le localStorage
+  // Sauvegarde sécurisée dans le localStorage (incluant le tableau niveau)
   const handleNext = async () => {
     if (!isValid) return;
     setIsLoading(true);
@@ -237,7 +241,7 @@ export default function ProfilProfesseurPage() {
         ville: ville.trim(),
         profession: profession.trim(),
         matiere: matiere.trim(),
-        niveau: niveau, // Stocke les niveaux sélectionnés (ex: ['primaire', 'college'])
+        niveau: niveau, // Stocke les 1 ou 2 niveaux sélectionnés (ex: ['college', 'lycee'])[cite: 1]
         'dernier diplome': diplome.trim(),
         experience,
         statut: currentBadge?.label || '',
@@ -386,12 +390,15 @@ export default function ProfilProfesseurPage() {
             />
           </div>
 
-          {/* SÉLECTION NIVEAU (Primaire, Collège, Lycée, Supérieur) */}
+          {/* SÉLECTION NIVEAU (Maximum 2 choix) */}
           <div className="space-y-2">
-            <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
-              <GraduationCap className="w-3.5 h-3.5 text-[#FF5A5F]" />
-              Niveau(x) enseigné(s) (Plusieurs choix possibles)
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
+                <GraduationCap className="w-3.5 h-3.5 text-[#FF5A5F]" />
+                Niveau(x) enseigné(s) (Maximum 2 choix)
+              </label>
+              <span className="text-[11px] text-gray-400 font-medium">{niveau.length}/2 sélectionnés</span>
+            </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {NIVEAUX.map((item) => {
                 const isSelected = niveau.includes(item.id);

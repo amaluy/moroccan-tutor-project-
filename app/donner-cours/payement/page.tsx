@@ -81,6 +81,7 @@ export default function PagePaiementProf() {
         ville: dataFromStorage.ville || dataFromStorage.Ville || '',
         profession: dataFromStorage.profession || '',
         matiere: dataFromStorage.matiere || dataFromStorage.Matiere || '',
+        niveau: dataFromStorage.niveau || dataFromStorage.Niveau || [], // <--- Ajouté ici pour récupérer les choix de niveaux
         'dernier diplome': dataFromStorage['dernier diplome'] || dataFromStorage.dernierDiplome || dataFromStorage.diplome || '',
         experience: dataFromStorage.experience || '',
         statut: dataFromStorage.statut || '',
