@@ -170,18 +170,7 @@ export default function HomePage() {
               />
             </div>
 
-            <div className="absolute -top-3 -right-2 bg-white text-gray-800 px-4 py-2.5 rounded-2xl shadow-lg flex items-center gap-3 border border-orange-100">
-              <div className="flex -space-x-2">
-                <img className="w-7 h-7 rounded-full border-2 border-white object-cover" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100" />
-                <img className="w-7 h-7 rounded-full border-2 border-white object-cover" src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=100" />
-              </div>
-              <div className="text-left">
-                <p className="text-[11px] font-black text-[#FF5733]">+1 200 Profs</p>
-                <p className="text-[9px] text-gray-500 font-medium">Disponibles</p>
-              </div>
-            </div>
-
-            <div className="absolute -bottom-3 -left-2 bg-white text-gray-800 px-4 py-3 rounded-2xl shadow-lg flex items-center gap-3 border border-orange-100">
+            <div className="absolute -top-3 -right-2 bg-white text-gray-800 px-4 py-3 rounded-2xl shadow-lg flex items-center gap-3 border border-orange-100">
               <div className="w-8 h-8 rounded-xl bg-orange-50 text-[#FF5733] flex items-center justify-center font-bold text-xs">
                 🎁
               </div>
