@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, BookOpen, Users, Sparkles, Bot, Send, RefreshCw, CheckCircle, Trash2, Image as ImageIcon, Eye, X, Clock } from 'lucide-react';
+import { ArrowLeft, BookOpen, Users, Sparkles, Bot, Send, RefreshCw, CheckCircle, Trash2, Image as ImageIcon, Eye, X, Clock, Layers } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -146,7 +146,7 @@ export default function AdminDashboardPage() {
     }, 500);
   };
 
-  // Grille des disponibilités analysant précisément le tableau text[] de Supabase
+  // Grille des disponibilités adaptée au format Supabase ("matin-sa", "midi-di", "apresmidi-sa", etc.)
   const renderAvailabilityGrid = (disponibilites: any) => {
     const days = [
       { key: 'lu', label: 'Lu' },
@@ -158,11 +158,17 @@ export default function AdminDashboardPage() {
       { key: 'di', label: 'Di' },
     ];
 
+    const slots = [
+      { key: 'matin', label: 'Matin' },
+      { key: 'midi', label: 'Midi' },
+      { key: 'apresmidi', label: 'Après-midi' },
+    ];
+
     let items: string[] = [];
     if (Array.isArray(disponibilites)) {
-      items = disponibilites.map(item => String(item).toLowerCase());
+      items = disponibilites.map(item => String(item).toLowerCase().trim());
     } else if (typeof disponibilites === 'string') {
-      items = disponibilites.split(',').map(item => item.trim().toLowerCase());
+      items = disponibilites.split(',').map(item => item.toLowerCase().trim());
     }
 
     return (
@@ -182,16 +188,18 @@ export default function AdminDashboardPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {['matin', 'midi', 'apres-midi'].map(slotKey => {
-                const slotLabel = slotKey === 'apres-midi' ? 'Après-midi' : slotKey.charAt(0).toUpperCase() + slotKey.slice(1);
-                
+              {slots.map(({ key: slotKey, label }) => {
                 return (
                   <tr key={slotKey}>
-                    <td className="p-2 text-left font-medium text-gray-700 whitespace-nowrap">{slotLabel}</td>
+                    <td className="p-2 text-left font-medium text-gray-700 whitespace-nowrap">{label}</td>
                     {days.map(d => {
+                      const targetCode1 = `${slotKey}-${d.key}`; // ex: "matin-sa"
+                      const targetCode2 = `${d.key}-${slotKey}`; 
+
                       const isAvailable = items.some(item => 
-                        (item.includes(slotKey) || item.includes(slotKey.replace('-', ''))) && 
-                        item.includes(d.key)
+                        item === targetCode1 || 
+                        item === targetCode2 || 
+                        item.includes(targetCode1)
                       );
 
                       return (
@@ -401,7 +409,7 @@ export default function AdminDashboardPage() {
         )}
       </main>
 
-      {/* MODALE DE DÉTAIL AGRANDIE AVEC PLANNING GRAPHIQUE */}
+      {/* MODALE DE DÉTAIL */}
       {selectedRequest && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-200 p-8 relative animate-in fade-in zoom-in duration-200">
@@ -447,12 +455,31 @@ export default function AdminDashboardPage() {
                 <span className="text-gray-400 block font-medium mb-0.5">Tarif horaire</span>
                 <span className="font-bold text-emerald-600 text-sm">{selectedRequest.tarif ? `${selectedRequest.tarif} MAD` : 'N/A'}</span>
               </div>
+
+              {/* NIVEAUX ENSEIGNÉS */}
+              <div className="col-span-2 bg-red-50/60 p-3.5 rounded-2xl border border-red-100">
+                <span className="text-[#FF5A5F] font-bold block mb-1 flex items-center gap-1.5">
+                  <Layers className="w-4 h-4" /> Niveaux enseignés
+                </span>
+                <div className="flex flex-wrap gap-1.5 mt-1">
+                  {Array.isArray(selectedRequest.niveau || selectedRequest.Niveau) && (selectedRequest.niveau || selectedRequest.Niveau).length > 0 ? (
+                    (selectedRequest.niveau || selectedRequest.Niveau).map((lvl: string, idx: number) => (
+                      <span key={idx} className="bg-white text-gray-800 border border-red-200 px-2.5 py-1 rounded-lg text-xs font-semibold shadow-2xs">
+                        {lvl}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-gray-500 font-medium">Aucun niveau spécifié</span>
+                  )}
+                </div>
+              </div>
+
               <div className="col-span-2 bg-gray-50 p-3.5 rounded-2xl border border-gray-100">
                 <span className="text-gray-400 block font-medium mb-0.5">Dernier diplôme</span>
                 <span className="font-bold text-gray-800 text-sm">{selectedRequest['dernier diplome'] || 'N/A'}</span>
               </div>
               
-              {/* DISPONIBILITÉS SOUS FORME DE GRAPHIQUE INTELLIGENT */}
+              {/* DISPONIBILITÉS GRAPHIQUES */}
               <div className="col-span-2">
                 {renderAvailabilityGrid(selectedRequest.disponibilites || selectedRequest.disponibilités || '')}
               </div>
