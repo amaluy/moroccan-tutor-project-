@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, BookOpen, Users, Sparkles, Bot, Send, RefreshCw, CheckCircle, Trash2, Image as ImageIcon, Eye, X, Clock, Layers } from 'lucide-react';
+import { ArrowLeft, BookOpen, Users, Sparkles, Bot, Send, RefreshCw, CheckCircle, Trash2, Image as ImageIcon, Eye, X, Clock, Layers, ZoomIn } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -21,6 +21,7 @@ export default function AdminDashboardPage() {
   const [dbError, setDbError] = useState<string | null>(null);
 
   const [selectedRequest, setSelectedRequest] = useState<any | null>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   
   const [chatInput, setChatInput] = useState('');
   const [messages, setMessages] = useState<any[]>([
@@ -415,13 +416,11 @@ export default function AdminDashboardPage() {
         const recuVal = selectedRequest['numero de recu'];
         const transVal = selectedRequest['numero de transaction'];
         
-        // S'il y a un reçu Wafacash / Cashplus, on détermine s'il faut masquer le numéro de transaction
         const hasRecu = recuVal && recuVal !== 'N/A' && String(recuVal).trim() !== '';
         const hasValidTrans = transVal && transVal !== 'N/A' && String(transVal).trim() !== '';
         
-        // Si le reçu est présent et qu'on ne veut pas afficher la transaction inutilement, 
-        // ou si la transaction est vide/N/A, on cache la boîte transaction.
-        const showTransactionBox = hasValidTrans && (!hasRecu || String(transVal).length > 3);
+        const photoUrl = selectedRequest.photo_URL || selectedRequest['photo_url'];
+        const fullName = (`${selectedRequest['Prénom'] || selectedRequest.prenom || ''} ${selectedRequest['Nom'] || selectedRequest.nom || ''}`).trim() || 'Détails du Professeur';
 
         return (
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
@@ -431,23 +430,35 @@ export default function AdminDashboardPage() {
               </button>
 
               <div className="flex items-center gap-4 mb-6 pb-6 border-b border-gray-100">
-                {(selectedRequest.photo_URL || selectedRequest['photo_url']) ? (
-                  <img 
-                    src={selectedRequest.photo_URL || selectedRequest['photo_url']} 
-                    alt="Profil" 
-                    className="w-20 h-20 rounded-2xl object-cover shadow-md border-2 border-purple-100" 
-                  />
-                ) : (
-                  <div className="w-20 h-20 rounded-2xl bg-purple-50 flex items-center justify-center text-purple-400 font-bold">
-                    <ImageIcon className="w-8 h-8" />
-                  </div>
-                )}
+                {/* Photo cliquable pour zoomer en grand format */}
+                <div className="shrink-0 relative group cursor-pointer" onClick={() => photoUrl && setPreviewImage(photoUrl)}>
+                  {photoUrl ? (
+                    <>
+                      <img 
+                        src={photoUrl} 
+                        alt="Profil" 
+                        className="w-16 h-16 rounded-full object-cover shadow-md border-2 border-purple-200 group-hover:opacity-90 transition" 
+                      />
+                      <div className="absolute inset-0 bg-black/30 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
+                        <ZoomIn className="w-6 h-6 text-white" />
+                      </div>
+                    </>
+                  ) : (
+                    <div className="w-16 h-16 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 font-bold text-lg shadow-sm">
+                      {fullName.charAt(0)}
+                    </div>
+                  )}
+                </div>
+
                 <div>
                   <h3 className="text-2xl font-black text-gray-900">
-                    {`${selectedRequest['Prénom'] || selectedRequest.prenom || ''} ${selectedRequest['Nom'] || selectedRequest.nom || ''}`.trim() || 'Détails du Professeur'}
+                    {fullName}
                   </h3>
                   <p className="text-purple-600 font-bold text-sm">{selectedRequest.profession || 'Profession non spécifiée'}</p>
-                  <p className="text-xs text-gray-400 mt-1">Demande reçue le : {selectedRequest['date de demande'] ? new Date(selectedRequest['date de demande']).toLocaleDateString() : 'N/A'}</p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Demande reçue le : {selectedRequest['date de demande'] ? new Date(selectedRequest['date de demande']).toLocaleDateString() : 'N/A'} 
+                    <span className="text-purple-600 ml-1.5 font-semibold">• Clique sur la photo pour l'agrandir</span>
+                  </p>
                 </div>
               </div>
 
@@ -506,7 +517,7 @@ export default function AdminDashboardPage() {
                   <span className="font-bold text-gray-800">{selectedRequest.telephone || 'N/A'}</span>
                 </div>
 
-                {/* NUMÉRO DE REÇU (Affiché si présent) */}
+                {/* NUMÉRO DE REÇU */}
                 {hasRecu && (
                   <div className="bg-purple-50/60 p-3.5 rounded-2xl border border-purple-100 col-span-2">
                     <span className="text-purple-600 block font-medium mb-0.5">Numéro de reçu (Wafacash / Cashplus)</span>
@@ -514,7 +525,7 @@ export default function AdminDashboardPage() {
                   </div>
                 )}
 
-                {/* NUMÉRO DE TRANSACTION (Affiché uniquement s'il n'y a pas de reçu ou si la transaction est réellement saisie et utile) */}
+                {/* NUMÉRO DE TRANSACTION */}
                 {!hasRecu && hasValidTrans && (
                   <div className="bg-indigo-50/60 p-3.5 rounded-2xl border border-indigo-100 col-span-2">
                     <span className="text-indigo-600 block font-medium mb-0.5">Numéro de transaction (Virement / Versement)</span>
@@ -536,6 +547,18 @@ export default function AdminDashboardPage() {
           </div>
         );
       })()}
+
+      {/* VISIONNEUSE PLEIN ÉCRAN POUR LA PHOTO EN GRAND FORMAT */}
+      {previewImage && (
+        <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setPreviewImage(null)}>
+          <button onClick={() => setPreviewImage(null)} className="absolute top-6 right-6 p-3 bg-white/10 hover:bg-white/20 text-white rounded-full transition cursor-pointer shadow-lg">
+            <X className="w-6 h-6" />
+          </button>
+          <div className="relative max-w-4xl max-h-[90vh] overflow-hidden rounded-2xl shadow-2xl flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+            <img src={previewImage} alt="Photo en grand format" className="max-w-full max-h-[85vh] object-contain rounded-2xl border border-white/10 shadow-2xl" />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
