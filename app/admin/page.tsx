@@ -146,7 +146,6 @@ export default function AdminDashboardPage() {
     }, 500);
   };
 
-  // Grille des disponibilités adaptée au format Supabase ("matin-sa", "midi-di", "apresmidi-sa", etc.)
   const renderAvailabilityGrid = (disponibilites: any) => {
     const days = [
       { key: 'lu', label: 'Lu' },
@@ -193,7 +192,7 @@ export default function AdminDashboardPage() {
                   <tr key={slotKey}>
                     <td className="p-2 text-left font-medium text-gray-700 whitespace-nowrap">{label}</td>
                     {days.map(d => {
-                      const targetCode1 = `${slotKey}-${d.key}`; // ex: "matin-sa"
+                      const targetCode1 = `${slotKey}-${d.key}`;
                       const targetCode2 = `${d.key}-${slotKey}`; 
 
                       const isAvailable = items.some(item => 
@@ -379,10 +378,12 @@ export default function AdminDashboardPage() {
                           </td>
                           <td className="p-3 whitespace-nowrap">
                             <div className="space-y-0.5">
-                              <span className="font-bold text-gray-800 block">Reçu: #{recuVal}</span>
-                              <span className="text-indigo-600 font-mono bg-indigo-50 px-1.5 py-0.5 rounded text-[10px] inline-block" title={transVal}>
-                                Trans: {transVal}
-                              </span>
+                              {recuVal && recuVal !== 'N/A' && <span className="font-bold text-gray-800 block">Reçu: #{recuVal}</span>}
+                              {transVal && transVal !== 'N/A' && (
+                                <span className="text-indigo-600 font-mono bg-indigo-50 px-1.5 py-0.5 rounded text-[10px] inline-block" title={transVal}>
+                                  Trans: {transVal}
+                                </span>
+                              )}
                             </div>
                           </td>
                           <td className="p-3 whitespace-nowrap text-center" onClick={(e) => e.stopPropagation()}>
@@ -410,110 +411,131 @@ export default function AdminDashboardPage() {
       </main>
 
       {/* MODALE DE DÉTAIL */}
-      {selectedRequest && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-200 p-8 relative animate-in fade-in zoom-in duration-200">
-            <button onClick={() => setSelectedRequest(null)} className="absolute top-6 right-6 p-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full transition cursor-pointer">
-              <X className="w-5 h-5" />
-            </button>
+      {selectedRequest && (() => {
+        const recuVal = selectedRequest['numero de recu'];
+        const transVal = selectedRequest['numero de transaction'];
+        
+        // S'il y a un reçu Wafacash / Cashplus, on détermine s'il faut masquer le numéro de transaction
+        const hasRecu = recuVal && recuVal !== 'N/A' && String(recuVal).trim() !== '';
+        const hasValidTrans = transVal && transVal !== 'N/A' && String(transVal).trim() !== '';
+        
+        // Si le reçu est présent et qu'on ne veut pas afficher la transaction inutilement, 
+        // ou si la transaction est vide/N/A, on cache la boîte transaction.
+        const showTransactionBox = hasValidTrans && (!hasRecu || String(transVal).length > 3);
 
-            <div className="flex items-center gap-4 mb-6 pb-6 border-b border-gray-100">
-              {(selectedRequest.photo_URL || selectedRequest['photo_url']) ? (
-                <img 
-                  src={selectedRequest.photo_URL || selectedRequest['photo_url']} 
-                  alt="Profil" 
-                  className="w-20 h-20 rounded-2xl object-cover shadow-md border-2 border-purple-100" 
-                />
-              ) : (
-                <div className="w-20 h-20 rounded-2xl bg-purple-50 flex items-center justify-center text-purple-400 font-bold">
-                  <ImageIcon className="w-8 h-8" />
-                </div>
-              )}
-              <div>
-                <h3 className="text-2xl font-black text-gray-900">
-                  {`${selectedRequest['Prénom'] || selectedRequest.prenom || ''} ${selectedRequest['Nom'] || selectedRequest.nom || ''}`.trim() || 'Détails du Professeur'}
-                </h3>
-                <p className="text-purple-600 font-bold text-sm">{selectedRequest.profession || 'Profession non spécifiée'}</p>
-                <p className="text-xs text-gray-400 mt-1">Demande reçue le : {selectedRequest['date de demande'] ? new Date(selectedRequest['date de demande']).toLocaleDateString() : 'N/A'}</p>
-              </div>
-            </div>
+        return (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-200 p-8 relative animate-in fade-in zoom-in duration-200">
+              <button onClick={() => setSelectedRequest(null)} className="absolute top-6 right-6 p-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full transition cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
 
-            <div className="grid grid-cols-2 gap-4 text-xs mb-6">
-              <div className="bg-gray-50 p-3.5 rounded-2xl border border-gray-100">
-                <span className="text-gray-400 block font-medium mb-0.5">Âge</span>
-                <span className="font-bold text-gray-800 text-sm">{selectedRequest.age || 'N/A'} ans</span>
-              </div>
-              <div className="bg-gray-50 p-3.5 rounded-2xl border border-gray-100">
-                <span className="text-gray-400 block font-medium mb-0.5">Ville</span>
-                <span className="font-bold text-gray-800 text-sm">{selectedRequest.ville || 'N/A'}</span>
-              </div>
-              <div className="bg-gray-50 p-3.5 rounded-2xl border border-gray-100">
-                <span className="text-gray-400 block font-medium mb-0.5">Matière enseignée</span>
-                <span className="font-bold text-gray-800 text-sm">{selectedRequest.matiere || 'N/A'}</span>
-              </div>
-              <div className="bg-gray-50 p-3.5 rounded-2xl border border-gray-100">
-                <span className="text-gray-400 block font-medium mb-0.5">Tarif horaire</span>
-                <span className="font-bold text-emerald-600 text-sm">{selectedRequest.tarif ? `${selectedRequest.tarif} MAD` : 'N/A'}</span>
-              </div>
-
-              {/* NIVEAUX ENSEIGNÉS */}
-              <div className="col-span-2 bg-red-50/60 p-3.5 rounded-2xl border border-red-100">
-                <span className="text-[#FF5A5F] font-bold block mb-1 flex items-center gap-1.5">
-                  <Layers className="w-4 h-4" /> Niveaux enseignés
-                </span>
-                <div className="flex flex-wrap gap-1.5 mt-1">
-                  {Array.isArray(selectedRequest.niveau || selectedRequest.Niveau) && (selectedRequest.niveau || selectedRequest.Niveau).length > 0 ? (
-                    (selectedRequest.niveau || selectedRequest.Niveau).map((lvl: string, idx: number) => (
-                      <span key={idx} className="bg-white text-gray-800 border border-red-200 px-2.5 py-1 rounded-lg text-xs font-semibold shadow-2xs">
-                        {lvl}
-                      </span>
-                    ))
-                  ) : (
-                    <span className="text-gray-500 font-medium">Aucun niveau spécifié</span>
-                  )}
+              <div className="flex items-center gap-4 mb-6 pb-6 border-b border-gray-100">
+                {(selectedRequest.photo_URL || selectedRequest['photo_url']) ? (
+                  <img 
+                    src={selectedRequest.photo_URL || selectedRequest['photo_url']} 
+                    alt="Profil" 
+                    className="w-20 h-20 rounded-2xl object-cover shadow-md border-2 border-purple-100" 
+                  />
+                ) : (
+                  <div className="w-20 h-20 rounded-2xl bg-purple-50 flex items-center justify-center text-purple-400 font-bold">
+                    <ImageIcon className="w-8 h-8" />
+                  </div>
+                )}
+                <div>
+                  <h3 className="text-2xl font-black text-gray-900">
+                    {`${selectedRequest['Prénom'] || selectedRequest.prenom || ''} ${selectedRequest['Nom'] || selectedRequest.nom || ''}`.trim() || 'Détails du Professeur'}
+                  </h3>
+                  <p className="text-purple-600 font-bold text-sm">{selectedRequest.profession || 'Profession non spécifiée'}</p>
+                  <p className="text-xs text-gray-400 mt-1">Demande reçue le : {selectedRequest['date de demande'] ? new Date(selectedRequest['date de demande']).toLocaleDateString() : 'N/A'}</p>
                 </div>
               </div>
 
-              <div className="col-span-2 bg-gray-50 p-3.5 rounded-2xl border border-gray-100">
-                <span className="text-gray-400 block font-medium mb-0.5">Dernier diplôme</span>
-                <span className="font-bold text-gray-800 text-sm">{selectedRequest['dernier diplome'] || 'N/A'}</span>
-              </div>
-              
-              {/* DISPONIBILITÉS GRAPHIQUES */}
-              <div className="col-span-2">
-                {renderAvailabilityGrid(selectedRequest.disponibilites || selectedRequest.disponibilités || '')}
+              <div className="grid grid-cols-2 gap-4 text-xs mb-6">
+                <div className="bg-gray-50 p-3.5 rounded-2xl border border-gray-100">
+                  <span className="text-gray-400 block font-medium mb-0.5">Âge</span>
+                  <span className="font-bold text-gray-800 text-sm">{selectedRequest.age || 'N/A'} ans</span>
+                </div>
+                <div className="bg-gray-50 p-3.5 rounded-2xl border border-gray-100">
+                  <span className="text-gray-400 block font-medium mb-0.5">Ville</span>
+                  <span className="font-bold text-gray-800 text-sm">{selectedRequest.ville || 'N/A'}</span>
+                </div>
+                <div className="bg-gray-50 p-3.5 rounded-2xl border border-gray-100">
+                  <span className="text-gray-400 block font-medium mb-0.5">Matière enseignée</span>
+                  <span className="font-bold text-gray-800 text-sm">{selectedRequest.matiere || 'N/A'}</span>
+                </div>
+                <div className="bg-gray-50 p-3.5 rounded-2xl border border-gray-100">
+                  <span className="text-gray-400 block font-medium mb-0.5">Tarif horaire</span>
+                  <span className="font-bold text-emerald-600 text-sm">{selectedRequest.tarif ? `${selectedRequest.tarif} MAD` : 'N/A'}</span>
+                </div>
+
+                {/* NIVEAUX ENSEIGNÉS */}
+                <div className="col-span-2 bg-red-50/60 p-3.5 rounded-2xl border border-red-100">
+                  <span className="text-[#FF5A5F] font-bold block mb-1 flex items-center gap-1.5">
+                    <Layers className="w-4 h-4" /> Niveaux enseignés
+                  </span>
+                  <div className="flex flex-wrap gap-1.5 mt-1">
+                    {Array.isArray(selectedRequest.niveau || selectedRequest.Niveau) && (selectedRequest.niveau || selectedRequest.Niveau).length > 0 ? (
+                      (selectedRequest.niveau || selectedRequest.Niveau).map((lvl: string, idx: number) => (
+                        <span key={idx} className="bg-white text-gray-800 border border-red-200 px-2.5 py-1 rounded-lg text-xs font-semibold shadow-2xs">
+                          {lvl}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-gray-500 font-medium">Aucun niveau spécifié</span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="col-span-2 bg-gray-50 p-3.5 rounded-2xl border border-gray-100">
+                  <span className="text-gray-400 block font-medium mb-0.5">Dernier diplôme</span>
+                  <span className="font-bold text-gray-800 text-sm">{selectedRequest['dernier diplome'] || 'N/A'}</span>
+                </div>
+                
+                {/* DISPONIBILITÉS GRAPHIQUES */}
+                <div className="col-span-2">
+                  {renderAvailabilityGrid(selectedRequest.disponibilites || selectedRequest.disponibilités || '')}
+                </div>
+
+                <div className="bg-gray-50 p-3.5 rounded-2xl border border-gray-100">
+                  <span className="text-gray-400 block font-medium mb-0.5">Email</span>
+                  <span className="font-bold text-gray-800">{selectedRequest.email || 'N/A'}</span>
+                </div>
+                <div className="bg-gray-50 p-3.5 rounded-2xl border border-gray-100">
+                  <span className="text-gray-400 block font-medium mb-0.5">Téléphone</span>
+                  <span className="font-bold text-gray-800">{selectedRequest.telephone || 'N/A'}</span>
+                </div>
+
+                {/* NUMÉRO DE REÇU (Affiché si présent) */}
+                {hasRecu && (
+                  <div className="bg-purple-50/60 p-3.5 rounded-2xl border border-purple-100 col-span-2">
+                    <span className="text-purple-600 block font-medium mb-0.5">Numéro de reçu (Wafacash / Cashplus)</span>
+                    <span className="font-bold text-purple-900 text-sm">#{recuVal}</span>
+                  </div>
+                )}
+
+                {/* NUMÉRO DE TRANSACTION (Affiché uniquement s'il n'y a pas de reçu ou si la transaction est réellement saisie et utile) */}
+                {!hasRecu && hasValidTrans && (
+                  <div className="bg-indigo-50/60 p-3.5 rounded-2xl border border-indigo-100 col-span-2">
+                    <span className="text-indigo-600 block font-medium mb-0.5">Numéro de transaction (Virement / Versement)</span>
+                    <span className="font-bold text-indigo-900 font-mono text-sm">{transVal}</span>
+                  </div>
+                )}
               </div>
 
-              <div className="bg-gray-50 p-3.5 rounded-2xl border border-gray-100">
-                <span className="text-gray-400 block font-medium mb-0.5">Email</span>
-                <span className="font-bold text-gray-800">{selectedRequest.email || 'N/A'}</span>
+              <div className="flex gap-3 justify-end pt-4 border-t border-gray-100">
+                <button onClick={() => handleRejectRequest(selectedRequest.id)} className="px-5 py-3 bg-white border border-red-200 text-red-600 hover:bg-red-50 font-bold text-xs rounded-xl transition cursor-pointer">
+                  Rejeter la demande
+                </button>
+                <button onClick={() => handleApproveRequest(selectedRequest)} className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition shadow-md cursor-pointer flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4" />
+                  <span>Accepter & Publier sur le site</span>
+                </button>
               </div>
-              <div className="bg-gray-50 p-3.5 rounded-2xl border border-gray-100">
-                <span className="text-gray-400 block font-medium mb-0.5">Téléphone</span>
-                <span className="font-bold text-gray-800">{selectedRequest.telephone || 'N/A'}</span>
-              </div>
-              <div className="bg-purple-50/60 p-3.5 rounded-2xl border border-purple-100">
-                <span className="text-purple-600 block font-medium mb-0.5">Numéro de reçu</span>
-                <span className="font-bold text-purple-900">#{selectedRequest['numero de recu'] || 'N/A'}</span>
-              </div>
-              <div className="bg-indigo-50/60 p-3.5 rounded-2xl border border-indigo-100">
-                <span className="text-indigo-600 block font-medium mb-0.5">Numéro de transaction</span>
-                <span className="font-bold text-indigo-900 font-mono">{selectedRequest['numero de transaction'] || 'N/A'}</span>
-              </div>
-            </div>
-
-            <div className="flex gap-3 justify-end pt-4 border-t border-gray-100">
-              <button onClick={() => handleRejectRequest(selectedRequest.id)} className="px-5 py-3 bg-white border border-red-200 text-red-600 hover:bg-red-50 font-bold text-xs rounded-xl transition cursor-pointer">
-                Rejeter la demande
-              </button>
-              <button onClick={() => handleApproveRequest(selectedRequest)} className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition shadow-md cursor-pointer flex items-center gap-2">
-                <CheckCircle className="w-4 h-4" />
-                <span>Accepter & Publier sur le site</span>
-              </button>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
