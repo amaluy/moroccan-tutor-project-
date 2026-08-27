@@ -58,6 +58,7 @@ export default function AdminDashboardPage() {
     }
   };
 
+  // Accepter le professeur : Ajout dans 'professors' (sans description ni firstLessonFree) + Suppression de 'requests'
   const handleApproveRequest = async (reqItem: any) => {
     try {
       const pName = reqItem['Prénom'] || reqItem.prenom || '';
@@ -65,25 +66,33 @@ export default function AdminDashboardPage() {
       const fullName = (`${pName} ${nName}`).trim() || 'Nouveau Professeur';
       
       const newProf = {
-        name: fullName,
-        subject: reqItem.matiere || 'Soutien scolaire',
-        location: reqItem.ville || 'Casablanca',
-        price: reqItem.tarif ? parseFloat(reqItem.tarif) : 200,
-        description: reqItem['dernier diplome'] ? `Dernier diplôme : ${reqItem['dernier diplome']}` : 'Professeur qualifié vérifié et validé.',
-        rating: 5.0,
-        reviewsCount: 1,
-        isConfirmed: true,
-        firstLessonFree: true,
-        photo_URL: reqItem.photo_URL || reqItem['photo_url'] || ''
+        Nom: reqItem['Nom'] || reqItem.nom || '',
+        Prénom: reqItem['Prénom'] || reqItem.prenom || '',
+        ville: reqItem.ville || 'Casablanca',
+        email: reqItem.email || '',
+        bio: reqItem.bio || '',
+        is_approved: true,
+        age: reqItem.age ? String(reqItem.age) : '',
+        tarif: reqItem.tarif ? parseInt(reqItem.tarif) : 200,
+        profession: reqItem.profession || '',
+        'dernier diplome': reqItem['dernier diplome'] || reqItem.dernier_diplome || '',
+        telephone: reqItem.telephone || '',
+        niveau: reqItem.niveau || reqItem.Niveau || [],
+        experience: reqItem.experience || '',
+        type_cours: reqItem.type_cours || reqItem.typeCours || [],
+        matiere: reqItem.matiere || 'Soutien scolaire'
       };
-
+      // 1. Insérer dans la table des professeurs actifs (visibles sur l'accueil)
       const { error: insertError } = await supabase.from('professors').insert([newProf]);
       if (insertError) throw insertError;
 
+      // 2. Supprimer de la table des demandes en attente
       if (reqItem.id) {
-        await supabase.from('requests').delete().eq('id', reqItem.id);
+        const { error: deleteError } = await supabase.from('requests').delete().eq('id', reqItem.id);
+        if (deleteError) throw deleteError;
       }
 
+      // Notification optionnelle par email
       if (reqItem.email) {
         await fetch('/api/notify-professor', {
           method: 'POST',
@@ -94,18 +103,22 @@ export default function AdminDashboardPage() {
 
       setSelectedRequest(null);
       await fetchDataFromSupabase();
-      alert(`Le profil de ${fullName} a été activé avec succès et publié sur le site !`);
+      alert(`Le profil de ${fullName} a été accepté avec succès et est désormais visible sur l'accueil !`);
     } catch (err: any) {
       alert(`Erreur lors de la validation : ${err.message}`);
     }
   };
 
+  // Rejeter définitivement la demande
   const handleRejectRequest = async (id: string) => {
-    if (!confirm("Voulez-vous vraiment rejeter cette demande ?")) return;
+    if (!confirm("Voulez-vous vraiment rejeter cette demande pour toujours ? Elle sera supprimée définitivement.")) return;
     try {
-      await supabase.from('requests').delete().eq('id', id);
+      const { error } = await supabase.from('requests').delete().eq('id', id);
+      if (error) throw error;
+
       setSelectedRequest(null);
       await fetchDataFromSupabase();
+      alert("La demande a été rejetée et supprimée définitivement.");
     } catch (err: any) {
       alert(`Erreur : ${err.message}`);
     }
@@ -119,7 +132,7 @@ export default function AdminDashboardPage() {
       for (const reqItem of professeursNouveaux) {
         await handleApproveRequest(reqItem);
       }
-      return `✨ Mission accomplie ! J'ai validé et transféré avec succès ${professeursNouveaux.length} professeur(s).`;
+      return `✨ Mission accomplie ! J'ai validé et transféré avec succès ${professeursNouveaux.length} professeur(s) vers l'accueil.`;
     } catch (err: any) {
       return `Oups, une erreur est survenue : ${err.message}`;
     }
@@ -247,7 +260,7 @@ export default function AdminDashboardPage() {
             <Bot className="w-4 h-4" /> <span>Assistant IA Actif</span>
           </button>
           <button onClick={() => setActiveTab('existants')} className={`px-6 py-3 rounded-2xl font-bold text-sm transition cursor-pointer flex items-center gap-2 ${activeTab === 'existants' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'}`}>
-            <Users className="w-4 h-4 text-blue-500" /> <span>Professeurs ({professeursExistants.length})</span>
+            <Users className="w-4 h-4 text-blue-500" /> <span>Professeurs Actifs ({professeursExistants.length})</span>
           </button>
           <button onClick={() => setActiveTab('nouveaux')} className={`px-6 py-3 rounded-2xl font-bold text-sm transition cursor-pointer flex items-center gap-2 ${activeTab === 'nouveaux' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'}`}>
             <BookOpen className="w-4 h-4 text-[#FF5A5F]" /> <span>Demandes & Paiements ({professeursNouveaux.length})</span>
@@ -282,7 +295,7 @@ export default function AdminDashboardPage() {
 
         {activeTab === 'existants' && (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-            <h2 className="text-lg font-black text-gray-900 mb-6">Professeurs Actifs</h2>
+            <h2 className="text-lg font-black text-gray-900 mb-6">Professeurs Actifs sur l'Accueil</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {professeursExistants.map((p, i) => (
                 <div key={p.id || i} className="p-4 bg-gray-50 rounded-xl border border-gray-100 flex justify-between items-center">
@@ -392,10 +405,10 @@ export default function AdminDashboardPage() {
                               <button onClick={() => setSelectedRequest(req)} title="Voir tous les détails" className="p-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition cursor-pointer">
                                 <Eye className="w-4 h-4" />
                               </button>
-                              <button onClick={() => handleApproveRequest(req)} title="Accepter & Activer" className="p-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition cursor-pointer shadow-xs">
+                              <button onClick={() => handleApproveRequest(req)} title="Accepter & Publier" className="p-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition cursor-pointer shadow-xs">
                                 <CheckCircle className="w-4 h-4" />
                               </button>
-                              <button onClick={() => handleRejectRequest(req.id)} title="Rejeter" className="p-2 bg-white border border-red-200 text-red-600 hover:bg-red-50 rounded-lg transition cursor-pointer">
+                              <button onClick={() => handleRejectRequest(req.id)} title="Rejeter définitivement" className="p-2 bg-white border border-red-200 text-red-600 hover:bg-red-50 rounded-lg transition cursor-pointer">
                                 <Trash2 className="w-4 h-4" />
                               </button>
                             </div>
@@ -536,7 +549,7 @@ export default function AdminDashboardPage() {
 
               <div className="flex gap-3 justify-end pt-4 border-t border-gray-100">
                 <button onClick={() => handleRejectRequest(selectedRequest.id)} className="px-5 py-3 bg-white border border-red-200 text-red-600 hover:bg-red-50 font-bold text-xs rounded-xl transition cursor-pointer">
-                  Rejeter la demande
+                  Rejeter définitivement
                 </button>
                 <button onClick={() => handleApproveRequest(selectedRequest)} className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition shadow-md cursor-pointer flex items-center gap-2">
                   <CheckCircle className="w-4 h-4" />
