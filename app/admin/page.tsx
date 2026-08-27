@@ -63,24 +63,28 @@ export default function AdminDashboardPage() {
     try {
       const pName = reqItem['Prénom'] || reqItem.prenom || '';
       const nName = reqItem['Nom'] || reqItem.nom || '';
-      const fullName = (`${pName} ${nName}`).trim() || 'Nouveau Professeur';
+      const fullName = (`${pName} ${nName}`).trim() || reqItem.name || 'Nouveau Professeur';
       
       const newProf = {
-        Nom: reqItem['Nom'] || reqItem.nom || '',
-        Prénom: reqItem['Prénom'] || reqItem.prenom || '',
-        ville: reqItem.ville || 'Casablanca',
+        name: fullName,
+        prenom: pName,
+        nom: nName,
+        ville: reqItem.ville || reqItem.location || 'Casablanca',
         email: reqItem.email || '',
         bio: reqItem.bio || '',
         is_approved: true,
         age: reqItem.age ? String(reqItem.age) : '',
+        price: reqItem.tarif ? parseInt(reqItem.tarif) : (reqItem.price ? parseInt(reqItem.price) : 200),
         tarif: reqItem.tarif ? parseInt(reqItem.tarif) : 200,
         profession: reqItem.profession || '',
-        'dernier diplome': reqItem['dernier diplome'] || reqItem.dernier_diplome || '',
+        dernier_diplome: reqItem['dernier diplome'] || reqItem.dernier_diplome || '',
         telephone: reqItem.telephone || '',
         niveau: reqItem.niveau || reqItem.Niveau || [],
         experience: reqItem.experience || '',
         type_cours: reqItem.type_cours || reqItem.typeCours || [],
-        matiere: reqItem.matiere || 'Soutien scolaire'
+        matiere: reqItem.matiere || reqItem.subject || 'Soutien scolaire',
+        subject: reqItem.matiere || reqItem.subject || 'Soutien scolaire',
+        photo_url: reqItem.photo_URL || reqItem.photo_url || ''
       };
 
       // 1. Insérer dans la table des professeurs actifs
@@ -301,19 +305,19 @@ export default function AdminDashboardPage() {
               {professeursExistants.map((p, i) => (
                 <div key={p.id || i} className="p-4 bg-gray-50 rounded-xl border border-gray-100 flex justify-between items-center">
                   <div className="flex items-center gap-3">
-                    {p.photo_URL || p.photo_url ? (
-                      <img src={p.photo_URL || p.photo_url} alt={p.name || p.Prénom} className="w-10 h-10 rounded-full object-cover border" />
+                    {p.photo_url || p.photo_URL ? (
+                      <img src={p.photo_url || p.photo_URL} alt={p.name || p.Prénom} className="w-10 h-10 rounded-full object-cover border" />
                     ) : (
                       <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 font-bold text-xs">
-                        {p.Prénom ? p.Prénom.charAt(0) : '?'}
+                        {p.name ? p.name.charAt(0) : (p.Prénom ? p.Prénom.charAt(0) : '?')}
                       </div>
                     )}
                     <div>
-                      <h3 className="font-bold text-gray-900 text-sm">{`${p.Prénom || ''} ${p.Nom || ''}`.trim() || p.name}</h3>
-                      <p className="text-xs text-gray-500">{p.matiere || p.subject} • {p.ville || p.location}</p>
+                      <h3 className="font-bold text-gray-900 text-sm">{p.name || `${p.Prénom || ''} ${p.Nom || ''}`.trim()}</h3>
+                      <p className="text-xs text-gray-500">{p.subject || p.matiere} • {p.city || p.ville}</p>
                     </div>
                   </div>
-                  <span className="font-bold text-sm text-emerald-600">{p.tarif || p.price} MAD/h</span>
+                  <span className="font-bold text-sm text-emerald-600">{p.price || p.tarif} MAD/h</span>
                 </div>
               ))}
             </div>
@@ -352,14 +356,14 @@ export default function AdminDashboardPage() {
                     {professeursNouveaux.map((req, i) => {
                       const prenomVal = req['Prénom'] || req.prenom || '';
                       const nomVal = req['Nom'] || req.nom || '';
-                      const fullName = (`${prenomVal} ${nomVal}`).trim() || 'N/A';
+                      const fullName = (`${prenomVal} ${nomVal}`).trim() || req.name || 'N/A';
                       
-                      const photoUrl = req.photo_URL || req['photo_url'] || '';
+                      const photoUrl = req.photo_url || req.photo_URL || '';
                       const professionVal = req.profession || 'N/A';
                       const ageVal = req.age || 'N/A';
-                      const villeVal = req.ville || 'N/A';
-                      const matiereVal = req.matiere || 'N/A';
-                      const tarifVal = req.tarif;
+                      const villeVal = req.ville || req.city || 'N/A';
+                      const matiereVal = req.matiere || req.subject || 'N/A';
+                      const tarifVal = req.tarif || req.price;
                       const emailVal = req.email || 'N/A';
                       const telVal = req.telephone || '';
                       
@@ -433,8 +437,8 @@ export default function AdminDashboardPage() {
         const hasRecu = recuVal && recuVal !== 'N/A' && String(recuVal).trim() !== '';
         const hasValidTrans = transVal && transVal !== 'N/A' && String(transVal).trim() !== '';
         
-        const photoUrl = selectedRequest.photo_URL || selectedRequest['photo_url'];
-        const fullName = (`${selectedRequest['Prénom'] || selectedRequest.prenom || ''} ${selectedRequest['Nom'] || selectedRequest.nom || ''}`).trim() || 'Détails du Professeur';
+        const photoUrl = selectedRequest.photo_url || selectedRequest.photo_URL;
+        const fullName = (`${selectedRequest['Prénom'] || selectedRequest.prenom || ''} ${selectedRequest['Nom'] || selectedRequest.nom || ''}`).trim() || selectedRequest.name || 'Détails du Professeur';
 
         return (
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-2xs flex items-center justify-center p-4">
@@ -482,15 +486,15 @@ export default function AdminDashboardPage() {
                 </div>
                 <div className="bg-gray-50 p-3.5 rounded-2xl border border-gray-100">
                   <span className="text-gray-400 block font-medium mb-0.5">Ville</span>
-                  <span className="font-bold text-gray-800 text-sm">{selectedRequest.ville || 'N/A'}</span>
+                  <span className="font-bold text-gray-800 text-sm">{selectedRequest.ville || selectedRequest.city || 'N/A'}</span>
                 </div>
                 <div className="bg-gray-50 p-3.5 rounded-2xl border border-gray-100">
                   <span className="text-gray-400 block font-medium mb-0.5">Matière enseignée</span>
-                  <span className="font-bold text-gray-800 text-sm">{selectedRequest.matiere || 'N/A'}</span>
+                  <span className="font-bold text-gray-800 text-sm">{selectedRequest.matiere || selectedRequest.subject || 'N/A'}</span>
                 </div>
                 <div className="bg-gray-50 p-3.5 rounded-2xl border border-gray-100">
                   <span className="text-gray-400 block font-medium mb-0.5">Tarif horaire</span>
-                  <span className="font-bold text-emerald-600 text-sm">{selectedRequest.tarif ? `${selectedRequest.tarif} MAD` : 'N/A'}</span>
+                  <span className="font-bold text-emerald-600 text-sm">{(selectedRequest.tarif || selectedRequest.price) ? `${selectedRequest.tarif || selectedRequest.price} MAD` : 'N/A'}</span>
                 </div>
 
                 {/* NIVEAUX ENSEIGNÉS */}
@@ -513,7 +517,7 @@ export default function AdminDashboardPage() {
 
                 <div className="col-span-2 bg-gray-50 p-3.5 rounded-2xl border border-gray-100">
                   <span className="text-gray-400 block font-medium mb-0.5">Dernier diplôme</span>
-                  <span className="font-bold text-gray-800 text-sm">{selectedRequest['dernier diplome'] || 'N/A'}</span>
+                  <span className="font-bold text-gray-800 text-sm">{selectedRequest['dernier diplome'] || selectedRequest.dernier_diplome || 'N/A'}</span>
                 </div>
                 
                 {/* DISPONIBILITÉS GRAPHIQUES */}
