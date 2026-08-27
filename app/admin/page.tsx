@@ -25,7 +25,7 @@ export default function AdminDashboardPage() {
   
   const [chatInput, setChatInput] = useState('');
   const [messages, setMessages] = useState<any[]>([
-    { role: 'assistant', text: "Bonjour Amal ! Je suis ton assistant IA. Je surveille tes tables Supabase 'professors' et 'requests'. Dis-moi par exemple : 'Valide tous les nouveaux profs' ou demande-moi le statut de la plateforme !" }
+    { role: 'assistant', text: "Bonjour 에밀 ! Je suis ton assistant IA. Je surveille tes tables Supabase 'professors' et 'requests'. Dis-moi par exemple : 'Valide tous les nouveaux profs' ou demande-moi le statut de la plateforme !" }
   ]);
 
   useEffect(() => {
@@ -58,7 +58,7 @@ export default function AdminDashboardPage() {
     }
   };
 
-  // Accepter le professeur : Ajout dans 'professors' (sans description ni firstLessonFree) + Suppression de 'requests'
+  // Accepter le professeur : Ajout dans 'professors' + Suppression de 'requests'
   const handleApproveRequest = async (reqItem: any) => {
     try {
       const pName = reqItem['Prénom'] || reqItem.prenom || '';
@@ -82,7 +82,8 @@ export default function AdminDashboardPage() {
         type_cours: reqItem.type_cours || reqItem.typeCours || [],
         matiere: reqItem.matiere || 'Soutien scolaire'
       };
-      // 1. Insérer dans la table des professeurs actifs (visibles sur l'accueil)
+
+      // 1. Insérer dans la table des professeurs actifs
       const { error: insertError } = await supabase.from('professors').insert([newProf]);
       if (insertError) throw insertError;
 
@@ -92,7 +93,7 @@ export default function AdminDashboardPage() {
         if (deleteError) throw deleteError;
       }
 
-      // Notification optionnelle par email
+      // 3. Notification optionnelle par email
       if (reqItem.email) {
         await fetch('/api/notify-professor', {
           method: 'POST',
@@ -185,7 +186,7 @@ export default function AdminDashboardPage() {
     }
 
     return (
-      <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-xs">
+      <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-2xs">
         <div className="flex items-center gap-2 mb-3 text-red-500 font-bold text-xs">
           <Clock className="w-4 h-4" />
           <span>Disponibilité</span>
@@ -217,7 +218,7 @@ export default function AdminDashboardPage() {
 
                       return (
                         <td key={d.key} className="p-2">
-                          <div className={`w-7 h-7 mx-auto rounded-full flex items-center justify-center transition ${isAvailable ? 'bg-sky-200/80 shadow-xs' : 'bg-gray-100/60 opacity-40'}`}>
+                          <div className={`w-7 h-7 mx-auto rounded-full flex items-center justify-center transition ${isAvailable ? 'bg-sky-200/80 shadow-2xs' : 'bg-gray-100/60 opacity-40'}`}>
                             {isAvailable && <div className="w-3 h-3 rounded-full bg-sky-400"></div>}
                           </div>
                         </td>
@@ -237,7 +238,7 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="min-h-screen bg-gray-100 text-gray-900 font-sans">
-      <header className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between shadow-sm">
+      <header className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between shadow-xs">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-gradient-to-tr from-purple-600 to-indigo-600 text-white rounded-xl shadow-md">
             <Bot className="w-6 h-6" />
@@ -256,7 +257,7 @@ export default function AdminDashboardPage() {
 
       <main className="max-w-[98rem] mx-auto px-6 py-10">
         <div className="flex gap-4 mb-8">
-          <button onClick={() => setActiveTab('ia_agent')} className={`px-6 py-3 rounded-2xl font-bold text-sm transition cursor-pointer flex items-center gap-2 ${activeTab === 'ia_agent' ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-sm' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'}`}>
+          <button onClick={() => setActiveTab('ia_agent')} className={`px-6 py-3 rounded-2xl font-bold text-sm transition cursor-pointer flex items-center gap-2 ${activeTab === 'ia_agent' ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-xs' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'}`}>
             <Bot className="w-4 h-4" /> <span>Assistant IA Actif</span>
           </button>
           <button onClick={() => setActiveTab('existants')} className={`px-6 py-3 rounded-2xl font-bold text-sm transition cursor-pointer flex items-center gap-2 ${activeTab === 'existants' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'}`}>
@@ -277,7 +278,7 @@ export default function AdminDashboardPage() {
                 </button>
               </div>
             </div>
-            <div className="lg:col-span-2 bg-white rounded-3xl shadow-sm border border-gray-200 flex flex-col h-[550px]">
+            <div className="lg:col-span-2 bg-white rounded-3xl shadow-xs border border-gray-200 flex flex-col h-[550px]">
               <div className="flex-1 p-6 overflow-y-auto space-y-4">
                 {messages.map((msg, index) => (
                   <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -294,25 +295,25 @@ export default function AdminDashboardPage() {
         )}
 
         {activeTab === 'existants' && (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+          <div className="bg-white rounded-2xl shadow-xs border border-gray-200 p-6">
             <h2 className="text-lg font-black text-gray-900 mb-6">Professeurs Actifs sur l'Accueil</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {professeursExistants.map((p, i) => (
                 <div key={p.id || i} className="p-4 bg-gray-50 rounded-xl border border-gray-100 flex justify-between items-center">
                   <div className="flex items-center gap-3">
-                    {p.photo_URL ? (
-                      <img src={p.photo_URL} alt={p.name} className="w-10 h-10 rounded-full object-cover border" />
+                    {p.photo_URL || p.photo_url ? (
+                      <img src={p.photo_URL || p.photo_url} alt={p.name || p.Prénom} className="w-10 h-10 rounded-full object-cover border" />
                     ) : (
                       <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 font-bold text-xs">
-                        {p.name ? p.name.charAt(0) : '?'}
+                        {p.Prénom ? p.Prénom.charAt(0) : '?'}
                       </div>
                     )}
                     <div>
-                      <h3 className="font-bold text-gray-900 text-sm">{p.name}</h3>
-                      <p className="text-xs text-gray-500">{p.subject} • {p.location}</p>
+                      <h3 className="font-bold text-gray-900 text-sm">{`${p.Prénom || ''} ${p.Nom || ''}`.trim() || p.name}</h3>
+                      <p className="text-xs text-gray-500">{p.matiere || p.subject} • {p.ville || p.location}</p>
                     </div>
                   </div>
-                  <span className="font-bold text-sm text-emerald-600">{p.price} MAD/h</span>
+                  <span className="font-bold text-sm text-emerald-600">{p.tarif || p.price} MAD/h</span>
                 </div>
               ))}
             </div>
@@ -320,7 +321,7 @@ export default function AdminDashboardPage() {
         )}
 
         {activeTab === 'nouveaux' && (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 space-y-6">
+          <div className="bg-white rounded-2xl shadow-xs border border-gray-200 p-6 space-y-6">
             <div className="flex justify-between items-center">
               <h2 className="text-lg font-black text-gray-900">Demandes de professeurs & Preuves de paiement</h2>
               <button onClick={fetchDataFromSupabase} className="px-4 py-2 bg-blue-50 text-blue-700 font-bold text-xs rounded-xl flex items-center gap-2 cursor-pointer">
@@ -369,7 +370,7 @@ export default function AdminDashboardPage() {
                         <tr key={req.id || i} className="hover:bg-gray-50/80 transition cursor-pointer" onClick={() => setSelectedRequest(req)}>
                           <td className="p-3 whitespace-nowrap">
                             {photoUrl ? (
-                              <img src={photoUrl} alt={fullName} className="w-9 h-9 rounded-full object-cover border shadow-xs" />
+                              <img src={photoUrl} alt={fullName} className="w-9 h-9 rounded-full object-cover border shadow-2xs" />
                             ) : (
                               <div className="w-9 h-9 rounded-full bg-gray-200 flex items-center justify-center text-gray-400">
                                 <ImageIcon className="w-4 h-4" />
@@ -405,7 +406,7 @@ export default function AdminDashboardPage() {
                               <button onClick={() => setSelectedRequest(req)} title="Voir tous les détails" className="p-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition cursor-pointer">
                                 <Eye className="w-4 h-4" />
                               </button>
-                              <button onClick={() => handleApproveRequest(req)} title="Accepter & Publier" className="p-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition cursor-pointer shadow-xs">
+                              <button onClick={() => handleApproveRequest(req)} title="Accepter & Publier" className="p-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition cursor-pointer shadow-2xs">
                                 <CheckCircle className="w-4 h-4" />
                               </button>
                               <button onClick={() => handleRejectRequest(req.id)} title="Rejeter définitivement" className="p-2 bg-white border border-red-200 text-red-600 hover:bg-red-50 rounded-lg transition cursor-pointer">
@@ -436,14 +437,13 @@ export default function AdminDashboardPage() {
         const fullName = (`${selectedRequest['Prénom'] || selectedRequest.prenom || ''} ${selectedRequest['Nom'] || selectedRequest.nom || ''}`).trim() || 'Détails du Professeur';
 
         return (
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-2xs flex items-center justify-center p-4">
             <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-200 p-8 relative animate-in fade-in zoom-in duration-200">
               <button onClick={() => setSelectedRequest(null)} className="absolute top-6 right-6 p-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full transition cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
 
               <div className="flex items-center gap-4 mb-6 pb-6 border-b border-gray-100">
-                {/* Photo cliquable pour zoomer en grand format */}
                 <div className="shrink-0 relative group cursor-pointer" onClick={() => photoUrl && setPreviewImage(photoUrl)}>
                   {photoUrl ? (
                     <>
@@ -457,7 +457,7 @@ export default function AdminDashboardPage() {
                       </div>
                     </>
                   ) : (
-                    <div className="w-16 h-16 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 font-bold text-lg shadow-sm">
+                    <div className="w-16 h-16 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 font-bold text-lg shadow-xs">
                       {fullName.charAt(0)}
                     </div>
                   )}
