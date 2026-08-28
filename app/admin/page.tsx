@@ -58,54 +58,17 @@ export default function AdminDashboardPage() {
     }
   };
 
-  // Accepter le professeur : Ajout dans 'professors' + Suppression de 'requests' (dynamique et sécurisé)
+  // Accepter le professeur : Ajout dans 'professors' + Suppression de 'requests'
   const handleApproveRequest = async (reqItem: any) => {
     try {
+      console.log("Tentative d'approbation pour l'ID :", reqItem.id);
+      
       const pName = reqItem['Prénom'] || reqItem.prenom || '';
       const nName = reqItem['Nom'] || reqItem.nom || '';
       const fullName = (`${pName} ${nName}`).trim() || 'Nouveau Professeur';
 
-      // 1. On récupère un enregistrement de la table professors pour voir quelles colonnes elle accepte exactement
-      const { data: sampleProf } = await supabase.from('professors').select('*').limit(1);
-      
+      // 1. Préparation des données du professeur
       let newProf: any = {};
-
-      if (sampleProf && sampleProf.length > 0) {
-        const existingColumns = Object.keys(sampleProf[0]);
-        existingColumns.forEach(col => {
-          if (col === 'id') return; // Ne pas copier l'ID pour laisser Supabase générer le sien
-          
-          if (reqItem[col] !== undefined) {
-            newProf[col] = reqItem[col];
-          } else if (col === 'Nom' && reqItem.nom) newProf[col] = reqItem.nom;
-          else if (col === 'prenom' && reqItem['Prénom']) newProf[col] = reqItem['Prénom'];
-          else if (col === 'tarif' && reqItem.price) newProf[col] = reqItem.price;
-          else if (col === 'price' && reqItem.tarif) newProf[col] = reqItem.tarif;
-          else if (col === 'matiere' && reqItem.subject) newProf[col] = reqItem.subject;
-          else if (col === 'subject' && reqItem.matiere) newProf[col] = reqItem.matiere;
-          else if (col === 'ville' && reqItem.city) newProf[col] = reqItem.city;
-          else if (col === 'city' && reqItem.ville) newProf[col] = reqItem.ville;
-          else if (col === 'photo_URL' && reqItem.photo_URL) newProf[col] = reqItem.photo_URL;
-        });
-        
-        if (existingColumns.includes('is_approved')) {
-          newProf.is_approved = true;
-        }
-      } else {
-        // Fallback sécurisé si la table professors est totalement vide
-        newProf = {
-          Nom: nName,
-          Prénom: pName,
-          ville: reqItem.ville || 'Casablanca',
-          email: reqItem.email || '',
-          tarif: reqItem.tarif || '200 MAD',
-          profession: reqItem.profession || '',
-          matiere: reqItem.matiere || 'Soutien scolaire',
-          is_approved: true
-        };
-      }
-
-      // S'assurer que les clés exactes de la table professors sont bien mappées si elles existent dans requests
       const fieldsToMap = [
         'Prénom', 'Nom', 'age', 'ville', 'profession', 'dernier diplome', 
         'tarif', 'email', 'telephone', 'numero de recu', 'photo_URL', 
@@ -115,23 +78,35 @@ export default function AdminDashboardPage() {
       ];
 
       fieldsToMap.forEach(field => {
-        if (reqItem[field] !== undefined && newProf[field] === undefined) {
+        if (reqItem[field] !== undefined) {
           newProf[field] = reqItem[field];
         }
       });
 
-      if (newProf.is_approved === undefined) {
-        newProf.is_approved = true;
-      }
+      newProf.is_approved = true;
 
       // 2. Insérer dans la table des professeurs actifs
       const { error: insertError } = await supabase.from('professors').insert([newProf]);
-      if (insertError) throw insertError;
+      if (insertError) {
+        console.error("Erreur Insertion professors:", insertError);
+        throw insertError;
+      }
 
       // 3. Supprimer de la table des demandes en attente
       if (reqItem.id) {
-        const { error: deleteError } = await supabase.from('requests').delete().eq('id', reqItem.id);
-        if (deleteError) throw deleteError;
+        const { error: deleteError, count } = await supabase
+          .from('requests')
+          .delete()
+          .eq('id', reqItem.id);
+
+        if (deleteError) {
+          console.error("Erreur Suppression requests:", deleteError);
+          alert(`Le prof a été ajouté, mais la suppression a échoué (Vérifie tes politiques RLS Supabase sur la table requests) : ${deleteError.message}`);
+          return;
+        }
+        console.log("Suppression réussie dans requests, lignes affectées :", count);
+      } else {
+        console.warn("Attention : Aucun ID trouvé sur cet élément requests !");
       }
 
       // 4. Notification optionnelle par email
@@ -145,7 +120,7 @@ export default function AdminDashboardPage() {
 
       setSelectedRequest(null);
       await fetchDataFromSupabase();
-      alert(`Le profil de ${fullName} a été accepté avec succès et est désormais visible sur l'accueil !`);
+      alert(`Le profil de ${fullName} a été accepté et retiré des demandes avec succès !`);
     } catch (err: any) {
       alert(`Erreur lors de la validation : ${err.message}`);
     }
