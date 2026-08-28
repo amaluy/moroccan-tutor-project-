@@ -23,22 +23,23 @@ export default function PagePaiementProf() {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Données provisoires récupérées du localStorage sous 'pending_prof_data'
   const [formData, setFormData] = useState<any>({});
 
+  // Chargement anti-cache sécurisé du localStorage
   useEffect(() => {
+    // Empêcher l'utilisation de données périmées en forçant la lecture fraîche
     const savedData = localStorage.getItem('pending_prof_data');
     if (savedData) {
       try {
         const parsed = JSON.parse(savedData);
         setFormData(parsed);
-        // Pré-remplir automatiquement le nom de l'expéditeur
         const fullName = `${parsed.Prénom || parsed.prenom || ''} ${parsed.Nom || parsed.nom || ''}`.trim();
         if (fullName) {
           setNomExpediteur(fullName);
         }
       } catch (err) {
         console.error("Erreur lors du parsing du localStorage :", err);
+        localStorage.removeItem('pending_prof_data'); // Nettoyage si corrompu
       }
     }
   }, []);
@@ -62,18 +63,15 @@ export default function PagePaiementProf() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isValid) return;
+    if (!isValid || loading) return;
 
     setLoading(true);
 
     try {
-      // 1. Récupération immédiate et directe depuis le localStorage au moment du clic
+      // 1. Récupération fraîche directe sans passer par l'état potentiellement en cache
       const rawStorageData = localStorage.getItem('pending_prof_data');
       const dataFromStorage = rawStorageData ? JSON.parse(rawStorageData) : {};
 
-      console.log("Données récupérées pour l'envoi :", dataFromStorage);
-
-      // 2. Construction exhaustive du payload correspondant à toutes les colonnes de Supabase
       const payload = {
         Nom: dataFromStorage.Nom || dataFromStorage.nom || nomExpediteur,
         Prénom: dataFromStorage.Prénom || dataFromStorage.prenom || '',
@@ -81,7 +79,7 @@ export default function PagePaiementProf() {
         ville: dataFromStorage.ville || dataFromStorage.Ville || '',
         profession: dataFromStorage.profession || '',
         matiere: dataFromStorage.matiere || dataFromStorage.Matiere || '',
-        niveau: dataFromStorage.niveau || dataFromStorage.Niveau || [], // <--- Ajouté ici pour récupérer les choix de niveaux
+        niveau: dataFromStorage.niveau || dataFromStorage.Niveau || [],
         'dernier diplome': dataFromStorage['dernier diplome'] || dataFromStorage.dernierDiplome || dataFromStorage.diplome || '',
         experience: dataFromStorage.experience || '',
         statut: dataFromStorage.statut || '',
@@ -92,13 +90,11 @@ export default function PagePaiementProf() {
         disponibilites: dataFromStorage.disponibilites || [],
         email: dataFromStorage.email || dataFromStorage.Email || '',
         telephone: dataFromStorage.telephone ? String(dataFromStorage.telephone) : null,
-        'numero de transaction': methode === 'carte' ? codeTransfert : null,
-        'numero de recu': methode === 'cash' ? codeTransfert : null,
+        'numero de transaction': methode === 'carte' ? codeTransfert.trim() : null,
+        'numero de recu': methode === 'cash' ? codeTransfert.trim() : null,
         'date de demande': new Date().toISOString(),
         photo_URL: dataFromStorage.photo_URL || dataFromStorage.photoUrl || dataFromStorage.photo || ''
       };
-
-      console.log("Payload final envoyé à Supabase :", payload);
 
       const { error } = await supabase.from('requests').insert([payload]);
 
@@ -109,11 +105,17 @@ export default function PagePaiementProf() {
         return;
       }
 
-      // Nettoyage du localStorage après succès
+      // 2. Nettoyage radical du cache local pour éviter les doublons ou données résiduelles
       localStorage.removeItem('pending_prof_data');
+      
+      // 3. Forcer le rafraîchissement du routeur Next.js pour vider le cache de navigation
+      router.refresh();
+
       setIsSubmitted(true);
     } catch (err) {
       console.error("Erreur inattendue :", err);
+      alert("Une erreur est survenue. Veuillez réessayer.");
+    } finally {
       setLoading(false);
     }
   };
@@ -121,10 +123,8 @@ export default function PagePaiementProf() {
   return (
     <main className="min-h-screen bg-[#FCFCFD] text-gray-900 font-sans flex flex-col justify-between selection:bg-[#FF5A5F] selection:text-white relative overflow-hidden">
 
-      {/* Élément décoratif d'arrière-plan */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[350px] bg-gradient-to-b from-red-50/60 to-transparent rounded-full blur-3xl pointer-events-none -z-10" />
 
-      {/* Header */}
       <header className="w-full max-w-4xl mx-auto px-6 py-6 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2">
           <span className="text-2xl font-black text-gray-900 tracking-tight">
@@ -133,7 +133,6 @@ export default function PagePaiementProf() {
         </Link>
       </header>
 
-      {/* Contenu principal */}
       <div className="flex-1 max-w-lg mx-auto px-6 py-8 w-full my-auto space-y-6">
 
         {!isSubmitted ? (
@@ -150,7 +149,6 @@ export default function PagePaiementProf() {
               </p>
             </div>
 
-            {/* Choix principal : Espèces vs Virement/Carte */}
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
@@ -178,7 +176,6 @@ export default function PagePaiementProf() {
               </button>
             </div>
 
-            {/* SECTION 1 : ESPÈCES (CashPlus / WafaCash) */}
             {methode === 'cash' && (
               <div className="space-y-4 animate-in fade-in">
                 <div className="grid grid-cols-2 gap-2">
@@ -214,7 +211,6 @@ export default function PagePaiementProf() {
                         type="button"
                         onClick={() => handleCopy(`+212 ${mesCoordonnees.telephone}`, 'tel-cash')}
                         className="flex items-center gap-1.5 font-bold text-gray-900 hover:text-[#FF5A5F] transition cursor-pointer"
-                        title="Cliquer pour copier"
                       >
                         <span>+212 {mesCoordonnees.telephone}</span>
                         {copiedField === 'tel-cash' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-gray-400" />}
@@ -226,7 +222,6 @@ export default function PagePaiementProf() {
               </div>
             )}
 
-            {/* SECTION 2 : CARTE BANCAIRE / VIREMENT */}
             {methode === 'carte' && (
               <div className="space-y-4 animate-in fade-in">
                 <div className="grid grid-cols-2 gap-2">
@@ -264,7 +259,6 @@ export default function PagePaiementProf() {
                         <div 
                           onClick={() => handleCopy(mesCoordonnees.rib, 'rib')}
                           className="font-mono font-bold text-gray-900 bg-gray-50 p-2.5 rounded border flex items-center justify-between cursor-pointer hover:bg-gray-100 transition group"
-                          title="Cliquer pour copier le RIB"
                         >
                           <span>{mesCoordonnees.rib}</span>
                           <Copy className="w-4 h-4 text-gray-400 group-hover:text-gray-700" />
@@ -277,7 +271,6 @@ export default function PagePaiementProf() {
                           type="button"
                           onClick={() => handleCopy(`+212 ${mesCoordonnees.telephone}`, 'tel-mobile')}
                           className="flex items-center gap-1.5 font-bold text-gray-900 hover:text-[#FF5A5F] transition cursor-pointer"
-                          title="Cliquer pour copier"
                         >
                           <span>+212 {mesCoordonnees.telephone}</span>
                           {copiedField === 'tel-mobile' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-gray-400" />}
@@ -289,7 +282,6 @@ export default function PagePaiementProf() {
               </div>
             )}
 
-            {/* Formulaire de validation de la preuve */}
             <form onSubmit={handleSubmit} className="space-y-4 pt-2 border-t border-gray-100">
               <h2 className="text-xs font-black uppercase tracking-wider text-gray-500 flex items-center gap-2">
                 <Hash className="w-4 h-4 text-[#FF5A5F]" />

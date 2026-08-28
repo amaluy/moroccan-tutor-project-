@@ -58,46 +58,83 @@ export default function AdminDashboardPage() {
     }
   };
 
-  // Accepter le professeur : Ajout dans 'professors' + Suppression de 'requests'
+  // Accepter le professeur : Ajout dans 'professors' + Suppression de 'requests' (dynamique et sécurisé)
   const handleApproveRequest = async (reqItem: any) => {
     try {
       const pName = reqItem['Prénom'] || reqItem.prenom || '';
       const nName = reqItem['Nom'] || reqItem.nom || '';
-      const fullName = (`${pName} ${nName}`).trim() || reqItem.name || 'Nouveau Professeur';
-      
-      const newProf = {
-        name: fullName,
-        prenom: pName,
-        nom: nName,
-        ville: reqItem.ville || reqItem.location || 'Casablanca',
-        email: reqItem.email || '',
-        bio: reqItem.bio || '',
-        is_approved: true,
-        age: reqItem.age ? String(reqItem.age) : '',
-        price: reqItem.tarif ? parseInt(reqItem.tarif) : (reqItem.price ? parseInt(reqItem.price) : 200),
-        tarif: reqItem.tarif ? parseInt(reqItem.tarif) : 200,
-        profession: reqItem.profession || '',
-        'dernier diplome': reqItem['dernier diplome'] || reqItem.dernier_diplome || '',
-        telephone: reqItem.telephone || '',
-        niveau: reqItem.niveau || reqItem.Niveau || [],
-        experience: reqItem.experience || '',
-        type_cours: reqItem.type_cours || reqItem.typeCours || [],
-        matiere: reqItem.matiere || reqItem.subject || 'Soutien scolaire',
-        subject: reqItem.matiere || reqItem.subject || 'Soutien scolaire',
-        photo_url: reqItem.photo_URL || reqItem.photo_url || ''
-      };
+      const fullName = (`${pName} ${nName}`).trim() || 'Nouveau Professeur';
 
-      // 1. Insérer dans la table des professeurs actifs
+      // 1. On récupère un enregistrement de la table professors pour voir quelles colonnes elle accepte exactement
+      const { data: sampleProf } = await supabase.from('professors').select('*').limit(1);
+      
+      let newProf: any = {};
+
+      if (sampleProf && sampleProf.length > 0) {
+        const existingColumns = Object.keys(sampleProf[0]);
+        existingColumns.forEach(col => {
+          if (col === 'id') return; // Ne pas copier l'ID pour laisser Supabase générer le sien
+          
+          if (reqItem[col] !== undefined) {
+            newProf[col] = reqItem[col];
+          } else if (col === 'Nom' && reqItem.nom) newProf[col] = reqItem.nom;
+          else if (col === 'prenom' && reqItem['Prénom']) newProf[col] = reqItem['Prénom'];
+          else if (col === 'tarif' && reqItem.price) newProf[col] = reqItem.price;
+          else if (col === 'price' && reqItem.tarif) newProf[col] = reqItem.tarif;
+          else if (col === 'matiere' && reqItem.subject) newProf[col] = reqItem.subject;
+          else if (col === 'subject' && reqItem.matiere) newProf[col] = reqItem.matiere;
+          else if (col === 'ville' && reqItem.city) newProf[col] = reqItem.city;
+          else if (col === 'city' && reqItem.ville) newProf[col] = reqItem.ville;
+          else if (col === 'photo_URL' && reqItem.photo_URL) newProf[col] = reqItem.photo_URL;
+        });
+        
+        if (existingColumns.includes('is_approved')) {
+          newProf.is_approved = true;
+        }
+      } else {
+        // Fallback sécurisé si la table professors est totalement vide
+        newProf = {
+          Nom: nName,
+          Prénom: pName,
+          ville: reqItem.ville || 'Casablanca',
+          email: reqItem.email || '',
+          tarif: reqItem.tarif || '200 MAD',
+          profession: reqItem.profession || '',
+          matiere: reqItem.matiere || 'Soutien scolaire',
+          is_approved: true
+        };
+      }
+
+      // S'assurer que les clés exactes de la table professors sont bien mappées si elles existent dans requests
+      const fieldsToMap = [
+        'Prénom', 'Nom', 'age', 'ville', 'profession', 'dernier diplome', 
+        'tarif', 'email', 'telephone', 'numero de recu', 'photo_URL', 
+        'numero de transaction', 'disponibilities', 'type_cours', 
+        'distance_max', 'frais_deplacement', 'statut', 'experience', 
+        'niveau', 'bio', 'matiere'
+      ];
+
+      fieldsToMap.forEach(field => {
+        if (reqItem[field] !== undefined && newProf[field] === undefined) {
+          newProf[field] = reqItem[field];
+        }
+      });
+
+      if (newProf.is_approved === undefined) {
+        newProf.is_approved = true;
+      }
+
+      // 2. Insérer dans la table des professeurs actifs
       const { error: insertError } = await supabase.from('professors').insert([newProf]);
       if (insertError) throw insertError;
 
-      // 2. Supprimer de la table des demandes en attente
+      // 3. Supprimer de la table des demandes en attente
       if (reqItem.id) {
         const { error: deleteError } = await supabase.from('requests').delete().eq('id', reqItem.id);
         if (deleteError) throw deleteError;
       }
 
-      // 3. Notification optionnelle par email
+      // 4. Notification optionnelle par email
       if (reqItem.email) {
         await fetch('/api/notify-professor', {
           method: 'POST',
@@ -306,18 +343,18 @@ export default function AdminDashboardPage() {
                 <div key={p.id || i} className="p-4 bg-gray-50 rounded-xl border border-gray-100 flex justify-between items-center">
                   <div className="flex items-center gap-3">
                     {p.photo_url || p.photo_URL ? (
-                      <img src={p.photo_url || p.photo_URL} alt={p.name || p.Prénom} className="w-10 h-10 rounded-full object-cover border" />
+                      <img src={p.photo_url || p.photo_URL} alt={p.Nom || p.Prénom} className="w-10 h-10 rounded-full object-cover border" />
                     ) : (
                       <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 font-bold text-xs">
-                        {p.name ? p.name.charAt(0) : (p.Prénom ? p.Prénom.charAt(0) : '?')}
+                        {p.Nom ? p.Nom.charAt(0) : (p.Prénom ? p.Prénom.charAt(0) : '?')}
                       </div>
                     )}
                     <div>
-                      <h3 className="font-bold text-gray-900 text-sm">{p.name || `${p.Prénom || ''} ${p.Nom || ''}`.trim()}</h3>
-                      <p className="text-xs text-gray-500">{p.subject || p.matiere} • {p.city || p.ville}</p>
+                      <h3 className="font-bold text-gray-900 text-sm">{`${p.Prénom || ''} ${p.Nom || ''}`.trim()}</h3>
+                      <p className="text-xs text-gray-500">{p.matiere || p.subject} • {p.ville || p.city}</p>
                     </div>
                   </div>
-                  <span className="font-bold text-sm text-emerald-600">{p.price || p.tarif} MAD/h</span>
+                  <span className="font-bold text-sm text-emerald-600">{p.tarif || p.price} MAD/h</span>
                 </div>
               ))}
             </div>
@@ -356,7 +393,7 @@ export default function AdminDashboardPage() {
                     {professeursNouveaux.map((req, i) => {
                       const prenomVal = req['Prénom'] || req.prenom || '';
                       const nomVal = req['Nom'] || req.nom || '';
-                      const fullName = (`${prenomVal} ${nomVal}`).trim() || req.name || 'N/A';
+                      const fullName = (`${prenomVal} ${nomVal}`).trim() || 'N/A';
                       
                       const photoUrl = req.photo_url || req.photo_URL || '';
                       const professionVal = req.profession || 'N/A';
@@ -438,7 +475,7 @@ export default function AdminDashboardPage() {
         const hasValidTrans = transVal && transVal !== 'N/A' && String(transVal).trim() !== '';
         
         const photoUrl = selectedRequest.photo_url || selectedRequest.photo_URL;
-        const fullName = (`${selectedRequest['Prénom'] || selectedRequest.prenom || ''} ${selectedRequest['Nom'] || selectedRequest.nom || ''}`).trim() || selectedRequest.name || 'Détails du Professeur';
+        const fullName = (`${selectedRequest['Prénom'] || selectedRequest.prenom || ''} ${selectedRequest['Nom'] || selectedRequest.nom || ''}`).trim() || 'Détails du Professeur';
 
         return (
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-2xs flex items-center justify-center p-4">
@@ -522,7 +559,7 @@ export default function AdminDashboardPage() {
                 
                 {/* DISPONIBILITÉS GRAPHIQUES */}
                 <div className="col-span-2">
-                  {renderAvailabilityGrid(selectedRequest.disponibilites || selectedRequest.disponibilités || '')}
+                  {renderAvailabilityGrid(selectedRequest.disponibilities || selectedRequest.disponibilites || selectedRequest.disponibilités || '')}
                 </div>
 
                 <div className="bg-gray-50 p-3.5 rounded-2xl border border-gray-100">
