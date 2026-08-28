@@ -77,7 +77,7 @@ export default function AdminDashboardPage() {
         price: reqItem.tarif ? parseInt(reqItem.tarif) : (reqItem.price ? parseInt(reqItem.price) : 200),
         tarif: reqItem.tarif ? parseInt(reqItem.tarif) : 200,
         profession: reqItem.profession || '',
-        dernier_diplome: reqItem['dernier diplome'] || reqItem.dernier_diplome || '',
+        'dernier diplome': reqItem['dernier diplome'] || reqItem.dernier_diplome || '',
         telephone: reqItem.telephone || '',
         niveau: reqItem.niveau || reqItem.Niveau || [],
         experience: reqItem.experience || '',
