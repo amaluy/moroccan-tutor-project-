@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 
-// Initialisation du client Supabase avec tes variables d'environnement
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -14,8 +13,8 @@ export default function SetPasswordPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   
-  // Récupère l'e-mail passé dans l'URL (ex: /set-password?email=prof@gmail.com)
-  const email = searchParams.get('email');
+  const initialEmail = searchParams.get('email') || '';
+  const [email, setEmail] = useState(initialEmail);
 
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -28,11 +27,12 @@ export default function SetPasswordPage() {
     setError('');
 
     if (!email) {
-      setError('E-mail manquant dans le lien.');
+      setError('Veuillez entrer une adresse e-mail.');
       setLoading(false);
       return;
     }
 
+    // Vérification que les deux mots de passe sont identiques
     if (password !== confirmPassword) {
       setError('Les mots de passe ne correspondent pas.');
       setLoading(false);
@@ -40,23 +40,17 @@ export default function SetPasswordPage() {
     }
 
     try {
-      // Mise à jour du professeur dans ta table Supabase (ex: table "professors")
-      // On enregistre son mot de passe et on active son compte
       const { error: dbError } = await supabase
         .from('professors')
-        .update({ 
-          password: password, // Note: en production, pense à le hacher (ex: bcrypt), pour l'instant tu peux tester en clair
-          is_active: true 
-        })
+        .update({ password: password })
         .eq('email', email);
 
       if (dbError) throw dbError;
 
-      // Redirection vers le tableau de bord du professeur une fois validé
+      // Redirection immédiate vers le dashboard du professeur
       router.push('/prof/dashboard');
     } catch (err: any) {
       setError(err.message || 'Une erreur est survenue.');
-    } finally {
       setLoading(false);
     }
   };
@@ -82,9 +76,11 @@ export default function SetPasswordPage() {
             <label className="block text-sm font-medium text-gray-700">Votre e-mail</label>
             <input
               type="email"
-              value={email || ''}
-              disabled
-              className="mt-1 block w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-500 cursor-not-allowed"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="professeur@gmail.com"
+              className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500 text-gray-900"
             />
           </div>
 
@@ -96,7 +92,7 @@ export default function SetPasswordPage() {
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-purple-500 focus:border-purple-500"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500 text-gray-900"
             />
           </div>
 
@@ -108,16 +104,16 @@ export default function SetPasswordPage() {
               placeholder="••••••••"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-purple-500 focus:border-purple-500"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500 text-gray-900"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-white bg-purple-600 hover:bg-purple-700 font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50"
+            className="w-full py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-white bg-orange-600 hover:bg-orange-700 font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50 transition-colors mt-2"
           >
-            {loading ? 'Enregistrement...' : 'Activer mon compte'}
+            {loading ? 'Traitement en cours...' : 'Activer mon compte'}
           </button>
         </form>
       </div>
