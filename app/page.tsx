@@ -15,14 +15,20 @@ import {
 
 interface Professor {
   id: string;
-  name: string;
+  prenom?: string;
+  nom?: string;
+  name?: string; // Gardé pour compatibilité
+  photo_url?: string;
   avatar_url?: string;
+  ville?: string;
   city?: string;
+  niveau?: string;
   level?: string;
+  matiere?: string;
   subject?: string;
   title?: string;
+  tarif?: number | string;
   price?: number | string;
-  badge?: string;
 }
 
 export default function HomePage() {
@@ -56,26 +62,32 @@ export default function HomePage() {
     try {
       let query = supabase.from('professors').select('*');
 
-      // Filtrage par matière
+      // Filtrage par matière (compatible 'matiere' ou 'subject')
       if (selectedSubject) {
-        query = query.ilike('subject', `%${selectedSubject}%`);
+        query = query.or(`matiere.ilike.%${selectedSubject}%,subject.ilike.%${selectedSubject}%`);
       }
 
-      // Filtrage par ville
+      // Filtrage par ville (compatible 'ville' ou 'city')
       if (selectedCity) {
-        query = query.ilike('city', `%${selectedCity}%`);
+        query = query.or(`ville.ilike.%${selectedCity}%,city.ilike.%${selectedCity}%`);
       }
 
-      // Filtrage par niveau
+      // Filtrage par niveau (compatible 'niveau' ou 'level')
       if (selectedLevel) {
-        query = query.ilike('level', `%${selectedLevel}%`);
+        query = query.or(`niveau.ilike.%${selectedLevel}%,level.ilike.%${selectedLevel}%`);
       }
 
-      // Filtrage par tranche de prix
+      // Filtrage par tranche de prix (compatible 'tarif' ou 'price')
       if (priceRange) {
-        if (priceRange === '0-100') query = query.lte('price', 100);
-        if (priceRange === '100-150') query = query.gte('price', 100).lte('price', 150);
-        if (priceRange === '150-200') query = query.gte('price', 150).lte('price', 200);
+        if (priceRange === '0-100') {
+          query = query.or('tarif.lte.100,price.lte.100');
+        }
+        if (priceRange === '100-150') {
+          query = query.or('and(tarif.gte.100,tarif.lte.150),and(price.gte.100,price.lte.150)');
+        }
+        if (priceRange === '150-200') {
+          query = query.or('and(tarif.gte.150,tarif.lte.200),and(price.gte.150,price.lte.200)');
+        }
       }
 
       const { data, error } = await query;
@@ -331,81 +343,93 @@ export default function HomePage() {
             </div>
           ) : (
             <div className="space-y-4">
-              {professors.map((prof) => (
-                <div 
-                  key={prof.id} 
-                  className="bg-white rounded-2xl border border-gray-200/80 p-5 shadow-sm hover:shadow-md transition flex flex-col sm:flex-row gap-5 items-start sm:items-center justify-between relative overflow-hidden"
-                >
-                  <div className="flex gap-4 items-start sm:items-center">
-                    
-                    {/* AVATAR SUPABASE OU INITIALES AUTOMATIQUES */}
-                    {prof.avatar_url ? (
-                      <img 
-                        src={prof.avatar_url} 
-                        alt={prof.name} 
-                        className="w-20 h-20 rounded-full object-cover shrink-0 border-2 border-orange-100 shadow-sm"
-                      />
-                    ) : (
-                      <div className="w-20 h-20 rounded-full bg-gradient-to-br from-orange-400 to-[#FF5733] text-white flex items-center justify-center text-xl font-black shrink-0 border-2 border-orange-100 shadow-sm">
-                        {prof.name ? prof.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'P'}
-                      </div>
-                    )}
+              {professors.map((prof) => {
+                // Résolution dynamique des champs (supporte prenom/nom/name et photo_url/avatar_url, etc.)
+                const fullName = prof.prenom || prof.nom 
+                  ? `${prof.prenom || ''} ${prof.nom || ''}`.trim() 
+                  : (prof.name || 'Professeur');
+                const photo = prof.photo_url || prof.avatar_url;
+                const city = prof.ville || prof.city || "Maroc";
+                const subject = prof.matiere || prof.subject;
+                const level = prof.niveau || prof.level;
+                const price = prof.tarif !== undefined ? prof.tarif : prof.price;
 
-                    <div className="space-y-1.5">
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-base font-bold text-gray-900">{prof.name}</h3>
-                        <span className="text-[10px] bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
-                          <BadgeCheck className="w-3 h-3 text-emerald-600" /> Profil Vérifié
+                return (
+                  <div 
+                    key={prof.id} 
+                    className="bg-white rounded-2xl border border-gray-200/80 p-5 shadow-sm hover:shadow-md transition flex flex-col sm:flex-row gap-5 items-start sm:items-center justify-between relative overflow-hidden"
+                  >
+                    <div className="flex gap-4 items-start sm:items-center">
+                      
+                      {/* AVATAR SUPABASE OU INITIALES AUTOMATIQUES */}
+                      {photo ? (
+                        <img 
+                          src={photo} 
+                          alt={fullName} 
+                          className="w-20 h-20 rounded-full object-cover shrink-0 border-2 border-orange-100 shadow-sm"
+                        />
+                      ) : (
+                        <div className="w-20 h-20 rounded-full bg-gradient-to-br from-orange-400 to-[#FF5733] text-white flex items-center justify-center text-xl font-black shrink-0 border-2 border-orange-100 shadow-sm">
+                          {fullName ? fullName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'P'}
+                        </div>
+                      )}
+
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-base font-bold text-gray-900">{fullName}</h3>
+                          <span className="text-[10px] bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
+                            <BadgeCheck className="w-3 h-3 text-emerald-600" /> Profil Vérifié
+                          </span>
+                        </div>
+
+                        <p className="text-xs text-gray-500 flex items-center gap-1">
+                          <MapPin className="w-3 h-3 text-[#FF5733]" />
+                          {city}
+                        </p>
+
+                        <div className="flex flex-wrap gap-1.5 items-center text-[11px]">
+                          {subject && (
+                            <span className="bg-gray-100 text-gray-700 font-semibold px-2 py-0.5 rounded-md">
+                              {subject}
+                            </span>
+                          )}
+                          {level && (
+                            <>
+                              <span className="text-gray-400">•</span>
+                              <span className="text-[#FF5733] font-semibold">
+                                {level}
+                              </span>
+                            </>
+                          )}
+                        </div>
+
+                        {prof.title && (
+                          <p className="text-xs font-semibold text-gray-800 line-clamp-1 max-w-md">
+                            {prof.title}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* TARIF & BOUTON VOIR LE PROFIL */}
+                    <div className="w-full sm:w-auto flex sm:flex-col justify-between items-end gap-3 border-t sm:border-t-0 pt-3 sm:pt-0 border-gray-100 shrink-0">
+                      <div className="text-left sm:text-right">
+                        <span className="text-base font-black text-gray-900">
+                          {price !== undefined && price !== null && price !== "" ? `${price} DH/h` : "Prix sur demande"}
                         </span>
                       </div>
 
-                      <p className="text-xs text-gray-500 flex items-center gap-1">
-                        <MapPin className="w-3 h-3 text-[#FF5733]" />
-                        {prof.city || "Maroc"}
-                      </p>
-
-                      <div className="flex flex-wrap gap-1.5 items-center text-[11px]">
-                        {prof.subject && (
-                          <span className="bg-gray-100 text-gray-700 font-semibold px-2 py-0.5 rounded-md">
-                            {prof.subject}
-                          </span>
-                        )}
-                        {prof.level && (
-                          <>
-                            <span className="text-gray-400">•</span>
-                            <span className="text-[#FF5733] font-semibold">
-                              {prof.level}
-                            </span>
-                          </>
-                        )}
-                      </div>
-
-                      {prof.title && (
-                        <p className="text-xs font-semibold text-gray-800 line-clamp-1 max-w-md">
-                          {prof.title}
-                        </p>
-                      )}
+                      <Link 
+                        href={`/professeurs/${prof.id}`}
+                        className="bg-[#FF5733] hover:bg-[#e04824] text-white text-xs font-bold px-4 py-2.5 rounded-xl transition flex items-center gap-1 shadow-sm"
+                      >
+                        Voir le profil
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </Link>
                     </div>
                   </div>
-
-                  {/* TARIF & BOUTON VOIR LE PROFIL */}
-                  <div className="w-full sm:w-auto flex sm:flex-col justify-between items-end gap-3 border-t sm:border-t-0 pt-3 sm:pt-0 border-gray-100 shrink-0">
-                    <div className="text-left sm:text-right">
-                      <span className="text-base font-black text-gray-900">
-                        {prof.price ? `${prof.price} DH/h` : "Prix sur demande"}
-                      </span>
-                    </div>
-
-                    <Link 
-                      href={`/professeurs/${prof.id}`}
-                      className="bg-[#FF5733] hover:bg-[#e04824] text-white text-xs font-bold px-4 py-2.5 rounded-xl transition flex items-center gap-1 shadow-sm"
-                    >
-                      Voir le profil
-                      <ChevronRight className="w-3.5 h-3.5" />
-                    </Link>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
