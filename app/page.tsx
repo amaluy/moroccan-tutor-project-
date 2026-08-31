@@ -20,6 +20,7 @@ interface Professor {
   nom?: string;
   prenom?: string;
   name?: string;
+  photo_URL?: string;
   photo_url?: string;
   avatar_url?: string;
   photo?: string;
@@ -39,11 +40,9 @@ export default function HomePage() {
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [helpSection, setHelpSection] = useState<'recherche' | 'acceptee' | 'refusee' | 'avis' | 'inscription' | 'compte'>('recherche');
 
-  // États pour les professeurs et le chargement
   const [professors, setProfessors] = useState<Professor[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
-  // Filtres
   const [selectedSubject, setSelectedSubject] = useState('');
   const [selectedCity, setSelectedCity] = useState('');
   const [selectedLevel, setSelectedLevel] = useState('');
@@ -59,28 +58,20 @@ export default function HomePage() {
     "Primaire", "Collège", "Secondaire", "Niveau Supérieur"
   ];
 
-  // Fonction de récupération des professeurs depuis Supabase
   const fetchProfessors = async () => {
     setLoading(true);
     try {
       let query = supabase.from('professors').select('*');
 
-      // Filtrage par matière (compatible 'matiere' ou 'subject')
       if (selectedSubject) {
         query = query.or(`matiere.ilike.%${selectedSubject}%,subject.ilike.%${selectedSubject}%`);
       }
-
-      // Filtrage par ville (compatible 'ville' ou 'city')
       if (selectedCity) {
         query = query.or(`ville.ilike.%${selectedCity}%,city.ilike.%${selectedCity}%`);
       }
-
-      // Filtrage par niveau (compatible 'niveau' ou 'level')
       if (selectedLevel) {
         query = query.or(`niveau.ilike.%${selectedLevel}%,level.ilike.%${selectedLevel}%`);
       }
-
-      // Filtrage par tranche de prix (compatible 'tarif' ou 'price')
       if (priceRange) {
         if (priceRange === '0-100') {
           query = query.or('tarif.lte.100,price.lte.100');
@@ -107,7 +98,6 @@ export default function HomePage() {
     }
   };
 
-  // Chargement initial au montage de la page
   useEffect(() => {
     fetchProfessors();
   }, []);
@@ -131,7 +121,6 @@ export default function HomePage() {
   return (
     <main className="min-h-screen bg-white text-gray-900 font-sans flex flex-col justify-between">
       
-      {/* NAVBAR */}
       <Navbar 
         isLoggedIn={false}
         isMenuOpen={isMenuOpen}
@@ -140,11 +129,8 @@ export default function HomePage() {
         onOpenHelp={() => setIsHelpOpen(true)}
       />
 
-      {/* --- HERO SECTION --- */}
       <section className="bg-white border-b border-gray-100 py-12 lg:py-16 px-4 sm:px-8 relative overflow-hidden">
         <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
-          
-          {/* Gauche */}
           <div className="lg:col-span-7 space-y-6 text-center lg:text-left">
             <div className="inline-flex items-center gap-2 bg-orange-50 text-[#FF5733] border border-orange-200/60 px-3.5 py-1.5 rounded-full text-xs font-bold shadow-sm">
               <Sparkles className="w-3.5 h-3.5 text-[#FF5733]" />
@@ -175,7 +161,6 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Droite */}
           <div className="lg:col-span-5 relative flex justify-center">
             <div className="relative rounded-3xl overflow-hidden shadow-xl border border-gray-100 max-w-md w-full">
               <img 
@@ -195,17 +180,13 @@ export default function HomePage() {
               </div>
             </div>
           </div>
-
         </div>
       </section>
 
-      {/* --- SECTION FILTRES & LISTE SUPABASE --- */}
       <section className="max-w-6xl mx-auto px-4 sm:px-8 py-10 w-full grid grid-cols-1 lg:grid-cols-12 gap-8">
         
-        {/* PANNEAU FILTRE VERTICAL */}
         <aside className="lg:col-span-4 space-y-6">
           <form onSubmit={handleApplyFilters} className="bg-white p-6 rounded-2xl border border-gray-200/80 shadow-sm space-y-5 sticky top-20">
-            
             <div className="flex items-center justify-between border-b border-gray-100 pb-4">
               <h3 className="font-bold text-gray-900 flex items-center gap-2 text-sm">
                 <Filter className="w-4 h-4 text-[#FF5733]" />
@@ -216,7 +197,6 @@ export default function HomePage() {
               </button>
             </div>
 
-            {/* Matières */}
             <div className="space-y-2">
               <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
                 <BookOpen className="w-3.5 h-3.5 text-[#FF5733]" />
@@ -234,7 +214,6 @@ export default function HomePage() {
               </select>
             </div>
 
-            {/* Ville */}
             <div className="space-y-2">
               <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
                 <MapPin className="w-3.5 h-3.5 text-[#FF5733]" />
@@ -249,7 +228,6 @@ export default function HomePage() {
               />
             </div>
 
-            {/* Niveau d'études */}
             <div className="space-y-2">
               <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
                 <GraduationCap className="w-3.5 h-3.5 text-[#FF5733]" />
@@ -267,7 +245,6 @@ export default function HomePage() {
               </select>
             </div>
 
-            {/* Tarif */}
             <div className="space-y-2">
               <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
                 <DollarSign className="w-3.5 h-3.5 text-[#FF5733]" />
@@ -285,7 +262,6 @@ export default function HomePage() {
               </select>
             </div>
 
-            {/* Lieu */}
             <div className="space-y-2">
               <label className="text-xs font-bold text-gray-700">Lieu du cours</label>
               <div className="grid grid-cols-2 gap-2">
@@ -316,13 +292,10 @@ export default function HomePage() {
               <Search className="w-4 h-4" />
               Appliquer les filtres
             </button>
-
           </form>
         </aside>
 
-        {/* AFFICHAGE DES PROFESSEURS DEPUIS SUPABASE */}
         <div className="lg:col-span-8 space-y-6">
-          
           <div className="flex items-center justify-between text-xs text-gray-500">
             <h2 className="text-lg font-black text-gray-900 flex items-center gap-2">
               <Award className="w-5 h-5 text-[#FF5733]" />
@@ -347,7 +320,6 @@ export default function HomePage() {
           ) : (
             <div className="space-y-4">
               {professors.map((prof) => {
-                // Récupération exacte des colonnes Supabase (Nom, Prénom)
                 const nomField = prof.Nom || prof.nom || '';
                 const prenomField = prof.Prénom || prof.prenom || '';
                 
@@ -355,7 +327,8 @@ export default function HomePage() {
                   ? `${prenomField} ${nomField}`.trim()
                   : (prof.name || 'Professeur');
 
-                const photo = prof.photo_url || prof.avatar_url || prof.photo;
+                // Utilisation de photo_URL en priorité pour lire le Base64
+                const photo = prof.photo_URL || prof.photo_url || prof.photo || prof.avatar_url;
                 const city = prof.ville || prof.city || "Maroc";
                 const subject = prof.matiere || prof.subject;
                 const level = prof.niveau || prof.level;
@@ -368,7 +341,7 @@ export default function HomePage() {
                   >
                     <div className="flex gap-4 items-start sm:items-center">
                       
-                      {/* AVATAR SUPABASE OU INITIALES AUTOMATIQUES */}
+                      {/* PHOTO BASE64 OU INITIALES SI NULL */}
                       {photo ? (
                         <img 
                           src={photo} 
@@ -418,7 +391,6 @@ export default function HomePage() {
                       </div>
                     </div>
 
-                    {/* TARIF & BOUTON VOIR LE PROFIL */}
                     <div className="w-full sm:w-auto flex sm:flex-col justify-between items-end gap-3 border-t sm:border-t-0 pt-3 sm:pt-0 border-gray-100 shrink-0">
                       <div className="text-left sm:text-right">
                         <span className="text-base font-black text-gray-900">
@@ -439,15 +411,11 @@ export default function HomePage() {
               })}
             </div>
           )}
-
         </div>
-
       </section>
 
-      {/* --- SECTION DEVENIR PROFESSEUR & FONCTIONNEMENT --- */}
       <section className="bg-gradient-to-br from-orange-50 via-white to-orange-50/30 border-y border-orange-100/80 py-16 px-4 sm:px-8 my-6">
         <div className="max-w-6xl mx-auto space-y-12">
-          
           <div className="text-center space-y-4 max-w-3xl mx-auto">
             <span className="bg-white text-[#FF5733] font-extrabold text-xs px-3.5 py-1.5 rounded-full border border-orange-200 shadow-sm inline-flex items-center gap-1.5">
               <UserPlus className="w-4 h-4 text-[#FF5733]" />
@@ -514,17 +482,14 @@ export default function HomePage() {
               </p>
             </div>
           </div>
-
         </div>
       </section>
 
-      {/* FOOTER */}
       <Footer 
         onNavigateHome={() => {}} 
         onOpenHelp={() => setIsHelpOpen(true)} 
       />
 
-      {/* MODAL AIDE */}
       <HelpModal 
         isOpen={isHelpOpen} 
         onClose={() => setIsHelpOpen(false)} 
