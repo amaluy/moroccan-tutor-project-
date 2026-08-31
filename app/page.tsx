@@ -15,11 +15,14 @@ import {
 
 interface Professor {
   id: string;
-  prenom?: string;
+  Nom?: string;
+  Prénom?: string;
   nom?: string;
-  name?: string; // Gardé pour compatibilité
+  prenom?: string;
+  name?: string;
   photo_url?: string;
   avatar_url?: string;
+  photo?: string;
   ville?: string;
   city?: string;
   niveau?: string;
@@ -344,15 +347,19 @@ export default function HomePage() {
           ) : (
             <div className="space-y-4">
               {professors.map((prof) => {
-                // Résolution dynamique des champs (supporte prenom/nom/name et photo_url/avatar_url, etc.)
-                const fullName = prof.prenom || prof.nom 
-                  ? `${prof.prenom || ''} ${prof.nom || ''}`.trim() 
+                // Récupération exacte des colonnes Supabase (Nom, Prénom)
+                const nomField = prof.Nom || prof.nom || '';
+                const prenomField = prof.Prénom || prof.prenom || '';
+                
+                const fullName = (nomField || prenomField)
+                  ? `${prenomField} ${nomField}`.trim()
                   : (prof.name || 'Professeur');
-                const photo = prof.photo_url || prof.avatar_url;
+
+                const photo = prof.photo_url || prof.avatar_url || prof.photo;
                 const city = prof.ville || prof.city || "Maroc";
                 const subject = prof.matiere || prof.subject;
                 const level = prof.niveau || prof.level;
-                const price = prof.tarif !== undefined ? prof.tarif : prof.price;
+                const price = prof.tarif !== undefined && prof.tarif !== null ? prof.tarif : prof.price;
 
                 return (
                   <div 
