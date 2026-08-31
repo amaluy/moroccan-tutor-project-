@@ -8,9 +8,9 @@ import HelpModal from './components/HelpModal';
 import { supabase } from '@/lib/supabase';
 import { 
   Search, MapPin, BookOpen, CheckCircle2, 
-  Sparkles, Filter, ChevronRight, ShieldCheck, PhoneCall,
-  GraduationCap, DollarSign, Laptop, Home, UserPlus,
-  Clock, Wallet, Award, Coins, Loader2, BadgeCheck
+  Sparkles, Filter, ShieldCheck, PhoneCall,
+  GraduationCap, DollarSign, Laptop, Home, 
+  Award, Loader2, BadgeCheck, ChevronRight
 } from 'lucide-react';
 
 interface Professor {
@@ -33,6 +33,8 @@ interface Professor {
   title?: string;
   tarif?: number | string;
   price?: number | string;
+  lieu?: string;
+  location?: string;
 }
 
 export default function HomePage() {
@@ -43,6 +45,7 @@ export default function HomePage() {
   const [professors, setProfessors] = useState<Professor[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
+  // États des filtres
   const [selectedSubject, setSelectedSubject] = useState('');
   const [selectedCity, setSelectedCity] = useState('');
   const [selectedLevel, setSelectedLevel] = useState('');
@@ -58,38 +61,85 @@ export default function HomePage() {
     "Primaire", "Collège", "Secondaire", "Niveau Supérieur"
   ];
 
+  // Fonction de récupération et de filtrage intelligent
   const fetchProfessors = async () => {
     setLoading(true);
     try {
-      let query = supabase.from('professors').select('*');
-
-      if (selectedSubject) {
-        query = query.or(`matiere.ilike.%${selectedSubject}%,subject.ilike.%${selectedSubject}%`);
-      }
-      if (selectedCity) {
-        query = query.or(`ville.ilike.%${selectedCity}%,city.ilike.%${selectedCity}%`);
-      }
-      if (selectedLevel) {
-        query = query.or(`niveau.ilike.%${selectedLevel}%,level.ilike.%${selectedLevel}%`);
-      }
-      if (priceRange) {
-        if (priceRange === '0-100') {
-          query = query.or('tarif.lte.100,price.lte.100');
-        }
-        if (priceRange === '100-150') {
-          query = query.or('and(tarif.gte.100,tarif.lte.150),and(price.gte.100,price.lte.150)');
-        }
-        if (priceRange === '150-200') {
-          query = query.or('and(tarif.gte.150,tarif.lte.200),and(price.gte.150,price.lte.200)');
-        }
-      }
-
-      const { data, error } = await query;
+      const { data, error } = await supabase.from('professors').select('*');
 
       if (error) {
         console.error('Erreur Supabase:', error);
+        setProfessors([]);
       } else {
-        setProfessors(data || []);
+        let results = data || [];
+
+        // Fonction utilitaire pour nettoyer les textes (enlève les accents, met en minuscules, supprime les espaces/tirets)
+        const normalize = (text: string) => {
+          return text
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "") // Enlève les accents
+            .replace(/[^a-z0-9]/g, ""); // Garde uniquement les lettres et chiffres (gère les mots collés comme 'primairecollege')
+        };
+
+        // 1. Filtre Matière
+        if (selectedSubject) {
+          const cleanSub = normalize(selectedSubject);
+          results = results.filter(p => {
+            const mat = normalize(String(p.matiere || p.subject || ''));
+            return mat.includes(cleanSub) || cleanSub.includes(mat);
+          });
+        }
+
+        // 2. Filtre Ville (Intelligent : gère "casa" <-> "casablanca")
+        if (selectedCity.trim()) {
+          const cleanCity = normalize(selectedCity);
+          results = results.filter(p => {
+            const city = normalize(String(p.ville || p.city || ''));
+            if (!city) return false;
+            
+            if (city.includes(cleanCity) || cleanCity.includes(city)) return true;
+            
+            // Équivalence Casa / Casablanca
+            if ((cleanCity.includes('casa')) && (city.includes('casa'))) {
+              return true;
+            }
+            return false;
+          });
+        }
+
+        // 3. Filtre Niveau (Ultra-souple : gère les mots collés type "primairecollege")
+        if (selectedLevel) {
+          const cleanLvl = normalize(selectedLevel);
+          results = results.filter(p => {
+            const lvl = normalize(String(p.niveau || p.level || ''));
+            if (!lvl) return true; // Si vide dans la base, on ne bloque pas
+            return lvl.includes(cleanLvl) || cleanLvl.includes(lvl);
+          });
+        }
+
+        // 4. Filtre Tarif
+        if (priceRange) {
+          results = results.filter(p => {
+            const priceVal = Number(p.tarif !== undefined && p.tarif !== null ? p.tarif : p.price) || 0;
+            if (priceRange === '0-100') return priceVal <= 100;
+            if (priceRange === '100-150') return priceVal >= 100 && priceVal <= 150;
+            if (priceRange === '150-200') return priceVal >= 150 && priceVal <= 200;
+            if (priceRange === '200+') return priceVal >= 200;
+            return true;
+          });
+        }
+
+        // 5. Filtre Lieu (Optionnel : si aucun lieu n'est stocké, on laisse passer)
+        if (locationType) {
+          results = results.filter(p => {
+            const loc = normalize(String(p.lieu || p.location || ''));
+            if (!loc) return true; 
+            return loc.includes(normalize(locationType));
+          });
+        }
+
+        setProfessors(results);
       }
     } catch (err) {
       console.error('Erreur de chargement:', err);
@@ -115,7 +165,7 @@ export default function HomePage() {
     setLocationType('');
     setTimeout(() => {
       fetchProfessors();
-    }, 100);
+    }, 50);
   };
 
   return (
@@ -129,6 +179,7 @@ export default function HomePage() {
         onOpenHelp={() => setIsHelpOpen(true)}
       />
 
+      {/* HERO SECTION */}
       <section className="bg-white border-b border-gray-100 py-12 lg:py-16 px-4 sm:px-8 relative overflow-hidden">
         <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
           <div className="lg:col-span-7 space-y-6 text-center lg:text-left">
@@ -169,34 +220,32 @@ export default function HomePage() {
                 className="w-full h-80 object-cover"
               />
             </div>
-
-            <div className="absolute -top-3 -right-2 bg-white text-gray-800 px-4 py-3 rounded-2xl shadow-lg flex items-center gap-3 border border-orange-100">
-              <div className="w-8 h-8 rounded-xl bg-orange-50 text-[#FF5733] flex items-center justify-center font-bold text-xs">
-                🎁
-              </div>
-              <div className="text-left">
-                <p className="text-xs font-bold text-gray-900">Mise en relation directe</p>
-                <p className="text-[10px] text-gray-500">Sans intermédiaire</p>
-              </div>
-            </div>
           </div>
         </div>
       </section>
 
+      {/* SECTION FILTRES ET RESULTATS */}
       <section className="max-w-6xl mx-auto px-4 sm:px-8 py-10 w-full grid grid-cols-1 lg:grid-cols-12 gap-8">
         
+        {/* PANNEAU DE FILTRAGE */}
         <aside className="lg:col-span-4 space-y-6">
           <form onSubmit={handleApplyFilters} className="bg-white p-6 rounded-2xl border border-gray-200/80 shadow-sm space-y-5 sticky top-20">
+            
             <div className="flex items-center justify-between border-b border-gray-100 pb-4">
               <h3 className="font-bold text-gray-900 flex items-center gap-2 text-sm">
                 <Filter className="w-4 h-4 text-[#FF5733]" />
                 Filtrer les professeurs
               </h3>
-              <button type="button" onClick={handleReset} className="text-[11px] text-[#FF5733] hover:underline font-medium cursor-pointer">
+              <button 
+                type="button" 
+                onClick={handleReset} 
+                className="text-[11px] text-[#FF5733] hover:underline font-medium cursor-pointer"
+              >
                 Réinitialiser
               </button>
             </div>
 
+            {/* Matière */}
             <div className="space-y-2">
               <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
                 <BookOpen className="w-3.5 h-3.5 text-[#FF5733]" />
@@ -214,6 +263,7 @@ export default function HomePage() {
               </select>
             </div>
 
+            {/* Ville */}
             <div className="space-y-2">
               <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
                 <MapPin className="w-3.5 h-3.5 text-[#FF5733]" />
@@ -228,6 +278,7 @@ export default function HomePage() {
               />
             </div>
 
+            {/* Niveau d'études */}
             <div className="space-y-2">
               <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
                 <GraduationCap className="w-3.5 h-3.5 text-[#FF5733]" />
@@ -245,6 +296,7 @@ export default function HomePage() {
               </select>
             </div>
 
+            {/* Tarif horaire */}
             <div className="space-y-2">
               <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
                 <DollarSign className="w-3.5 h-3.5 text-[#FF5733]" />
@@ -259,9 +311,11 @@ export default function HomePage() {
                 <option value="0-100">Moins de 100 DH/h</option>
                 <option value="100-150">100 DH - 150 DH/h</option>
                 <option value="150-200">150 DH - 200 DH/h</option>
+                <option value="200+">Plus de 200 DH/h</option>
               </select>
             </div>
 
+            {/* Lieu du cours */}
             <div className="space-y-2">
               <label className="text-xs font-bold text-gray-700">Lieu du cours</label>
               <div className="grid grid-cols-2 gap-2">
@@ -288,14 +342,20 @@ export default function HomePage() {
               </div>
             </div>
 
-            <button type="submit" className="w-full bg-[#FF5733] hover:bg-[#e04824] text-white font-extrabold py-3 rounded-xl text-xs transition shadow-sm flex items-center justify-center gap-2 cursor-pointer">
+            <button 
+              type="submit" 
+              className="w-full bg-[#FF5733] hover:bg-[#e04824] text-white font-extrabold py-3 rounded-xl text-xs transition shadow-sm flex items-center justify-center gap-2 cursor-pointer"
+            >
               <Search className="w-4 h-4" />
               Appliquer les filtres
             </button>
+
           </form>
         </aside>
 
+        {/* LISTE DES RÉSULTATS */}
         <div className="lg:col-span-8 space-y-6">
+          
           <div className="flex items-center justify-between text-xs text-gray-500">
             <h2 className="text-lg font-black text-gray-900 flex items-center gap-2">
               <Award className="w-5 h-5 text-[#FF5733]" />
@@ -307,14 +367,17 @@ export default function HomePage() {
           {loading ? (
             <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center flex flex-col items-center justify-center gap-3">
               <Loader2 className="w-8 h-8 text-[#FF5733] animate-spin" />
-              <p className="text-sm font-semibold text-gray-600">Chargement des professeurs depuis Supabase...</p>
+              <p className="text-sm font-semibold text-gray-600">Recherche des professeurs en cours...</p>
             </div>
           ) : professors.length === 0 ? (
             <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center space-y-3">
               <p className="text-base font-bold text-gray-800">Aucun professeur trouvé</p>
-              <p className="text-xs text-gray-500">Essayez de réinitialiser vos filtres de recherche.</p>
-              <button onClick={handleReset} className="bg-orange-50 text-[#FF5733] text-xs font-bold px-4 py-2 rounded-xl border border-orange-200 hover:bg-orange-100 transition cursor-pointer">
-                Réinitialiser la recherche
+              <p className="text-xs text-gray-500">Aucun profil ne correspond exactement à vos critères de recherche.</p>
+              <button 
+                onClick={handleReset} 
+                className="bg-orange-50 text-[#FF5733] text-xs font-bold px-4 py-2 rounded-xl border border-orange-200 hover:bg-orange-100 transition cursor-pointer"
+              >
+                Réinitialiser les filtres
               </button>
             </div>
           ) : (
@@ -327,7 +390,6 @@ export default function HomePage() {
                   ? `${prenomField} ${nomField}`.trim()
                   : (prof.name || 'Professeur');
 
-                // Utilisation de photo_URL en priorité pour lire le Base64
                 const photo = prof.photo_URL || prof.photo_url || prof.photo || prof.avatar_url;
                 const city = prof.ville || prof.city || "Maroc";
                 const subject = prof.matiere || prof.subject;
@@ -341,7 +403,6 @@ export default function HomePage() {
                   >
                     <div className="flex gap-4 items-start sm:items-center">
                       
-                      {/* PHOTO BASE64 OU INITIALES SI NULL */}
                       {photo ? (
                         <img 
                           src={photo} 
@@ -382,12 +443,6 @@ export default function HomePage() {
                             </>
                           )}
                         </div>
-
-                        {prof.title && (
-                          <p className="text-xs font-semibold text-gray-800 line-clamp-1 max-w-md">
-                            {prof.title}
-                          </p>
-                        )}
                       </div>
                     </div>
 
@@ -411,78 +466,9 @@ export default function HomePage() {
               })}
             </div>
           )}
+
         </div>
-      </section>
 
-      <section className="bg-gradient-to-br from-orange-50 via-white to-orange-50/30 border-y border-orange-100/80 py-16 px-4 sm:px-8 my-6">
-        <div className="max-w-6xl mx-auto space-y-12">
-          <div className="text-center space-y-4 max-w-3xl mx-auto">
-            <span className="bg-white text-[#FF5733] font-extrabold text-xs px-3.5 py-1.5 rounded-full border border-orange-200 shadow-sm inline-flex items-center gap-1.5">
-              <UserPlus className="w-4 h-4 text-[#FF5733]" />
-              Rejoignez notre réseau
-            </span>
-
-            <h2 className="text-2xl sm:text-4xl font-black text-gray-900 leading-tight">
-              Vous êtes enseignant ou vous avez un <span className="text-[#FF5733]">savoir-faire à partager</span> ?
-            </h2>
-
-            <p className="text-sm sm:text-base text-gray-600 leading-relaxed">
-              Rejoignez notre groupe et inscrivez-vous sur notre site pour être mis en avant ! Faites-vous connaître auprès de nombreux élèves recherchant votre expertise.
-            </p>
-
-            <div className="pt-2">
-              <Link 
-                href="/donner-des-cours"
-                className="inline-flex items-center gap-2 bg-[#FF5733] hover:bg-[#e04824] text-white font-extrabold px-8 py-4 rounded-2xl text-sm transition shadow-lg hover:shadow-orange-200 transform hover:-translate-y-0.5 cursor-pointer"
-              >
-                <UserPlus className="w-5 h-5" />
-                Devenir Professeur Particulier Maintenant
-              </Link>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 pt-4">
-            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-orange-100 text-[#FF5733] flex items-center justify-center font-bold">
-                <Wallet className="w-5 h-5" />
-              </div>
-              <h3 className="font-bold text-gray-900 text-sm">Fixez votre tarif</h3>
-              <p className="text-xs text-gray-500 leading-relaxed">
-                Vous définissez votre tarif horaire en toute liberté selon votre expérience et la matière enseignée.
-              </p>
-            </div>
-
-            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-orange-100 text-[#FF5733] flex items-center justify-center font-bold">
-                <Coins className="w-5 h-5" />
-              </div>
-              <h3 className="font-bold text-gray-900 text-sm">Votre revenu vous revient</h3>
-              <p className="text-xs text-gray-500 leading-relaxed">
-                Le montant total de vos heures de cours vous est versé directement par vos élèves, sans intermédiaire.
-              </p>
-            </div>
-
-            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-orange-100 text-[#FF5733] flex items-center justify-center font-bold">
-                <Award className="w-5 h-5" />
-              </div>
-              <h3 className="font-bold text-gray-900 text-sm">Seulement 10 DH / Lead</h3>
-              <p className="text-xs text-gray-500 leading-relaxed">
-                Pas de pourcentage sur vos cours. Nous prélevons uniquement une faible commission de 10 DH par lead qualifié.
-              </p>
-            </div>
-
-            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-orange-100 text-[#FF5733] flex items-center justify-center font-bold">
-                <Clock className="w-5 h-5" />
-              </div>
-              <h3 className="font-bold text-gray-900 text-sm">Planning Sur-Mesure</h3>
-              <p className="text-xs text-gray-500 leading-relaxed">
-                Choisissez vos créneaux et vos heures de travail. Enseignez selon votre propre emploi du temps.
-              </p>
-            </div>
-          </div>
-        </div>
       </section>
 
       <Footer 
