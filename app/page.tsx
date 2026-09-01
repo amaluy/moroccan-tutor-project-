@@ -10,7 +10,7 @@ import {
   Search, MapPin, BookOpen, CheckCircle2, 
   Filter, ShieldCheck, PhoneCall,
   GraduationCap, DollarSign, Laptop, Home, 
-  Award, Loader2, BadgeCheck, ChevronRight, UserPlus, RefreshCcw, ExternalLink
+  Award, Loader2, RefreshCcw, ExternalLink, UserPlus, ChevronRight, Star, Heart
 } from 'lucide-react';
 
 interface Professor {
@@ -234,7 +234,6 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* IMAGE TRÈS AGRANDIE (Mise à jour avec Design sans titre(6).png) */}
           <div className="lg:col-span-6 relative w-full flex items-center justify-center lg:justify-end">
             <div className="relative w-full max-w-4xl transform hover:scale-[1.02] transition duration-500">
               <img 
@@ -249,7 +248,7 @@ export default function HomePage() {
       </section>
 
       {/* SECTION FILTRES ET RESULTATS */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-8 py-12 w-full grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <section className="max-w-7xl mx-auto px-4 sm:px-8 py-12 w-full grid grid-cols-1 lg:grid-cols-12 gap-8">
         
         {/* PANNEAU DE FILTRAGE */}
         <aside className="lg:col-span-4 space-y-6">
@@ -404,6 +403,7 @@ export default function HomePage() {
                 <p className="text-xs text-slate-500">Aucun profil ne correspond exactement à vos critères de recherche actuels.</p>
               </div>
               <button 
+                key="reset-button"
                 onClick={handleReset} 
                 className="bg-slate-100 text-slate-800 text-xs font-bold px-5 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-200 transition cursor-pointer shadow-xs active:scale-95"
               >
@@ -411,7 +411,7 @@ export default function HomePage() {
               </button>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {professors.map((prof) => {
                 const nomField = prof.Nom || prof.nom || '';
                 const prenomField = prof.Prénom || prof.prenom || '';
@@ -422,75 +422,92 @@ export default function HomePage() {
 
                 const photo = prof.photo_URL || prof.photo_url || prof.photo || prof.avatar_url;
                 const city = prof.ville || prof.city || "Maroc";
-                const subject = prof.matiere || prof.subject;
-                const level = prof.niveau || prof.level;
-                const price = prof.tarif !== undefined && prof.tarif !== null ? prof.tarif : prof.price;
+                const subject = prof.matiere || prof.subject || "Soutien scolaire";
+                const price = Number(prof.tarif !== undefined && prof.tarif !== null ? prof.tarif : prof.price) || 0;
 
                 return (
-                  <div 
-                    key={prof.id} 
-                    className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs hover:shadow-xl hover:border-slate-300 transition-all duration-300 flex flex-col sm:flex-row gap-5 items-start sm:items-center justify-between relative overflow-hidden group transform hover:-translate-y-0.5"
-                  >
-                    <div className="flex gap-4 items-start sm:items-center">
-                      
+                  <div key={prof.id} className="bg-white rounded-3xl overflow-hidden border border-slate-200/80 shadow-md hover:shadow-xl transition-all duration-300 flex flex-col justify-between group">
+                    
+                    {/* EN-TÊTE AVEC GRANDE PHOTO DE FOND */}
+                    <div className="relative h-72 w-full bg-slate-900 overflow-hidden">
                       {photo ? (
                         <img 
                           src={photo} 
                           alt={fullName} 
-                          className="w-20 h-20 rounded-2xl object-cover shrink-0 border-2 border-slate-100 shadow-xs group-hover:scale-105 transition duration-500"
+                          className="w-full h-full object-cover group-hover:scale-105 transition duration-700"
                         />
                       ) : (
-                        <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-slate-700 to-slate-900 text-white flex items-center justify-center text-xl font-black shrink-0 border-2 border-slate-100 shadow-xs group-hover:scale-105 transition duration-500">
-                          {fullName ? fullName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'P'}
+                        <div className="w-full h-full bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center text-white text-3xl font-bold">
+                          {fullName.charAt(0)}
                         </div>
                       )}
 
-                      <div className="space-y-1.5">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="text-base font-bold text-slate-900 group-hover:text-slate-700 transition duration-200">{fullName}</h3>
-                          <span className="text-[10px] bg-emerald-50 text-emerald-700 font-bold px-2.5 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1 shadow-2xs">
-                            <BadgeCheck className="w-3 h-3 text-emerald-600" /> Profil Vérifié
+                      {/* Dégradé sombre par-dessus la photo pour rendre le texte lisible */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+
+                      {/* Bouton Like / Favoris en haut à droite */}
+                      <button className="absolute top-4 right-4 w-9 h-9 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white hover:bg-black/60 transition cursor-pointer">
+                        <Heart className="w-4 h-4" />
+                      </button>
+
+                      {/* Badge "Confirmé" ou Vérifié */}
+                      <div className="absolute top-4 left-4 bg-black/40 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1 rounded-full border border-white/10 flex items-center gap-1.5">
+                        <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                        Vérifié
+                      </div>
+
+                      {/* Nom et Ville superposés en bas de l'image */}
+                      <div className="absolute bottom-4 left-4 right-4 text-white">
+                        <h3 className="text-xl font-black tracking-tight">{fullName}</h3>
+                        <p className="text-xs text-slate-200 font-medium flex items-center gap-1 mt-0.5">
+                          <MapPin className="w-3.5 h-3.5 text-slate-300" />
+                          {city} (face à face & webcam)
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* CORPS DE LA CARTE (Infos, Note, Prix) */}
+                    <div className="p-5 space-y-4 flex flex-col justify-between flex-grow bg-white">
+                      
+                      <div className="space-y-2">
+                        {/* Note et avis */}
+                        <div className="flex items-center justify-between text-xs font-bold text-slate-700">
+                          <div className="flex items-center gap-1">
+                            <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
+                            <span>5 (6 avis)</span>
+                          </div>
+                          <span className="bg-emerald-50 text-emerald-700 border border-emerald-200/60 px-2.5 py-0.5 rounded-full text-[10px]">
+                            Disponible
                           </span>
                         </div>
 
-                        <p className="text-xs text-slate-500 flex items-center gap-1 font-medium">
-                          <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                          {city}
+                        {/* Matière et description */}
+                        <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed font-medium">
+                          <strong className="text-slate-900">{subject}</strong> - {prof.niveau ? `Niveau : ${prof.niveau}. ` : ''} Professeur qualifié prêt à vous accompagner vers la réussite.
                         </p>
+                      </div>
 
-                        <div className="flex flex-wrap gap-1.5 items-center text-[11px]">
-                          {subject && (
-                            <span className="bg-slate-100 text-slate-700 font-semibold px-2.5 py-1 rounded-lg">
-                              {subject}
-                            </span>
-                          )}
-                          {level && (
-                            <>
-                              <span className="text-slate-300">•</span>
-                              <span className="text-slate-700 font-bold bg-slate-100 px-2 py-0.5 rounded-md">
-                                {level}
-                              </span>
-                            </>
-                          )}
+                      {/* Prix et Bouton Contacter */}
+                      <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                        <div>
+                          <div className="text-sm font-black text-slate-900">
+                            {price} MAD<span className="text-[10px] font-normal text-slate-500">/h</span>
+                          </div>
+                          <div className="text-[10px] font-bold text-rose-600">
+                            1er cours offert
+                          </div>
                         </div>
+
+                        <Link 
+                          href={`/professeur/${prof.id}`}
+                          className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold px-5 py-2.5 rounded-xl transition duration-200 shadow-sm active:scale-95"
+                        >
+                          Contacter
+                        </Link>
                       </div>
+
                     </div>
 
-                    <div className="w-full sm:w-auto flex sm:flex-col justify-between items-end gap-3 border-t sm:border-t-0 pt-3 sm:pt-0 border-slate-100 shrink-0">
-                      <div className="text-left sm:text-right">
-                        <span className="text-lg font-black text-slate-900">
-                          {price !== undefined && price !== null && price !== "" ? `${price} DH/h` : "Prix sur demande"}
-                        </span>
-                      </div>
-
-                      <Link 
-                        href={`/professeurs/${prof.id}`}
-                        className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-4.5 py-2.5 rounded-xl transition-all duration-200 flex items-center gap-1.5 shadow-xs hover:shadow-md active:scale-95 group/btn"
-                      >
-                        Voir le profil
-                        <ChevronRight className="w-3.5 h-3.5 group-hover/btn:translate-x-0.5 transition duration-200" />
-                      </Link>
-                    </div>
                   </div>
                 );
               })}
