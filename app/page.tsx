@@ -202,7 +202,7 @@ export default function HomePage() {
       <section className="bg-white border-b border-slate-200/60 py-16 lg:py-24 px-4 sm:px-8 relative overflow-hidden">
         <div className="absolute top-1/2 right-0 -translate-y-1/2 w-[700px] h-[700px] bg-slate-100/60 rounded-full blur-[160px] pointer-events-none -z-10" />
         
-        <div className="max-w-[90rem] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 items-center">
+        <div className="max-w-[90rem] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-center">
           
           <div className="lg:col-span-6 space-y-6 text-center lg:text-left lg:pl-12">
             
@@ -234,13 +234,13 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* IMAGE AGRANDIE ET RAPPROCHÉE DU TEXTE */}
+          {/* IMAGE TRÈS AGRANDIE */}
           <div className="lg:col-span-6 relative w-full flex items-center justify-center lg:justify-end">
-            <div className="relative w-full max-w-2xl transform hover:scale-[1.02] transition duration-500">
+            <div className="relative w-full max-w-4xl transform hover:scale-[1.02] transition duration-500">
               <img 
-                src="/Design sans titre(3).png" 
+                src="/Design sans titre(4).png" 
                 alt="Illustration Design" 
-                className="w-full h-auto object-contain mix-blend-multiply"
+                className="w-full h-auto object-contain mix-blend-multiply scale-125"
               />
             </div>
           </div>
