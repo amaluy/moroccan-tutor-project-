@@ -66,7 +66,6 @@ export default function HomePage() {
       if (!isDeleting) {
         setCurrentText(fullText.substring(0, currentText.length + 1));
         if (currentText === fullText) {
-          // Pause avant d'effacer
           setTimeout(() => setIsDeleting(true), 1500);
           setTypingSpeed(70);
         }
@@ -199,7 +198,7 @@ export default function HomePage() {
         onOpenHelp={() => setIsHelpOpen(true)}
       />
 
-      {/* HERO SECTION - Effet machine à écrire en gris moderne */}
+      {/* HERO SECTION */}
       <section className="bg-white border-b border-slate-200/60 py-16 lg:py-24 px-4 sm:px-8 relative overflow-hidden">
         <div className="absolute top-1/2 right-0 -translate-y-1/2 w-[700px] h-[700px] bg-slate-100/60 rounded-full blur-[160px] pointer-events-none -z-10" />
         
@@ -502,6 +501,47 @@ export default function HomePage() {
 
         </div>
 
+      </section>
+
+      {/* SECTION DESIGN CANVA (MISSION & VISION) AVEC VOS DEUX IMAGES PNG */}
+      <section className="max-w-6xl mx-auto px-4 sm:px-8 py-12 w-full">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          
+          {/* Bloc Violet : Notre mission (Design sans titre.png) */}
+          <div className="bg-[#EAD5FF] p-8 sm:p-12 rounded-[2.5rem] text-slate-900 flex flex-col items-center text-center space-y-6 shadow-sm border border-[#dec0ff]">
+            <h3 className="text-3xl sm:text-4xl font-black text-[#1E3A2F] tracking-tight">Notre mission</h3>
+            
+            <div className="w-48 h-48 sm:w-56 sm:h-56 flex items-center justify-center my-2">
+              <img 
+                src="/Design sans titre.png" 
+                alt="Illustration Notre mission" 
+                className="w-full h-full object-contain"
+              />
+            </div>
+            
+            <p className="text-xs sm:text-sm text-slate-700 leading-relaxed max-w-md">
+              Écrivez ici un paragraphe qui parle de votre entreprise. Vous pouvez parler des antécédents, de l'histoire, de la mission, de la vision ou de la philosophie de votre entreprise.
+            </p>
+          </div>
+
+          {/* Bloc Vert : Notre vision (Design sans titre(1).png) */}
+          <div className="bg-[#2D4A3E] p-8 sm:p-12 rounded-[2.5rem] text-white flex flex-col items-center text-center space-y-6 shadow-sm border border-[#233b31]">
+            <h3 className="text-3xl sm:text-4xl font-black text-white tracking-tight">Notre vision</h3>
+            
+            <div className="w-48 h-48 sm:w-56 sm:h-56 flex items-center justify-center my-2">
+              <img 
+                src="/Design sans titre(1).png" 
+                alt="Illustration Notre vision" 
+                className="w-full h-full object-contain"
+              />
+            </div>
+            
+            <p className="text-xs sm:text-sm text-slate-200 leading-relaxed max-w-md">
+              Écrivez ici un paragraphe qui parle de votre entreprise. Vous pouvez parler des antécédents, de l'histoire, de la mission, de la vision ou de la philosophie de votre entreprise.
+            </p>
+          </div>
+
+        </div>
       </section>
 
       {/* BANNIÈRE "ÊTES-VOUS PROFESSEUR ?" */}
