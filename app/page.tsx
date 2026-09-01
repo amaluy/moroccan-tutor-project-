@@ -10,7 +10,7 @@ import {
   Search, MapPin, BookOpen, CheckCircle2, 
   Filter, ShieldCheck, PhoneCall,
   GraduationCap, DollarSign, Laptop, Home, 
-  Award, Loader2, RefreshCcw, ExternalLink, UserPlus, ChevronRight, Star, Heart
+  Award, Loader2, RefreshCcw, ExternalLink, UserPlus, ChevronRight, Star, Heart, User
 } from 'lucide-react';
 
 interface Professor {
@@ -247,11 +247,11 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* SECTION FILTRES ET RESULTATS */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-8 py-12 w-full grid grid-cols-1 lg:grid-cols-12 gap-8">
+      {/* SECTION FILTRES ET RESULTATS (MODIFIÉE EN 3 COLONNES POUR LES PROFS) */}
+      <section className="max-w-[90rem] mx-auto px-4 sm:px-8 py-12 w-full grid grid-cols-1 lg:grid-cols-12 gap-8">
         
         {/* PANNEAU DE FILTRAGE */}
-        <aside className="lg:col-span-4 space-y-6">
+        <aside className="lg:col-span-3 space-y-6">
           <form onSubmit={handleApplyFilters} className="bg-white p-6 rounded-3xl border border-slate-200/85 shadow-sm space-y-5 sticky top-24 backdrop-blur-md">
             
             <div className="flex items-center justify-between border-b border-slate-100 pb-4">
@@ -377,8 +377,8 @@ export default function HomePage() {
           </form>
         </aside>
 
-        {/* LISTE DES RÉSULTATS */}
-        <div className="lg:col-span-8 space-y-6">
+        {/* LISTE DES RÉSULTATS (3 COLONNES) */}
+        <div className="lg:col-span-9 space-y-6">
           
           <div className="flex items-center justify-between text-xs px-1">
             <h2 className="text-lg font-black text-slate-900 flex items-center gap-2">
@@ -403,7 +403,7 @@ export default function HomePage() {
                 <p className="text-xs text-slate-500">Aucun profil ne correspond exactement à vos critères de recherche actuels.</p>
               </div>
               <button 
-                key="reset-button"
+                key="reset-button-empty"
                 onClick={handleReset} 
                 className="bg-slate-100 text-slate-800 text-xs font-bold px-5 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-200 transition cursor-pointer shadow-xs active:scale-95"
               >
@@ -411,7 +411,7 @@ export default function HomePage() {
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {professors.map((prof) => {
                 const nomField = prof.Nom || prof.nom || '';
                 const prenomField = prof.Prénom || prof.prenom || '';
@@ -428,7 +428,7 @@ export default function HomePage() {
                 return (
                   <div key={prof.id} className="bg-white rounded-3xl overflow-hidden border border-slate-200/80 shadow-md hover:shadow-xl transition-all duration-300 flex flex-col justify-between group">
                     
-                    {/* EN-TÊTE AVEC GRANDE PHOTO DE FOND */}
+                    {/* EN-TÊTE AVEC GRANDE PHOTO DE FOND OU SILHOUETTE STYLE FACEBOOK */}
                     <div className="relative h-72 w-full bg-slate-900 overflow-hidden">
                       {photo ? (
                         <img 
@@ -437,12 +437,16 @@ export default function HomePage() {
                           className="w-full h-full object-cover group-hover:scale-105 transition duration-700"
                         />
                       ) : (
-                        <div className="w-full h-full bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center text-white text-3xl font-bold">
-                          {fullName.charAt(0)}
+                        // Profil par défaut style Facebook (Fond bleu/gris neutre avec une silhouette épurée)
+                        <div className="w-full h-full bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 flex items-center justify-center relative overflow-hidden group-hover:scale-105 transition duration-700">
+                          <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px]" />
+                          <div className="w-24 h-24 rounded-full bg-slate-600/60 border-2 border-slate-500/50 flex items-center justify-center text-slate-200 shadow-inner backdrop-blur-sm">
+                            <User className="w-12 h-12 stroke-[1.5]" />
+                          </div>
                         </div>
                       )}
 
-                      {/* Dégradé sombre par-dessus la photo pour rendre le texte lisible */}
+                      {/* Dégradé sombre par-dessus pour rendre le texte parfaitement lisible */}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
                       {/* Bouton Like / Favoris en haut à droite */}
@@ -450,7 +454,7 @@ export default function HomePage() {
                         <Heart className="w-4 h-4" />
                       </button>
 
-                      {/* Badge "Confirmé" ou Vérifié */}
+                      {/* Badge "Vérifié" */}
                       <div className="absolute top-4 left-4 bg-black/40 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1 rounded-full border border-white/10 flex items-center gap-1.5">
                         <ShieldCheck className="w-3 h-3 text-emerald-400" />
                         Vérifié
@@ -487,7 +491,7 @@ export default function HomePage() {
                         </p>
                       </div>
 
-                      {/* Prix et Bouton Contacter */}
+                      {/* Prix et Bouton Contacter redirigeant vers la page dynamique /professeurs/[id] */}
                       <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
                         <div>
                           <div className="text-sm font-black text-slate-900">
@@ -499,7 +503,7 @@ export default function HomePage() {
                         </div>
 
                         <Link 
-                          href={`/professeur/${prof.id}`}
+                          href={`/professeurs/${prof.id}`}
                           className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold px-5 py-2.5 rounded-xl transition duration-200 shadow-sm active:scale-95"
                         >
                           Contacter
