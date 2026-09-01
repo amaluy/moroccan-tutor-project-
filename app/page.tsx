@@ -234,11 +234,11 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* IMAGE TRÈS AGRANDIE */}
+          {/* IMAGE TRÈS AGRANDIE (Mise à jour avec Design sans titre(6).png) */}
           <div className="lg:col-span-6 relative w-full flex items-center justify-center lg:justify-end">
             <div className="relative w-full max-w-4xl transform hover:scale-[1.02] transition duration-500">
               <img 
-                src="/Design sans titre(4).png" 
+                src="/Design sans titre(6).png" 
                 alt="Illustration Design" 
                 className="w-full h-auto object-contain mix-blend-multiply scale-125"
               />
