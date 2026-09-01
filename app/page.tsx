@@ -10,7 +10,7 @@ import {
   Search, MapPin, BookOpen, CheckCircle2, 
   Filter, ShieldCheck, PhoneCall,
   GraduationCap, DollarSign, Laptop, Home, 
-  Award, Loader2, BadgeCheck, ChevronRight, UserPlus, RefreshCcw
+  Award, Loader2, BadgeCheck, ChevronRight, UserPlus, RefreshCcw, ExternalLink
 } from 'lucide-react';
 
 interface Professor {
@@ -52,7 +52,7 @@ export default function HomePage() {
   const [priceRange, setPriceRange] = useState('');
   const [locationType, setLocationType] = useState('');
 
-  // Effet Machine à écrire fluide (Typewriter avec un curseur gris)
+  // Effet Machine à écrire fluide (Typewriter avec un curseur violet)
   const words = ["en Maths", "en Français", "en Anglais", "en Physique", "en SVT", "en Arabe"];
   const [currentWordIndex, setCurrentWordIndex] = useState(0);
   const [currentText, setCurrentText] = useState("");
@@ -202,15 +202,15 @@ export default function HomePage() {
       <section className="bg-white border-b border-slate-200/60 py-16 lg:py-24 px-4 sm:px-8 relative overflow-hidden">
         <div className="absolute top-1/2 right-0 -translate-y-1/2 w-[700px] h-[700px] bg-slate-100/60 rounded-full blur-[160px] pointer-events-none -z-10" />
         
-        <div className="max-w-[90rem] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+        <div className="max-w-[90rem] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 items-center">
           
           <div className="lg:col-span-6 space-y-6 text-center lg:text-left lg:pl-12">
             
             <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-slate-900 leading-[1.2] tracking-tight min-h-[140px] sm:min-h-[180px]">
               Trouvez le meilleur professeur <br />
-              <span className="text-slate-700 inline-flex items-center">
+              <span className="text-purple-600 inline-flex items-center">
                 {currentText}
-                <span className="inline-block w-1 h-8 sm:h-12 ml-1 bg-slate-400 animate-pulse"></span>
+                <span className="inline-block w-1 h-8 sm:h-12 ml-1 bg-purple-500 animate-pulse"></span>
               </span>
             </h1>
 
@@ -234,16 +234,14 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="lg:col-span-6 relative w-full">
-            <div className="relative group w-full px-2 sm:px-0">
-              <div className="absolute -inset-3 bg-gradient-to-r from-slate-200 to-slate-400 rounded-[2.5rem] blur-2xl opacity-30 group-hover:opacity-50 transition duration-500"></div>
-              <div className="relative rounded-3xl overflow-hidden shadow-2xl border-4 border-white w-full bg-white transform group-hover:-translate-y-1 transition duration-500">
-                <img 
-                  src="https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&q=80&w=1200" 
-                  alt="Cours particulier" 
-                  className="w-full h-[280px] sm:h-[420px] object-cover transform group-hover:scale-105 transition duration-700 ease-out"
-                />
-              </div>
+          {/* IMAGE AGRANDIE ET RAPPROCHÉE DU TEXTE */}
+          <div className="lg:col-span-6 relative w-full flex items-center justify-center lg:justify-end">
+            <div className="relative w-full max-w-2xl transform hover:scale-[1.02] transition duration-500">
+              <img 
+                src="/Design sans titre(3).png" 
+                alt="Illustration Design" 
+                className="w-full h-auto object-contain mix-blend-multiply"
+              />
             </div>
           </div>
 
@@ -503,47 +501,6 @@ export default function HomePage() {
 
       </section>
 
-      {/* SECTION DESIGN CANVA (MISSION & VISION) AVEC VOS DEUX IMAGES PNG */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-8 py-12 w-full">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          
-          {/* Bloc Violet : Notre mission (Design sans titre.png) */}
-          <div className="bg-[#EAD5FF] p-8 sm:p-12 rounded-[2.5rem] text-slate-900 flex flex-col items-center text-center space-y-6 shadow-sm border border-[#dec0ff]">
-            <h3 className="text-3xl sm:text-4xl font-black text-[#1E3A2F] tracking-tight">Notre mission</h3>
-            
-            <div className="w-48 h-48 sm:w-56 sm:h-56 flex items-center justify-center my-2">
-              <img 
-                src="/Design sans titre.png" 
-                alt="Illustration Notre mission" 
-                className="w-full h-full object-contain"
-              />
-            </div>
-            
-            <p className="text-xs sm:text-sm text-slate-700 leading-relaxed max-w-md">
-              Écrivez ici un paragraphe qui parle de votre entreprise. Vous pouvez parler des antécédents, de l'histoire, de la mission, de la vision ou de la philosophie de votre entreprise.
-            </p>
-          </div>
-
-          {/* Bloc Vert : Notre vision (Design sans titre(1).png) */}
-          <div className="bg-[#2D4A3E] p-8 sm:p-12 rounded-[2.5rem] text-white flex flex-col items-center text-center space-y-6 shadow-sm border border-[#233b31]">
-            <h3 className="text-3xl sm:text-4xl font-black text-white tracking-tight">Notre vision</h3>
-            
-            <div className="w-48 h-48 sm:w-56 sm:h-56 flex items-center justify-center my-2">
-              <img 
-                src="/Design sans titre(1).png" 
-                alt="Illustration Notre vision" 
-                className="w-full h-full object-contain"
-              />
-            </div>
-            
-            <p className="text-xs sm:text-sm text-slate-200 leading-relaxed max-w-md">
-              Écrivez ici un paragraphe qui parle de votre entreprise. Vous pouvez parler des antécédents, de l'histoire, de la mission, de la vision ou de la philosophie de votre entreprise.
-            </p>
-          </div>
-
-        </div>
-      </section>
-
       {/* BANNIÈRE "ÊTES-VOUS PROFESSEUR ?" */}
       <section className="bg-slate-900 py-16 px-4 sm:px-8 text-white relative overflow-hidden shadow-inner">
         <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-slate-800 rounded-full blur-2xl pointer-events-none animate-pulse" />
@@ -573,31 +530,96 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* SECTION EXPLICATIONS DU SITE */}
-      <section className="bg-white border-t border-slate-200/60 py-16 px-4 sm:px-8">
-        <div className="max-w-6xl mx-auto space-y-12">
+      {/* SECTION COMMENT ÇA FONCTIONNE */}
+      <section className="bg-white border-t border-slate-200/60 py-20 px-4 sm:px-8">
+        <div className="max-w-7xl mx-auto space-y-14">
           <div className="text-center space-y-3">
-            <h2 className="text-2xl sm:text-3xl font-black text-slate-900">Comment ça fonctionne ?</h2>
-            <p className="text-xs sm:text-sm text-slate-600 max-w-lg mx-auto">Trouvez et contactez votre professeur en toute simplicité en 3 étapes clés.</p>
+            <h2 className="text-3xl sm:text-4xl font-black text-slate-900">Comment ça fonctionne ?</h2>
+            <p className="text-sm sm:text-base text-slate-600 max-w-xl mx-auto">Trouvez et contactez votre professeur en toute simplicité en 3 étapes clés.</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="bg-slate-50/70 p-8 rounded-3xl border border-slate-200/70 shadow-2xs space-y-4 hover:border-slate-400 hover:shadow-lg transition-all duration-300 group">
-              <div className="w-12 h-12 rounded-2xl bg-slate-200 text-slate-900 flex items-center justify-center font-black text-base shadow-xs group-hover:scale-110 transition duration-300">1</div>
-              <h3 className="font-bold text-slate-900 text-base">Trouvez votre prof</h3>
-              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">Utilisez les filtres pour dénicher le professeur idéal selon votre matière, votre ville et vos exigences.</p>
+            <div className="bg-slate-50/90 p-10 rounded-[2.5rem] border border-slate-200/80 shadow-md space-y-5 hover:border-slate-400 hover:shadow-xl transition-all duration-300 group">
+              <div className="w-14 h-14 rounded-2xl bg-slate-900 text-white flex items-center justify-center font-black text-lg shadow-md group-hover:scale-110 transition duration-300">1</div>
+              <h3 className="font-bold text-slate-900 text-lg">Trouvez votre prof</h3>
+              <p className="text-sm text-slate-600 leading-relaxed">Utilisez les filtres puissants pour dénicher le professeur idéal selon votre matière, votre ville et vos exigences.</p>
             </div>
-            <div className="bg-slate-50/70 p-8 rounded-3xl border border-slate-200/70 shadow-2xs space-y-4 hover:border-slate-400 hover:shadow-lg transition-all duration-300 group">
-              <div className="w-12 h-12 rounded-2xl bg-slate-200 text-slate-900 flex items-center justify-center font-black text-base shadow-xs group-hover:scale-110 transition duration-300">2</div>
-              <h3 className="font-bold text-slate-900 text-base">Contactez directement</h3>
-              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">Échangez sans intermédiaire ni commission d'agence avec le professeur pour organiser vos cours.</p>
+            <div className="bg-slate-50/90 p-10 rounded-[2.5rem] border border-slate-200/80 shadow-md space-y-5 hover:border-slate-400 hover:shadow-xl transition-all duration-300 group">
+              <div className="w-14 h-14 rounded-2xl bg-slate-900 text-white flex items-center justify-center font-black text-lg shadow-md group-hover:scale-110 transition duration-300">2</div>
+              <h3 className="font-bold text-slate-900 text-lg">Contactez directement</h3>
+              <p className="text-sm text-slate-600 leading-relaxed">Échangez sans intermédiaire ni commission d'agence avec le professeur pour organiser vos cours facilement.</p>
             </div>
-            <div className="bg-slate-50/70 p-8 rounded-3xl border border-slate-200/70 shadow-2xs space-y-4 hover:border-slate-400 hover:shadow-lg transition-all duration-300 group">
-              <div className="w-12 h-12 rounded-2xl bg-slate-200 text-slate-900 flex items-center justify-center font-black text-base shadow-xs group-hover:scale-110 transition duration-300">3</div>
-              <h3 className="font-bold text-slate-900 text-base">Progressez sereinement</h3>
-              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">Suivez vos cours à domicile ou en ligne et progressez à votre rythme vers la réussite scolaire.</p>
+            <div className="bg-slate-50/90 p-10 rounded-[2.5rem] border border-slate-200/80 shadow-md space-y-5 hover:border-slate-400 hover:shadow-xl transition-all duration-300 group">
+              <div className="w-14 h-14 rounded-2xl bg-slate-900 text-white flex items-center justify-center font-black text-lg shadow-md group-hover:scale-110 transition duration-300">3</div>
+              <h3 className="font-bold text-slate-900 text-lg">Progressez sereinement</h3>
+              <p className="text-sm text-slate-600 leading-relaxed">Suivez vos cours à domicile ou en ligne et progressez à votre rythme vers la réussite scolaire totale.</p>
             </div>
           </div>
+
+          <div className="text-center pt-2">
+            <Link 
+              href="/comment-ca-fonctionne" 
+              className="inline-flex items-center gap-2 bg-slate-100 hover:bg-slate-900 hover:text-white text-slate-900 font-extrabold px-8 py-4 rounded-2xl text-sm transition-all duration-300 shadow-sm border border-slate-200 group cursor-pointer"
+            >
+              En savoir plus sur le fonctionnement
+              <ExternalLink className="w-4 h-4 group-hover:translate-x-0.5 transition duration-200" />
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* SECTION NOTRE MISSION & VISION */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-8 py-16 w-full">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+          
+          <div className="bg-white p-10 sm:p-14 rounded-[3rem] text-slate-900 flex flex-col items-center text-center space-y-8 shadow-xl border border-slate-200/90 transform hover:-translate-y-1 transition duration-500">
+            <h3 className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight">Notre mission</h3>
+            
+            <div className="w-56 h-56 sm:w-64 sm:h-64 bg-slate-50 rounded-3xl p-6 flex items-center justify-center my-2 shadow-inner border border-slate-100">
+              <img 
+                src="/Design sans titre.png" 
+                alt="Illustration Notre mission" 
+                className="w-full h-full object-contain transform hover:scale-105 transition duration-500"
+              />
+            </div>
+            
+            <p className="text-sm sm:text-base text-slate-600 leading-relaxed max-w-lg">
+              Écrivez ici un paragraphe approfondi qui parle de votre entreprise. Vous pouvez parler des antécédents, de l'histoire, de la mission ou de la philosophie de votre entreprise.
+            </p>
+
+            <Link 
+              href="/notre-mission"
+              className="inline-flex items-center gap-2 text-slate-900 font-extrabold text-sm hover:underline pt-2 group"
+            >
+              Découvrir notre mission complète
+              <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition duration-200" />
+            </Link>
+          </div>
+
+          <div className="bg-slate-900 p-10 sm:p-14 rounded-[3rem] text-white flex flex-col items-center text-center space-y-8 shadow-2xl border border-slate-800 transform hover:-translate-y-1 transition duration-500">
+            <h3 className="text-4xl sm:text-5xl font-black text-white tracking-tight">Notre vision</h3>
+            
+            <div className="w-56 h-56 sm:w-64 sm:h-64 bg-white rounded-3xl p-6 flex items-center justify-center my-2 shadow-xl">
+              <img 
+                src="/Design sans titre(1).png" 
+                alt="Illustration Notre vision" 
+                className="w-full h-full object-contain transform hover:scale-105 transition duration-500"
+              />
+            </div>
+            
+            <p className="text-sm sm:text-base text-slate-300 leading-relaxed max-w-lg">
+              Écrivez ici un paragraphe approfondi qui parle de votre entreprise. Vous pouvez parler des antécédents, de l'histoire, de la vision ou de la philosophie de votre entreprise.
+            </p>
+
+            <Link 
+              href="/notre-mission"
+              className="inline-flex items-center gap-2 text-white font-extrabold text-sm hover:underline pt-2 group"
+            >
+              Découvrir notre vision complète
+              <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition duration-200" />
+            </Link>
+          </div>
+
         </div>
       </section>
 
