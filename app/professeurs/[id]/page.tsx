@@ -11,7 +11,6 @@ import {
   MapPin, Clock, CheckCircle2, Send, Lock, Share2, User
 } from 'lucide-react';
 
-// Initialisation standard de Supabase
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || '',
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
@@ -28,7 +27,6 @@ export default function ProfessorProfilePage() {
   const [prof, setProf] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  // Formulaire de l'élève
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -39,7 +37,6 @@ export default function ProfessorProfilePage() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Charger les données du professeur depuis Supabase en fonction de l'ID de l'URL
   useEffect(() => {
     async function fetchProf() {
       if (!params?.id) return;
@@ -51,20 +48,34 @@ export default function ProfessorProfilePage() {
         .single();
 
       if (data) {
-        // Récupération sécurisée du prénom, du nom et de la ville exacte
+        // Log pour vérifier dans la console du navigateur ce qui arrive exactement de Supabase
+        console.log("Données du professeur reçues :", data);
+        console.log("Disponibilités brutes :", data.disponibilites);
+
         const prenom = data.prenom || data.Prénom || '';
         const nom = data.nom || data.Nom || '';
         const fullName = `${prenom} ${nom}`.trim() || "Professeur";
-
-        // Récupération de la ville (colonne 'ville')
         const villeProf = data.ville || data.city || data.location || "Maroc";
-
-        // Récupération de la photo (colonne 'photo_URL')
         const photoProf = data.photo_URL || data.avatar || null;
 
-        // Gestion du prix exact
-        const rawPrice = data.price;
-        const formattedPrice = rawPrice ? `${rawPrice} DH/h` : "Prix non renseigné";
+        const rawTarif = data.tarif || data.price || data.tarif_horaire;
+        const formattedPrice = rawTarif ? `${rawTarif} DH/h` : "Sur demande";
+
+        // Transformation ultra-robuste de la colonne 'disponibilites'
+        const rawDispos: string[] = data.disponibilites || [];
+        const availabilityGridMap: Record<string, boolean> = {};
+        
+        rawDispos.forEach((item: string) => {
+          if (item && typeof item === 'string') {
+            const cleanItem = item.trim().toLowerCase();
+            availabilityGridMap[cleanItem] = true;
+            
+            // Sécurités supplémentaires pour lier différentes variantes (ex: sa/sat, di/sun)
+            if (cleanItem.includes('-sa')) availabilityGridMap[cleanItem.replace('-sa', '-sat')] = true;
+            if (cleanItem.includes('-di')) availabilityGridMap[cleanItem.replace('-di', '-sun')] = true;
+            if (cleanItem.includes('apres-midi')) availabilityGridMap[cleanItem.replace('apres-midi', 'apresmidi')] = true;
+          }
+        });
 
         setProf({
           id: data.id,
@@ -72,7 +83,6 @@ export default function ProfessorProfilePage() {
           avatar: photoProf,
           title: data.title || data.matiere || "Je suis un(e) professeur(e) motivé(e)",
           price: formattedPrice,
-          rawPrice: rawPrice,
           isVerified: true,
           experience: data.experience || "3 ans d'expérience",
           subjects: [data.subject || data.matiere || "Soutien Scolaire"],
@@ -82,26 +92,24 @@ export default function ProfessorProfilePage() {
           ],
           levels: data.levels || ["Primaire", "Collège", "Lycée"],
           description: data.description || "Pour nos cours nous allons voir le nécessaire pour réussir vos études d'une façon amusante et approfondir vos connaissances.",
-          availabilityGrid: data.availability_grid || {}
+          availabilityGrid: availabilityGridMap
         });
       } else {
-        // MODE SECOURS si l'ID n'est pas trouvé
         setProf({
           id: String(params.id),
           name: "Professeur",
           avatar: null,
           title: "Professeur particulier motivé",
-          price: "Prix non renseigné",
-          rawPrice: null,
+          price: "Sur demande",
           isVerified: true,
-          experience: "3 ans d'expérience en tant que professeur",
-          subjects: ["Cours particuliers de Soutien Scolaire"],
+          experience: "3 ans d'expérience",
+          subjects: ["Soutien Scolaire"],
           cities: ["Maroc"],
           pricingDetails: [
-            { label: "Tarif horaire", value: "Prix non renseigné" },
+            { label: "Tarif horaire", value: "Sur demande" },
           ],
           levels: ["Primaire", "Collège", "Lycée"],
-          description: "Pour nos cours nous allons voir le nécessaire pour réussir vos études bien sur d'une façon amusante pour ne pas s'ennuyer.",
+          description: "Pour nos cours nous allons voir le nécessaire pour réussir vos études.",
           availabilityGrid: {}
         });
       }
@@ -141,8 +149,22 @@ export default function ProfessorProfilePage() {
 
   if (!prof) return null;
 
-  const JOURS = ['Lu', 'Ma', 'Me', 'Je', 'Ve', 'Sa', 'Di'];
-  const CRENEAUX = ['Matin', 'Midi', 'Après-midi'];
+  const JOURS = [
+    { label: 'Lu', key: 'lu' },
+    { label: 'Ma', key: 'ma' },
+    { label: 'Me', key: 'me' },
+    { label: 'Je', key: 'je' },
+    { label: 'Ve', key: 've' },
+    { label: 'Sa', key: 'sa' },
+    { label: 'Di', key: 'di' }
+  ];
+
+  const CRENEAUX = [
+    { label: 'Matin', key: 'matin' },
+    { label: 'Midi', key: 'midi' },
+    { label: 'Après-midi', key: 'apresmidi' }
+  ];
+
   const availabilityGrid = prof.availabilityGrid || {};
 
   return (
@@ -168,7 +190,6 @@ export default function ProfessorProfilePage() {
                 className="w-32 h-32 sm:w-36 sm:h-36 rounded-full object-cover shadow-sm border border-gray-100 shrink-0"
               />
             ) : (
-              // Silhouette par défaut style Facebook
               <div className="w-32 h-32 sm:w-36 sm:h-36 rounded-full bg-gray-200 text-gray-400 flex items-center justify-center shrink-0 shadow-inner overflow-hidden relative">
                 <User className="w-20 h-20 absolute -bottom-2 text-gray-400" />
               </div>
@@ -201,7 +222,6 @@ export default function ProfessorProfilePage() {
             </div>
           </div>
 
-          {/* Bloc Tarif Haut Droite */}
           <div className="text-center shrink-0 w-full md:w-auto min-w-[200px] space-y-3">
             <div className="text-2xl sm:text-3xl font-black text-blue-950">{prof.price}</div>
             
@@ -281,19 +301,23 @@ export default function ProfessorProfilePage() {
             <div className="w-full text-xs max-w-[300px]">
               <div className="grid grid-cols-8 gap-1 pb-2 border-b border-gray-200 text-center font-bold text-gray-800 text-sm">
                 <span></span>
-                {JOURS.map((day, i) => (
-                  <span key={i}>{day}</span>
+                {JOURS.map((day) => (
+                  <span key={day.key}>{day.label}</span>
                 ))}
               </div>
 
               {CRENEAUX.map((creneau) => (
-                <div key={creneau} className="grid grid-cols-8 gap-1 py-2.5 border-b border-gray-100 items-center">
-                  <span className="font-medium text-gray-700 text-xs">{creneau}</span>
+                <div key={creneau.key} className="grid grid-cols-8 gap-1 py-2.5 border-b border-gray-100 items-center">
+                  <span className="font-medium text-gray-700 text-xs">{creneau.label}</span>
                   {JOURS.map((jour) => {
-                    const isAvailable = !!availabilityGrid[`${jour}-${creneau}`];
+                    // Teste les combinaisons possibles (ex: "matin-sa")
+                    const keyString = `${creneau.key}-${jour.key}`;
+                    const altKeyString = creneau.key === 'apresmidi' ? `apres-midi-${jour.key}` : '';
+                    const isAvailable = !!availabilityGrid[keyString] || (altKeyString ? !!availabilityGrid[altKeyString] : false);
+                    
                     return (
-                      <div key={jour} className="flex justify-center">
-                        {isAvailable && <span className="w-4 h-4 rounded-full bg-orange-300" />}
+                      <div key={jour.key} className="flex justify-center">
+                        {isAvailable && <span className="w-4 h-4 rounded-full bg-orange-500 shadow-sm" />}
                       </div>
                     );
                   })}
@@ -305,7 +329,7 @@ export default function ProfessorProfilePage() {
           <div className="pt-4 border-t border-gray-100 space-y-2">
             <h3 className="text-sm font-bold text-gray-800">Partagez ce professeur</h3>
             <div className="flex gap-3 text-gray-500">
-              <button className="hover:text-orange-600 transition text-sm flex items-center gap-1.5 font-medium">
+              <button className="hover:text-orange-600 transition text-sm flex items-center gap-1.5 font-medium cursor-pointer">
                 <Share2 className="w-4 h-4" /> Partager
               </button>
             </div>
