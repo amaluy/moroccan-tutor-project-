@@ -2,31 +2,87 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { createClient } from '@supabase/supabase-js';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
-import { ChevronLeft, ArrowRight, ShieldCheck, GraduationCap, Users } from 'lucide-react';
+import { ChevronLeft, ArrowRight, ShieldCheck, GraduationCap, Users, Lock, KeyRound } from 'lucide-react';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+);
 
 export default function ConnexionPage() {
   const router = useRouter();
   const [currentPage, setCurrentPage] = useState<'landing' | 'about'>('landing');
   const [email, setEmail] = useState('berrada0amal@gmail.com');
+  const [password, setPassword] = useState('');
+  const [isProfessor, setIsProfessor] = useState(false);
+  const [professorData, setProfessorData] = useState<any>(null);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  const handleSignUp = (e: React.FormEvent) => {
+  // Étape 1 : Vérifier si l'email appartient à un professeur
+  const handleCheckEmail = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (email.trim() !== '') {
-      // 1. Sauvegarde de l'email de l'utilisateur
+    if (!email.trim()) return;
+    setIsLoading(true);
+    setErrorMessage('');
+
+    try {
+      // On cherche si l'email existe dans la table professors
+      const { data, error } = await supabase
+        .from('professors')
+        .select('*')
+        .eq('email', email.trim().toLowerCase())
+        .maybeSingle();
+
+      if (data) {
+        // C'est un professeur ! On lui demande son mot de passe
+        setProfessorData(data);
+        setIsProfessor(true);
+      } else {
+        // Ce n'est pas un professeur, connexion classique (élève / utilisateur)
+        localStorage.setItem('user_email', email.trim());
+        
+        if (email.trim().toLowerCase() === 'berrada0amal@gmail.com') {
+          localStorage.setItem('is_admin', 'true');
+        } else {
+          localStorage.removeItem('is_admin');
+        }
+        localStorage.removeItem('professor_id');
+
+        router.replace('/');
+      }
+    } catch (err) {
+      console.error("Erreur lors de la vérification :", err);
+      setErrorMessage("Une erreur est survenue. Veuillez réessayer.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Étape 2 : Vérifier le mot de passe du professeur
+  const handleProfessorLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setErrorMessage('');
+
+    // On compare le mot de passe entré avec celui de la base de données
+    if (professorData && professorData.password === password) {
+      // Mot de passe correct ! On sauvegarde les infos du prof
       localStorage.setItem('user_email', email.trim());
+      localStorage.setItem('professor_id', professorData.id);
       
-      // 2. Si c'est ton email, on active le statut admin dans le localStorage
       if (email.trim().toLowerCase() === 'berrada0amal@gmail.com') {
         localStorage.setItem('is_admin', 'true');
-      } else {
-        localStorage.removeItem('is_admin');
       }
 
-      // 3. Redirection vers l'accueil
-      router.replace('/'); 
+      router.replace('/');
+    } else {
+      setErrorMessage("Mot de passe incorrect. Veuillez réessayer.");
+      setIsLoading(false);
     }
   };
 
@@ -84,25 +140,76 @@ export default function ConnexionPage() {
             Les élèves, les professeurs qualifiés et les meilleurs cours de soutien réunis sur une seule et même plateforme.
           </p>
 
-          <form onSubmit={handleSignUp} className="w-full max-w-xl flex flex-col sm:flex-row items-center gap-3 bg-white p-2 rounded-2xl shadow-xl border border-gray-200/80 mb-8">
-            <input 
-              type="email" 
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Entrez votre adresse e-mail" 
-              className="w-full px-4 py-3.5 text-gray-800 placeholder-gray-400 bg-transparent text-sm sm:text-base focus:outline-none font-medium"
-            />
-            <button 
-              type="submit"
-              className="w-full sm:w-auto px-6 py-3.5 bg-[#FF5A5F] hover:bg-[#E0484C] text-white font-bold rounded-xl transition text-sm sm:text-base shrink-0 shadow-md flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <span>S'inscrire / Se connecter</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          </form>
+          {!isProfessor ? (
+            /* FORMULAIRE ÉTAPE 1 : EMAIL */
+            <form onSubmit={handleCheckEmail} className="w-full max-w-xl flex flex-col sm:flex-row items-center gap-3 bg-white p-2 rounded-2xl shadow-xl border border-gray-200/80 mb-4">
+              <input 
+                type="email" 
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Entrez votre adresse e-mail" 
+                className="w-full px-4 py-3.5 text-gray-800 placeholder-gray-400 bg-transparent text-sm sm:text-base focus:outline-none font-medium"
+              />
+              <button 
+                type="submit"
+                disabled={isLoading}
+                className="w-full sm:w-auto px-6 py-3.5 bg-[#FF5A5F] hover:bg-[#E0484C] text-white font-bold rounded-xl transition text-sm sm:text-base shrink-0 shadow-md flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <span>{isLoading ? 'Vérification...' : "S'inscrire / Se connecter"}</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </form>
+          ) : (
+            /* FORMULAIRE ÉTAPE 2 : MOT DE PASSE PROFESSEUR */
+            <form onSubmit={handleProfessorLogin} className="w-full max-w-xl flex flex-col gap-3 bg-white p-5 rounded-2xl shadow-xl border border-orange-200 mb-4 text-left animate-in fade-in duration-200">
+              <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                <div className="flex items-center gap-2 text-xs font-bold text-orange-600 bg-orange-50 px-3 py-1 rounded-full">
+                  <KeyRound className="w-3.5 h-3.5" />
+                  <span>Espace Professeur détecté</span>
+                </div>
+                <button 
+                  type="button" 
+                  onClick={() => { setIsProfessor(false); setPassword(''); }}
+                  className="text-xs text-gray-400 hover:text-gray-600 underline cursor-pointer"
+                >
+                  Changer d'e-mail
+                </button>
+              </div>
 
-          <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-10 text-xs sm:text-sm text-gray-500 font-semibold">
+              <p className="text-xs text-gray-600">
+                Bonjour, un compte professeur est associé à <b>{email}</b>. Veuillez entrer votre mot de passe pour vous connecter :
+              </p>
+
+              <div className="flex flex-col sm:flex-row gap-3 pt-1">
+                <input 
+                  type="password" 
+                  required
+                  autoFocus
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Votre mot de passe professeur" 
+                  className="w-full px-4 py-3.5 text-gray-800 placeholder-gray-400 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#FF5A5F] font-medium"
+                />
+                <button 
+                  type="submit"
+                  disabled={isLoading}
+                  className="px-6 py-3.5 bg-[#FF5A5F] hover:bg-[#E0484C] text-white font-bold rounded-xl transition text-sm shrink-0 shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <span>{isLoading ? 'Connexion...' : 'Valider'}</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            </form>
+          )}
+
+          {errorMessage && (
+            <p className="text-xs font-bold text-rose-500 mb-6 bg-rose-50 px-4 py-2 rounded-xl border border-rose-200">
+              {errorMessage}
+            </p>
+          )}
+
+          <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-10 text-xs sm:text-sm text-gray-500 font-semibold mt-4">
             <div className="flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-[#FF5A5F]" /><span>Profs vérifiés & certifiés</span></div>
             <div className="flex items-center gap-2"><GraduationCap className="w-4 h-4 text-[#FF5A5F]" /><span>Tous niveaux scolaires</span></div>
             <div className="flex items-center gap-2"><Users className="w-4 h-4 text-[#FF5A5F]" /><span>Groupes & Cours particuliers</span></div>

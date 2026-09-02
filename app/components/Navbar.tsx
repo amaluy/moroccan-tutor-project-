@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { 
   MapPin, BookOpen, ChevronDown, 
-  ShieldAlert, LogOut, HelpCircle, Menu, X, GraduationCap, Sparkles 
+  ShieldAlert, LogOut, HelpCircle, GraduationCap, User, Menu, X, Home, Info, ArrowRight
 } from 'lucide-react';
 
 const VILLES = [
@@ -18,7 +18,6 @@ const MATIERES = [
 ];
 
 interface NavbarProps {
-  isLoggedIn?: boolean;
   isMenuOpen: boolean;
   setIsMenuOpen: (open: boolean) => void;
   onLogoutClick: () => void;
@@ -28,7 +27,6 @@ interface NavbarProps {
 }
 
 export default function Navbar({
-  isLoggedIn = true,
   isMenuOpen,
   setIsMenuOpen,
   onLogoutClick,
@@ -38,23 +36,56 @@ export default function Navbar({
 }: NavbarProps) {
   const [openDropdown, setOpenDropdown] = useState<'villes' | 'matieres' | null>(null);
 
-  return (
-    <nav className="bg-white border-b border-gray-100 sticky top-0 z-40 shadow-sm">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6">
-        <div className="flex items-center justify-between h-16">
-          
-          {/* Logo en Orange */}
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="bg-orange-50 p-1.5 rounded-xl border border-orange-100 group-hover:bg-orange-100 transition">
-              <GraduationCap className="w-6 h-6 text-[#FF5733]" />
-            </div>
-            <span className="text-2xl font-black tracking-tight text-gray-900">
-              prof<span className="text-[#FF5733]">maroc</span>
-            </span>
-          </Link>
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isProfessor, setIsProfessor] = useState(false);
 
-          {/* Navigation Principale Desktop */}
-          <div className="hidden md:flex items-center gap-6 text-xs font-bold text-gray-700">
+  useEffect(() => {
+    const email = localStorage.getItem('user_email');
+    const profId = localStorage.getItem('professor_id');
+
+    setUserEmail(email);
+
+    const adminEmails = ['louizisalaheddine@gmail.com', 'berrada0amal@gmail.com'];
+    const userIsAdmin = (email && adminEmails.includes(email)) || localStorage.getItem('is_admin') === 'true';
+    setIsAdmin(userIsAdmin);
+
+    if (userIsAdmin) {
+      setIsProfessor(false);
+      localStorage.removeItem('professor_id');
+    } else {
+      setIsProfessor(!!profId);
+    }
+  }, []);
+
+  return (
+    <>
+      <nav className="bg-white border-b border-gray-100 sticky top-0 z-40 shadow-sm w-full">
+        {/* Bouton Burger collé à l'extrême gauche, reste de la navbar aligné proprement */}
+        <div className="flex items-center justify-between h-16 px-4 sm:px-6 w-full">
+          
+          {/* GAUCHE : Bouton Burger (Collé à l'extrême gauche) + Logo */}
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => setIsMenuOpen(true)}
+              className="p-2 text-gray-700 hover:text-[#FF5733] hover:bg-orange-50 rounded-xl transition cursor-pointer border border-gray-200 shadow-xs flex items-center justify-center -ml-2 sm:ml-0"
+              title="Ouvrir le menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+
+            <Link href="/" className="flex items-center gap-2 group">
+              <div className="bg-orange-50 p-1.5 rounded-xl border border-orange-100 group-hover:bg-orange-100 transition">
+                <GraduationCap className="w-6 h-6 text-[#FF5733]" />
+              </div>
+              <span className="text-2xl font-black tracking-tight text-gray-900">
+                prof<span className="text-[#FF5733]">maroc</span>
+              </span>
+            </Link>
+          </div>
+
+          {/* CENTRE : Menu Horizontal Classique */}
+          <div className="hidden lg:flex items-center gap-7 text-sm font-bold text-gray-700">
             <Link href="/" className="hover:text-[#FF5733] transition">
               ACCUEIL
             </Link>
@@ -65,14 +96,14 @@ export default function Navbar({
               onMouseEnter={() => setOpenDropdown('villes')}
               onMouseLeave={() => setOpenDropdown(null)}
             >
-              <button className="flex items-center gap-1 hover:text-[#FF5733] py-2 transition cursor-pointer">
-                <MapPin className="w-3.5 h-3.5 text-[#FF5733]" />
+              <button className="flex items-center gap-1.5 hover:text-[#FF5733] py-2 transition cursor-pointer">
+                <MapPin className="w-4 h-4 text-[#FF5733]" />
                 <span>VILLES</span>
-                <ChevronDown className={`w-3 h-3 transition-transform ${openDropdown === 'villes' ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${openDropdown === 'villes' ? 'rotate-180' : ''}`} />
               </button>
 
               {openDropdown === 'villes' && (
-                <div className="absolute top-full left-0 w-64 bg-white rounded-2xl shadow-xl border border-gray-100 p-3 grid grid-cols-2 gap-1 animate-in fade-in slide-in-from-top-2 duration-150">
+                <div className="absolute top-full left-0 w-64 bg-white rounded-2xl shadow-xl border border-gray-100 p-3 grid grid-cols-2 gap-1 z-50">
                   {VILLES.map((v, i) => (
                     <button
                       key={i}
@@ -95,14 +126,14 @@ export default function Navbar({
               onMouseEnter={() => setOpenDropdown('matieres')}
               onMouseLeave={() => setOpenDropdown(null)}
             >
-              <button className="flex items-center gap-1 hover:text-[#FF5733] py-2 transition cursor-pointer">
-                <BookOpen className="w-3.5 h-3.5 text-[#FF5733]" />
+              <button className="flex items-center gap-1.5 hover:text-[#FF5733] py-2 transition cursor-pointer">
+                <BookOpen className="w-4 h-4 text-[#FF5733]" />
                 <span>MATIÈRES</span>
-                <ChevronDown className={`w-3 h-3 transition-transform ${openDropdown === 'matieres' ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${openDropdown === 'matieres' ? 'rotate-180' : ''}`} />
               </button>
 
               {openDropdown === 'matieres' && (
-                <div className="absolute top-full left-0 w-64 bg-white rounded-2xl shadow-xl border border-gray-100 p-3 grid grid-cols-2 gap-1 animate-in fade-in slide-in-from-top-2 duration-150">
+                <div className="absolute top-full left-0 w-64 bg-white rounded-2xl shadow-xl border border-gray-100 p-3 grid grid-cols-2 gap-1 z-50">
                   {MATIERES.map((m, i) => (
                     <button
                       key={i}
@@ -123,122 +154,143 @@ export default function Navbar({
               QUI SOMMES NOUS ?
             </Link>
 
-            <button onClick={onOpenHelp} className="hover:text-[#FF5733] transition flex items-center gap-1 cursor-pointer">
-              <HelpCircle className="w-3.5 h-3.5 text-[#FF5733]" />
-              <span>AIDE</span>
-            </button>
-          </div>
-
-          {/* Actions Côté Droit Desktop */}
-          <div className="hidden md:flex items-center gap-3">
-            
-            {/* Bouton Donner des cours clean */}
-            <Link 
-              href="/donner-cours"
-              className="border border-[#FF5733] text-[#FF5733] hover:bg-[#FF5733] hover:text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow-sm"
-            >
-              Donner des cours
-            </Link>
-
-            {/* BOUTON ESPACE ADMIN */}
-            <Link
-              href="/admin"
-              className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition flex items-center gap-2 shadow-sm border border-slate-700"
-            >
-              <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
-              <span>Espace Admin</span>
-            </Link>
-
-            {/* Bouton Déconnexion */}
-            {isLoggedIn && (
-              <button
-                onClick={onLogoutClick}
-                className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition cursor-pointer"
-                title="Déconnexion"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-
-          {/* Bouton Mobile Hamburger */}
-          <div className="md:hidden flex items-center">
-            <button 
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg cursor-pointer"
-            >
-              {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
-          </div>
-
-        </div>
-      </div>
-
-      {/* --- MENU MOBILE SLIDE-DOWN --- */}
-      {isMenuOpen && (
-        <div className="md:hidden bg-white border-b border-gray-200 px-4 pt-2 pb-6 space-y-4 animate-in slide-in-from-top-2 duration-200">
-          <div className="flex flex-col space-y-3 font-bold text-sm text-gray-700 pt-2">
-            <Link 
-              href="/" 
-              onClick={() => setIsMenuOpen(false)}
-              className="hover:text-[#FF5733] transition py-1"
-            >
-              ACCUEIL
-            </Link>
-
-            <Link 
-              href="/qui-sommes-nous" 
-              onClick={() => setIsMenuOpen(false)}
-              className="hover:text-[#FF5733] transition py-1"
-            >
-              QUI SOMMES NOUS ?
-            </Link>
-
-            <button 
-              onClick={() => {
-                setIsMenuOpen(false);
-                onOpenHelp();
-              }} 
-              className="text-left hover:text-[#FF5733] transition flex items-center gap-2 py-1"
-            >
+            <button onClick={onOpenHelp} className="hover:text-[#FF5733] transition flex items-center gap-1.5 cursor-pointer">
               <HelpCircle className="w-4 h-4 text-[#FF5733]" />
               <span>AIDE</span>
             </button>
           </div>
 
-          <div className="pt-2 border-t border-gray-100 flex flex-col gap-2.5">
-            <Link 
-              href="/donner-cours"
-              onClick={() => setIsMenuOpen(false)}
-              className="w-full bg-[#FF5733] text-white font-extrabold text-xs py-3 rounded-xl text-center shadow-sm flex items-center justify-center gap-2"
-            >
-              Devenir Enseignant
-            </Link>
-
-            <Link
-              href="/admin"
-              onClick={() => setIsMenuOpen(false)}
-              className="w-full bg-slate-900 text-white text-xs font-bold py-2.5 rounded-xl text-center flex items-center justify-center gap-2"
-            >
-              <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
-              <span>Espace Admin</span>
-            </Link>
-
-            {isLoggedIn && (
-              <button
-                onClick={() => {
-                  setIsMenuOpen(false);
-                  onLogoutClick();
-                }}
-                className="w-full text-red-600 bg-red-50 hover:bg-red-100 font-bold text-xs py-2.5 rounded-xl flex items-center justify-center gap-2 transition"
+          {/* DROITE : Actions contextuelles */}
+          <div className="flex items-center gap-3">
+            {!isProfessor && !isAdmin && (
+              <Link 
+                href="/donner-cours"
+                className="hidden sm:inline-flex border border-[#FF5733] text-[#FF5733] hover:bg-[#FF5733] hover:text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow-sm"
               >
-                <LogOut className="w-4 h-4" />
-                Déconnexion
-              </button>
+                Donner des cours
+              </Link>
             )}
+
+            {isProfessor && (
+              <Link 
+                href="/prof/dashboard"
+                className="bg-orange-50 hover:bg-orange-100 text-orange-600 border border-orange-200 text-xs font-bold px-3.5 py-2 rounded-xl transition flex items-center gap-2 shadow-sm"
+              >
+                <GraduationCap className="w-4 h-4" />
+                <span>Mon Dashboard Prof</span>
+              </Link>
+            )}
+
+            {!userEmail && (
+              <Link
+                href="/connexion"
+                className="bg-[#FF5733] hover:bg-[#e0482b] text-white text-xs font-bold px-4 py-2.5 rounded-xl transition shadow-sm flex items-center gap-1.5"
+              >
+                <span>Se connecter</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            )}
+          </div>
+
+        </div>
+      </nav>
+
+      {/* --- PANNEAU LATÉRAL (DRAWER) --- */}
+      {isMenuOpen && (
+        <div className="fixed inset-0 z-50 flex">
+          <div 
+            className="fixed inset-0 bg-black/50 backdrop-blur-xs transition-opacity" 
+            onClick={() => setIsMenuOpen(false)}
+          />
+
+          <div className="relative w-80 bg-gray-900 text-gray-200 h-full shadow-2xl flex flex-col z-10 animate-in slide-in-from-left duration-200">
+            
+            <div className="flex items-center justify-between px-6 py-5 border-b border-gray-800">
+              <div className="flex items-center gap-2">
+                <GraduationCap className="w-6 h-6 text-[#FF5733]" />
+                <span className="text-xl font-black text-white">prof<span className="text-[#FF5733]">maroc</span></span>
+              </div>
+              <button 
+                onClick={() => setIsMenuOpen(false)}
+                className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
+              
+              <div className="space-y-1">
+                <div className="text-[10px] font-extrabold uppercase tracking-widest text-gray-500 px-3 mb-2">Navigation</div>
+                <Link 
+                  href="/" 
+                  onClick={() => setIsMenuOpen(false)}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-800 hover:text-white transition"
+                >
+                  <Home className="w-4 h-4 text-[#FF5733]" />
+                  <span>Accueil</span>
+                </Link>
+                <Link 
+                  href="/qui-sommes-nous" 
+                  onClick={() => setIsMenuOpen(false)}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-800 hover:text-white transition"
+                >
+                  <Info className="w-4 h-4 text-[#FF5733]" />
+                  <span>Qui sommes-nous ?</span>
+                </Link>
+                <button 
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    onOpenHelp();
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-800 hover:text-white transition text-left cursor-pointer"
+                >
+                  <HelpCircle className="w-4 h-4 text-[#FF5733]" />
+                  <span>Aide & Support</span>
+                </button>
+              </div>
+
+              {/* SECTION ADMIN (Espace Admin + Déconnexion) */}
+              {isAdmin && (
+                <div className="pt-4 border-t border-gray-800 space-y-1">
+                  <div className="text-[10px] font-extrabold uppercase tracking-widest text-amber-500 px-3 mb-2">Administration</div>
+                  
+                  <Link
+                    href="/admin"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 transition border border-amber-500/20"
+                  >
+                    <ShieldAlert className="w-4 h-4 text-amber-400" />
+                    <span>Espace Admin</span>
+                  </Link>
+
+                  <button
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      onLogoutClick();
+                    }}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-rose-400 hover:bg-rose-500/10 transition text-left cursor-pointer"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span>Déconnexion</span>
+                  </button>
+                </div>
+              )}
+
+            </div>
+
+            {userEmail && (
+              <div className="p-4 border-t border-gray-800 bg-gray-950/50 flex items-center justify-between">
+                <div className="flex items-center gap-2 truncate text-xs text-gray-400">
+                  <User className="w-4 h-4 text-[#FF5733] shrink-0" />
+                  <span className="truncate">{userEmail}</span>
+                </div>
+              </div>
+            )}
+
           </div>
         </div>
       )}
-    </nav>
+    </>
   );
 }
