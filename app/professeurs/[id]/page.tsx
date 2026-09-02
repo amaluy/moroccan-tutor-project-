@@ -60,16 +60,17 @@ export default function ProfessorProfilePage() {
         const fullName = `${prenom} ${nom}`.trim() || "Professeur";
         const villeProf = data.ville || data.city || data.location || "Maroc";
         const photoProf = data.photo_URL || data.avatar || null;
+        
+        // Récupération de l'email du prof
+        const profEmail = data.email || data.mail || '';
 
         const rawTarif = data.tarif || data.price || data.tarif_horaire;
         const formattedPrice = rawTarif ? `${rawTarif} DH` : "Sur demande";
 
         const professorBio = data.bio || data.description || "";
 
-        // --- CORRECTION DU NOM DE LA COLONNE ICI ("disponibilities") ---
         let rawDispos: string[] = [];
         const dbDispoField = data.disponibilities || data.disponibilites || data.dispos;
-        console.log("CHAMP DISPONIBILITÉS TROUVÉ :", dbDispoField);
         
         if (Array.isArray(dbDispoField)) {
           rawDispos = dbDispoField;
@@ -84,9 +85,8 @@ export default function ProfessorProfilePage() {
             const cleanItem = item.trim().toLowerCase();
             availabilityGridMap[cleanItem] = true;
             
-            // Normalisation pour l'après-midi peu importe comment c'est écrit
             if (cleanItem.includes('apres-midi') || cleanItem.includes('après-midi') || cleanItem.includes('apresmidi')) {
-              const baseDay = cleanItem.split('-').pop(); // récupère le jour (lu, ma, etc.)
+              const baseDay = cleanItem.split('-').pop();
               if (baseDay) {
                 availabilityGridMap[`apresmidi-${baseDay}`] = true;
                 availabilityGridMap[`apres-midi-${baseDay}`] = true;
@@ -95,11 +95,10 @@ export default function ProfessorProfilePage() {
             }
           }
         });
-        
-        console.log("GRILLE DE DISPOS PARSÉE :", availabilityGridMap);
 
         setProf({
           id: data.id,
+          email: profEmail,
           name: fullName,
           avatar: photoProf,
           tags: data.tags || [data.matiere || "Soutien Scolaire", "Pédagogie"],
@@ -118,6 +117,7 @@ export default function ProfessorProfilePage() {
       } else {
         setProf({
           id: String(params.id),
+          email: "",
           name: "Professeur",
           avatar: null,
           tags: ["Soutien Scolaire"],
@@ -156,19 +156,27 @@ export default function ProfessorProfilePage() {
     }));
   };
 
+  // Envoi du formulaire de contact avec la colonne message dédiée
   const handleSubmitContact = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    await supabase.from('leads').insert([
+    const { error } = await supabase.from('leads').insert([
       {
+        professor_email: prof.email,
         student_name: formData.fullName,
         student_email: formData.email,
         student_phone: formData.phone,
-        subject: formData.message,
+        message: formData.message, // Enregistrement du message de l'élève
         status: 'pending'
       }
     ]);
+
+    if (error) {
+      console.error("Erreur lors de l'insertion du lead :", error);
+    } else {
+      console.log("Lead et message insérés avec succès !");
+    }
 
     setTimeout(() => {
       setIsSubmitting(false);
@@ -192,7 +200,6 @@ export default function ProfessorProfilePage() {
     { label: 'Me', key: 'me' },
     { label: 'Je', key: 'je' },
     { label: 'Ve', key: 've' },
-    { label: 'Sa', key: 'sa' },
     { label: 'Di', key: 'di' }
   ];
 

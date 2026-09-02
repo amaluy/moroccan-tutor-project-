@@ -58,7 +58,7 @@ export default function AdminDashboardPage() {
     }
   };
 
-  // Accepter le professeur : Ajout dans 'professors' + Suppression de 'requests'
+  // Accepter le professeur : Ajout dans 'professors' + Ajout dans 'leads' + Suppression de 'requests'
   const handleApproveRequest = async (reqItem: any) => {
     try {
       console.log("Tentative d'approbation pour l'ID :", reqItem.id);
@@ -66,6 +66,7 @@ export default function AdminDashboardPage() {
       const pName = reqItem['Prénom'] || reqItem.prenom || '';
       const nName = reqItem['Nom'] || reqItem.nom || '';
       const fullName = (`${pName} ${nName}`).trim() || 'Nouveau Professeur';
+      const profEmail = reqItem.email || '';
 
       // 1. Préparation des données du professeur
       let newProf: any = {};
@@ -92,7 +93,20 @@ export default function AdminDashboardPage() {
         throw insertError;
       }
 
-      // 3. Supprimer de la table des demandes en attente
+      // 3. Insérer l'email dans la table 'leads' (si l'email est présent)
+      if (profEmail) {
+        const { error: leadError } = await supabase
+          .from('leads')
+          .insert([{ email: profEmail, created_at: new Date().toISOString() }]);
+        
+        if (leadError) {
+          console.error("Erreur Insertion leads:", leadError);
+        } else {
+          console.log("Email inséré avec succès dans la table leads !");
+        }
+      }
+
+      // 4. Supprimer de la table des demandes en attente
       if (reqItem.id) {
         const { error: deleteError, count } = await supabase
           .from('requests')
@@ -109,18 +123,18 @@ export default function AdminDashboardPage() {
         console.warn("Attention : Aucun ID trouvé sur cet élément requests !");
       }
 
-      // 4. Notification optionnelle par email
-      if (reqItem.email) {
+      // 5. Notification optionnelle par email
+      if (profEmail) {
         await fetch('/api/notify-professor', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: reqItem.email, name: fullName })
+          body: JSON.stringify({ email: profEmail, name: fullName })
         }).catch(() => {});
       }
 
       setSelectedRequest(null);
       await fetchDataFromSupabase();
-      alert(`Le profil de ${fullName} a été accepté et retiré des demandes avec succès !`);
+      alert(`Le profil de ${fullName} a été accepté, enregistré dans les leads et retiré des demandes avec succès !`);
     } catch (err: any) {
       alert(`Erreur lors de la validation : ${err.message}`);
     }
@@ -149,7 +163,7 @@ export default function AdminDashboardPage() {
       for (const reqItem of professeursNouveaux) {
         await handleApproveRequest(reqItem);
       }
-      return `✨ Mission accomplie ! J'ai validé et transféré avec succès ${professeursNouveaux.length} professeur(s) vers l'accueil.`;
+      return `✨ Mission accomplie ! J'ai validé, transféré vers l'accueil et enregistré dans les leads avec succès ${professeursNouveaux.length} professeur(s).`;
     } catch (err: any) {
       return `Oups, une erreur est survenue : ${err.message}`;
     }
