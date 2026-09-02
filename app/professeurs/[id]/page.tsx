@@ -53,6 +53,8 @@ export default function ProfessorProfilePage() {
         .single();
 
       if (data) {
+        console.log("DONNÉES BRUTES SUPABASE :", data);
+        
         const prenom = data.prenom || data.Prénom || '';
         const nom = data.nom || data.Nom || '';
         const fullName = `${prenom} ${nom}`.trim() || "Professeur";
@@ -64,16 +66,37 @@ export default function ProfessorProfilePage() {
 
         const professorBio = data.bio || data.description || "";
 
-        const rawDispos: string[] = data.disponibilites || [];
+        // --- CORRECTION DU NOM DE LA COLONNE ICI ("disponibilities") ---
+        let rawDispos: string[] = [];
+        const dbDispoField = data.disponibilities || data.disponibilites || data.dispos;
+        console.log("CHAMP DISPONIBILITÉS TROUVÉ :", dbDispoField);
+        
+        if (Array.isArray(dbDispoField)) {
+          rawDispos = dbDispoField;
+        } else if (typeof dbDispoField === 'string') {
+          rawDispos = dbDispoField.replace(/[{}"']/g, '').split(',').map(s => s.trim());
+        }
+
         const availabilityGridMap: Record<string, boolean> = {};
         
         rawDispos.forEach((item: string) => {
           if (item && typeof item === 'string') {
             const cleanItem = item.trim().toLowerCase();
             availabilityGridMap[cleanItem] = true;
-            if (cleanItem.includes('apres-midi')) availabilityGridMap[cleanItem.replace('apres-midi', 'apresmidi')] = true;
+            
+            // Normalisation pour l'après-midi peu importe comment c'est écrit
+            if (cleanItem.includes('apres-midi') || cleanItem.includes('après-midi') || cleanItem.includes('apresmidi')) {
+              const baseDay = cleanItem.split('-').pop(); // récupère le jour (lu, ma, etc.)
+              if (baseDay) {
+                availabilityGridMap[`apresmidi-${baseDay}`] = true;
+                availabilityGridMap[`apres-midi-${baseDay}`] = true;
+                availabilityGridMap[`après-midi-${baseDay}`] = true;
+              }
+            }
           }
         });
+        
+        console.log("GRILLE DE DISPOS PARSÉE :", availabilityGridMap);
 
         setProf({
           id: data.id,
@@ -117,13 +140,11 @@ export default function ProfessorProfilePage() {
     fetchProf();
   }, [params?.id]);
 
-  // Gestion du vote par étoiles dynamique
   const handleRate = (rateValue: number) => {
     if (hasVoted) return;
     setUserRating(rateValue);
     setHasVoted(true);
 
-    // Calcul dynamique de la nouvelle moyenne
     const currentTotalScore = prof.rating * prof.reviewsCount;
     const newReviewsCount = prof.reviewsCount + 1;
     const newRating = Number(((currentTotalScore + rateValue) / newReviewsCount).toFixed(1));
@@ -194,10 +215,8 @@ export default function ProfessorProfilePage() {
         onOpenHelp={() => setIsHelpOpen(true)}
       />
 
-      {/* --- CORPS PRINCIPAL AVEC MISE EN PAGE STYLE SUPERPROF --- */}
       <div className="max-w-6xl mx-auto px-4 sm:px-8 py-10 w-full grid grid-cols-1 lg:grid-cols-12 gap-12 text-left relative items-start">
         
-        {/* COLONNE GAUCHE (Contenu principal) */}
         <section className="lg:col-span-7 space-y-10">
           
           <div className="flex flex-wrap gap-2">
@@ -274,8 +293,7 @@ export default function ProfessorProfilePage() {
                   <span className="font-semibold text-gray-700 text-xs">{creneau.label}</span>
                   {JOURS.map((jour) => {
                     const keyString = `${creneau.key}-${jour.key}`;
-                    const altKeyString = creneau.key === 'apresmidi' ? `apres-midi-${jour.key}` : '';
-                    const isAvailable = !!availabilityGrid[keyString] || (altKeyString ? !!availabilityGrid[altKeyString] : false);
+                    const isAvailable = !!availabilityGrid[keyString];
                     
                     return (
                       <div key={jour.key} className="flex justify-center">
@@ -290,8 +308,6 @@ export default function ProfessorProfilePage() {
 
         </section>
 
-
-        {/* COLONNE DROITE (Carte Flottante) */}
         <aside className="lg:col-span-5 sticky top-6">
           <div className="bg-white border border-gray-200/80 rounded-3xl p-6 shadow-xl space-y-6">
             
@@ -305,7 +321,6 @@ export default function ProfessorProfilePage() {
                 {prof.avatar ? (
                   <img src={prof.avatar} className="w-24 h-24 rounded-full object-cover shadow-md border-2 border-orange-100" alt={prof.name} />
                 ) : (
-                  // Avatar moderne et élégant remplaçant l'ancienne image moche
                   <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-orange-500 to-rose-500 text-white flex items-center justify-center font-black text-2xl shadow-md border-2 border-white">
                     {prof.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)}
                   </div>
@@ -342,7 +357,6 @@ export default function ProfessorProfilePage() {
               Contacter
             </button>
 
-            {/* Section Donner son avis / Étoiles (Maximum 5 étoiles) */}
             <div className="bg-gray-50 border border-gray-100 rounded-2xl p-4 text-center space-y-2">
               <span className="text-xs font-bold text-gray-700 block">
                 {hasVoted ? "Merci pour votre avis !" : `Donner votre avis sur ${prof.name}`}
@@ -380,7 +394,6 @@ export default function ProfessorProfilePage() {
 
       </div>
 
-      {/* FORMULAIRE DE CONTACT */}
       <section className="bg-gray-50/50 border-t border-gray-100 py-16 px-4 sm:px-8">
         <div id="formulaire-contact" className="max-w-3xl mx-auto bg-white p-6 sm:p-10 rounded-3xl border border-orange-200 shadow-xl space-y-6">
           
