@@ -80,18 +80,18 @@ export default function ConnexionPage() {
       
       localStorage.setItem('user_email', cleanEmail);
       
-      // Vérification robuste du rôle admin pour rediriger vers /admin ou /prof/dashboard
+      // Vérification robuste du rôle admin
       const isAdmin = professorData.is_admin === true || 
-                      String(professorData.is_admin).toLowerCase() === 'true';
+                    String(professorData.is_admin).toLowerCase() === 'true';
 
       if (isAdmin) {
         localStorage.setItem('is_admin', 'true');
         localStorage.removeItem('professor_id');
-        router.replace('/admin');
+        router.replace('/admin'); // <-- Redirige l'administrateur vers admin/page.tsx
       } else {
         localStorage.setItem('professor_id', professorData.id);
         localStorage.removeItem('is_admin');
-        router.replace('/prof/dashboard');
+        router.replace('/prof/dashboard'); // <-- Redirige le prof vers son dashboard
       }
     } else {
       setErrorMessage("Mot de passe incorrect. Veuillez réessayer.");

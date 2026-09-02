@@ -1,607 +1,628 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, BookOpen, Users, Sparkles, Bot, Send, RefreshCw, CheckCircle, Trash2, Image as ImageIcon, Eye, X, Clock, Layers, ZoomIn } from 'lucide-react';
-import { createClient } from '@supabase/supabase-js';
+import Footer from '../components/Footer';
+import HelpModal from '../components/HelpModal';
+import AdminDashboardPage from './admindashboard';
+import { supabase } from '@/lib/supabase';
+import AdminNavbar from './adminNavbar';
+import { 
+  Search, MapPin, BookOpen, CheckCircle2, 
+  Filter, ShieldCheck, PhoneCall,
+  GraduationCap, DollarSign, Laptop, Home, 
+  Award, Loader2, RefreshCcw, User,
+  LayoutDashboard, LogOut, Menu, X, HelpCircle
+} from 'lucide-react';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+interface Professor {
+  id: string;
+  Nom?: string;
+  Prénom?: string;
+  nom?: string;
+  prenom?: string;
+  name?: string;
+  photo_URL?: string;
+  photo_url?: string;
+  avatar_url?: string;
+  photo?: string;
+  ville?: string;
+  city?: string;
+  niveau?: string;
+  level?: string;
+  matiere?: string;
+  subject?: string;
+  title?: string;
+  tarif?: number | string;
+  price?: number | string;
+  lieu?: string;
+  location?: string;
+}
 
-export default function AdminDashboardPage() {
-  const router = useRouter();
-  const [authorized, setAuthorized] = useState(false);
-  const [activeTab, setActiveTab] = useState<'ia_agent' | 'existants' | 'nouveaux'>('ia_agent');
+export default function AdminPage() {
+  const [currentView, setCurrentView] = useState<'home' | 'dashboard'>('home');
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const [helpSection, setHelpSection] = useState<'recherche' | 'acceptee' | 'refusee' | 'avis' | 'inscription' | 'compte'>('recherche');
 
-  const [professeursNouveaux, setProfesseursNouveaux] = useState<any[]>([]);
-  const [professeursExistants, setProfesseursExistants] = useState<any[]>([]);
-  const [isLoadingDb, setIsLoadingDb] = useState(true);
-  const [dbError, setDbError] = useState<string | null>(null);
+  const [professors, setProfessors] = useState<Professor[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
 
-  const [selectedRequest, setSelectedRequest] = useState<any | null>(null);
-  const [previewImage, setPreviewImage] = useState<string | null>(null);
-  
-  const [chatInput, setChatInput] = useState('');
-  const [messages, setMessages] = useState<any[]>([
-    { role: 'assistant', text: "Bonjour 에밀 ! Je suis ton assistant IA. Je surveille tes tables Supabase 'professors' et 'requests'. Dis-moi par exemple : 'Valide tous les nouveaux profs' ou demande-moi le statut de la plateforme !" }
-  ]);
+  // États des filtres
+  const [selectedSubject, setSelectedSubject] = useState('');
+  const [selectedCity, setSelectedCity] = useState('');
+  const [selectedLevel, setSelectedLevel] = useState('');
+  const [priceRange, setPriceRange] = useState('');
+  const [locationType, setLocationType] = useState('');
+
+  // Machine à écrire fluide
+  const words = ["en Maths", "en Français", "en Anglais", "en Physique", "en SVT", "en Arabe"];
+  const [currentWordIndex, setCurrentWordIndex] = useState(0);
+  const [currentText, setCurrentText] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [typingSpeed, setTypingSpeed] = useState(120);
 
   useEffect(() => {
-    localStorage.setItem('user_email', 'berrada0amal@gmail.com');
-    localStorage.setItem('is_admin', 'true');
-    setAuthorized(true);
+    const fullText = words[currentWordIndex];
 
-    fetchDataFromSupabase();
+    const handleTyping = () => {
+      if (!isDeleting) {
+        setCurrentText(fullText.substring(0, currentText.length + 1));
+        if (currentText === fullText) {
+          setTimeout(() => setIsDeleting(true), 1500);
+          setTypingSpeed(70);
+        }
+      } else {
+        setCurrentText(fullText.substring(0, currentText.length - 1));
+        if (currentText === "") {
+          setIsDeleting(false);
+          setCurrentWordIndex((prev) => (prev + 1) % words.length);
+          setTypingSpeed(120);
+        }
+      }
+    };
+
+    const timer = setTimeout(handleTyping, typingSpeed);
+    return () => clearTimeout(timer);
+  }, [currentText, isDeleting, currentWordIndex, typingSpeed, words]);
+
+  const subjects = [
+    "Maths", "Physique", "Physique et Chimie", "Arabe", "Anglais", 
+    "Français", "Coach sportif", "SVT", "Étude supérieur"
+  ];
+
+  const levels = [
+    "Primaire", "Collège", "Secondaire", "Niveau Supérieur"
+  ];
+
+  const fetchProfessors = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.from('professors').select('*');
+
+      if (error) {
+        console.error('Erreur Supabase:', error);
+        setProfessors([]);
+      } else {
+        let results = data || [];
+
+        const normalize = (text: string) => {
+          return text
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/[^a-z0-9]/g, "");
+        };
+
+        if (selectedSubject) {
+          const cleanSub = normalize(selectedSubject);
+          results = results.filter(p => {
+            const mat = normalize(String(p.matiere || p.subject || ''));
+            return mat.includes(cleanSub) || cleanSub.includes(mat);
+          });
+        }
+
+        if (selectedCity.trim()) {
+          const cleanCity = normalize(selectedCity);
+          results = results.filter(p => {
+            const city = normalize(String(p.ville || p.city || ''));
+            if (!city) return false;
+            if (city.includes(cleanCity) || cleanCity.includes(city)) return true;
+            if (cleanCity.includes('casa') && city.includes('casa')) return true;
+            return false;
+          });
+        }
+
+        if (selectedLevel) {
+          const cleanLvl = normalize(selectedLevel);
+          results = results.filter(p => {
+            const lvl = normalize(String(p.niveau || p.level || ''));
+            if (!lvl) return true;
+            return lvl.includes(cleanLvl) || cleanLvl.includes(lvl);
+          });
+        }
+
+        if (priceRange) {
+          results = results.filter(p => {
+            const priceVal = Number(p.tarif !== undefined && p.tarif !== null ? p.tarif : p.price) || 0;
+            if (priceRange === '0-100') return priceVal <= 100;
+            if (priceRange === '100-150') return priceVal >= 100 && priceVal <= 150;
+            if (priceRange === '150-200') return priceVal >= 150 && priceVal <= 200;
+            if (priceRange === '200+') return priceVal >= 200;
+            return true;
+          });
+        }
+
+        if (locationType) {
+          results = results.filter(p => {
+            const loc = normalize(String(p.lieu || p.location || ''));
+            if (!loc) return true; 
+            return loc.includes(normalize(locationType));
+          });
+        }
+
+        setProfessors(results);
+      }
+    } catch (err) {
+      console.error('Erreur de chargement:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProfessors();
   }, []);
 
-  const fetchDataFromSupabase = async () => {
-    setIsLoadingDb(true);
-    setDbError(null);
-
-    try {
-      const { data: profsData, error: profsError } = await supabase.from('professors').select('*');
-      if (profsError) setDbError(profsError.message);
-      else if (profsData) setProfesseursExistants(profsData);
-
-      const { data: reqsData, error: reqsError } = await supabase.from('requests').select('*');
-      if (reqsError) {
-        setDbError(reqsError.message);
-      } else if (reqsData) {
-        setProfesseursNouveaux(reqsData);
-      }
-    } catch (err: any) {
-      setDbError(err.message || 'Erreur réseau');
-    } finally {
-      setIsLoadingDb(false);
-    }
-  };
-
-  // Accepter le professeur : Ajout dans 'professors' + Ajout dans 'leads' + Suppression de 'requests'
-  const handleApproveRequest = async (reqItem: any) => {
-    try {
-      console.log("Tentative d'approbation pour l'ID :", reqItem.id);
-      
-      const pName = reqItem['Prénom'] || reqItem.prenom || '';
-      const nName = reqItem['Nom'] || reqItem.nom || '';
-      const fullName = (`${pName} ${nName}`).trim() || 'Nouveau Professeur';
-      const profEmail = reqItem.email || '';
-
-      // 1. Préparation des données du professeur
-      let newProf: any = {};
-      const fieldsToMap = [
-        'Prénom', 'Nom', 'age', 'ville', 'profession', 'dernier diplome', 
-        'tarif', 'email', 'telephone', 'numero de recu', 'photo_URL', 
-        'numero de transaction', 'disponibilities', 'type_cours', 
-        'distance_max', 'frais_deplacement', 'statut', 'experience', 
-        'niveau', 'bio', 'matiere'
-      ];
-
-      fieldsToMap.forEach(field => {
-        if (reqItem[field] !== undefined) {
-          newProf[field] = reqItem[field];
-        }
-      });
-
-      newProf.is_approved = true;
-
-      // 2. Insérer dans la table des professeurs actifs
-      const { error: insertError } = await supabase.from('professors').insert([newProf]);
-      if (insertError) {
-        console.error("Erreur Insertion professors:", insertError);
-        throw insertError;
-      }
-
-      // 3. Insérer l'email dans la table 'leads' (si l'email est présent)
-      if (profEmail) {
-        const { error: leadError } = await supabase
-          .from('leads')
-          .insert([{ email: profEmail, created_at: new Date().toISOString() }]);
-        
-        if (leadError) {
-          console.error("Erreur Insertion leads:", leadError);
-        } else {
-          console.log("Email inséré avec succès dans la table leads !");
-        }
-      }
-
-      // 4. Supprimer de la table des demandes en attente
-      if (reqItem.id) {
-        const { error: deleteError, count } = await supabase
-          .from('requests')
-          .delete()
-          .eq('id', reqItem.id);
-
-        if (deleteError) {
-          console.error("Erreur Suppression requests:", deleteError);
-          alert(`Le prof a été ajouté, mais la suppression a échoué (Vérifie tes politiques RLS Supabase sur la table requests) : ${deleteError.message}`);
-          return;
-        }
-        console.log("Suppression réussie dans requests, lignes affectées :", count);
-      } else {
-        console.warn("Attention : Aucun ID trouvé sur cet élément requests !");
-      }
-
-      // 5. Notification optionnelle par email
-      if (profEmail) {
-        await fetch('/api/notify-professor', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: profEmail, name: fullName })
-        }).catch(() => {});
-      }
-
-      setSelectedRequest(null);
-      await fetchDataFromSupabase();
-      alert(`Le profil de ${fullName} a été accepté, enregistré dans les leads et retiré des demandes avec succès !`);
-    } catch (err: any) {
-      alert(`Erreur lors de la validation : ${err.message}`);
-    }
-  };
-
-  // Rejeter définitivement la demande
-  const handleRejectRequest = async (id: string) => {
-    if (!confirm("Voulez-vous vraiment rejeter cette demande pour toujours ? Elle sera supprimée définitivement.")) return;
-    try {
-      const { error } = await supabase.from('requests').delete().eq('id', id);
-      if (error) throw error;
-
-      setSelectedRequest(null);
-      await fetchDataFromSupabase();
-      alert("La demande a été rejetée et supprimée définitivement.");
-    } catch (err: any) {
-      alert(`Erreur : ${err.message}`);
-    }
-  };
-
-  const handleAiValidateAll = async () => {
-    if (professeursNouveaux.length === 0) {
-      return "Il n'y a aucune nouvelle demande en attente pour le moment !";
-    }
-    try {
-      for (const reqItem of professeursNouveaux) {
-        await handleApproveRequest(reqItem);
-      }
-      return `✨ Mission accomplie ! J'ai validé, transféré vers l'accueil et enregistré dans les leads avec succès ${professeursNouveaux.length} professeur(s).`;
-    } catch (err: any) {
-      return `Oups, une erreur est survenue : ${err.message}`;
-    }
-  };
-
-  const handleSendMessage = async (e: React.FormEvent) => {
+  const handleApplyFilters = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!chatInput.trim()) return;
+    fetchProfessors();
+  };
 
-    const userMsg = chatInput;
-    setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
-    setChatInput('');
-
-    const lower = userMsg.toLowerCase();
-    let aiReply = "";
-
-    if (lower.includes('valide') || lower.includes('confirme') || lower.includes('tout')) {
-      aiReply = await handleAiValidateAll();
-    } else {
-      aiReply = `J'ai bien reçu ta consigne ("${userMsg}").`;
-    }
-
+  const handleReset = () => {
+    setSelectedSubject('');
+    setSelectedCity('');
+    setSelectedLevel('');
+    setPriceRange('');
+    setLocationType('');
     setTimeout(() => {
-      setMessages(prev => [...prev, { role: 'assistant', text: aiReply }]);
-    }, 500);
+      fetchProfessors();
+    }, 50);
   };
 
-  const renderAvailabilityGrid = (disponibilites: any) => {
-    const days = [
-      { key: 'lu', label: 'Lu' },
-      { key: 'ma', label: 'Ma' },
-      { key: 'me', label: 'Me' },
-      { key: 'je', label: 'Je' },
-      { key: 've', label: 'Ve' },
-      { key: 'sa', label: 'Sa' },
-      { key: 'di', label: 'Di' },
-    ];
-
-    const slots = [
-      { key: 'matin', label: 'Matin' },
-      { key: 'midi', label: 'Midi' },
-      { key: 'apresmidi', label: 'Après-midi' },
-    ];
-
-    let items: string[] = [];
-    if (Array.isArray(disponibilites)) {
-      items = disponibilites.map(item => String(item).toLowerCase().trim());
-    } else if (typeof disponibilites === 'string') {
-      items = disponibilites.split(',').map(item => item.toLowerCase().trim());
-    }
-
-    return (
-      <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-2xs">
-        <div className="flex items-center gap-2 mb-3 text-red-500 font-bold text-xs">
-          <Clock className="w-4 h-4" />
-          <span>Disponibilité</span>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-center text-xs">
-            <thead>
-              <tr>
-                <th className="p-2 text-left text-gray-400 font-medium"></th>
-                {days.map(d => (
-                  <th key={d.key} className="p-2 font-bold text-gray-700">{d.label}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {slots.map(({ key: slotKey, label }) => {
-                return (
-                  <tr key={slotKey}>
-                    <td className="p-2 text-left font-medium text-gray-700 whitespace-nowrap">{label}</td>
-                    {days.map(d => {
-                      const targetCode1 = `${slotKey}-${d.key}`;
-                      const targetCode2 = `${d.key}-${slotKey}`; 
-
-                      const isAvailable = items.some(item => 
-                        item === targetCode1 || 
-                        item === targetCode2 || 
-                        item.includes(targetCode1)
-                      );
-
-                      return (
-                        <td key={d.key} className="p-2">
-                          <div className={`w-7 h-7 mx-auto rounded-full flex items-center justify-center transition ${isAvailable ? 'bg-sky-200/80 shadow-2xs' : 'bg-gray-100/60 opacity-40'}`}>
-                            {isAvailable && <div className="w-3 h-3 rounded-full bg-sky-400"></div>}
-                          </div>
-                        </td>
-                      );
-                    })}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    );
+  const handleLogout = () => {
+    window.location.href = '/';
   };
-
-  if (!authorized) return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500 font-medium">Chargement...</div>;
 
   return (
-    <div className="min-h-screen bg-gray-100 text-gray-900 font-sans">
-      <header className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between shadow-xs">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-gradient-to-tr from-purple-600 to-indigo-600 text-white rounded-xl shadow-md">
-            <Bot className="w-6 h-6" />
-          </div>
-          <div>
-            <h1 className="text-xl font-black tracking-tight flex items-center gap-2">
-              Administration Supabase & IA <Sparkles className="w-4 h-4 text-amber-500 animate-pulse" />
-            </h1>
+    <main className="min-h-screen bg-slate-50/50 text-slate-900 font-sans flex flex-col justify-between selection:bg-slate-700 selection:text-white">
+      
+      {/* BARRE DE NAVIGATION SUPÉRIEURE (MODIFIÉE POUR ADMIN) */}
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-50 px-4 sm:px-8 py-3.5 flex items-center justify-between shadow-xs">
+        <div className="flex items-center gap-6">
+          <button 
+            onClick={() => setIsMenuOpen(true)}
+            className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+          
+          <div className="flex items-center gap-2 cursor-pointer" onClick={() => setCurrentView('home')}>
+            <span className="text-xl font-black tracking-tight text-slate-900">prof<span className="text-orange-600">maroc</span></span>
+            <span className="text-[10px] font-bold bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">Admin</span>
           </div>
         </div>
-        <Link href="/" className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-xs rounded-xl transition flex items-center gap-2">
-          <ArrowLeft className="w-4 h-4" />
-          <span>Retour au site</span>
-        </Link>
+
+        {/* BOUTONS ADMIN À DROITE */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setCurrentView('home')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+              currentView === 'home' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            Accueil Admin
+          </button>
+
+          <button
+            onClick={() => setCurrentView('dashboard')}
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+              currentView === 'dashboard' ? 'bg-purple-600 text-white shadow-md shadow-purple-600/20' : 'bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200/60'
+            }`}
+          >
+            <LayoutDashboard className="w-3.5 h-3.5" />
+            Admin Dashboard
+          </button>
+
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200/60 transition cursor-pointer"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            Déconnexion
+          </button>
+        </div>
       </header>
 
-      <main className="max-w-[98rem] mx-auto px-6 py-10">
-        <div className="flex gap-4 mb-8">
-          <button onClick={() => setActiveTab('ia_agent')} className={`px-6 py-3 rounded-2xl font-bold text-sm transition cursor-pointer flex items-center gap-2 ${activeTab === 'ia_agent' ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-xs' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'}`}>
-            <Bot className="w-4 h-4" /> <span>Assistant IA Actif</span>
-          </button>
-          <button onClick={() => setActiveTab('existants')} className={`px-6 py-3 rounded-2xl font-bold text-sm transition cursor-pointer flex items-center gap-2 ${activeTab === 'existants' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'}`}>
-            <Users className="w-4 h-4 text-blue-500" /> <span>Professeurs Actifs ({professeursExistants.length})</span>
-          </button>
-          <button onClick={() => setActiveTab('nouveaux')} className={`px-6 py-3 rounded-2xl font-bold text-sm transition cursor-pointer flex items-center gap-2 ${activeTab === 'nouveaux' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'}`}>
-            <BookOpen className="w-4 h-4 text-[#FF5A5F]" /> <span>Demandes & Paiements ({professeursNouveaux.length})</span>
-          </button>
-        </div>
+      {/* MENU LATÉRAL (HAMBURGER) MIS À JOUR */}
+      {isMenuOpen && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex justify-start">
+          <div className="w-80 bg-slate-900 text-white h-full p-6 flex flex-col justify-between shadow-2xl animate-in slide-in-from-left duration-300">
+            <div className="space-y-8">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl font-black tracking-tight text-white">prof<span className="text-orange-500">maroc</span></span>
+                  <span className="text-[10px] font-bold bg-purple-900 text-purple-300 px-2 py-0.5 rounded-full">Admin</span>
+                </div>
+                <button 
+                  onClick={() => setIsMenuOpen(false)}
+                  className="p-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white transition cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
 
-        {activeTab === 'ia_agent' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-1 space-y-6">
-              <div className="bg-gradient-to-br from-purple-900 via-indigo-900 to-gray-900 text-white p-6 rounded-3xl shadow-xl relative overflow-hidden">
-                <h2 className="text-xl font-black mb-2">Commandes Rapides</h2>
-                <button onClick={async () => { const res = await handleAiValidateAll(); setMessages(prev => [...prev, { role: 'assistant', text: res }]); }} className="w-full py-3 bg-white text-purple-900 hover:bg-purple-50 font-black text-xs rounded-xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer">
-                  <Bot className="w-4 h-4 text-purple-600" /> <span>Valider toutes les demandes</span>
+              <div className="space-y-2">
+                <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 px-3">NAVIGATION</p>
+                <button 
+                  onClick={() => { setCurrentView('home'); setIsMenuOpen(false); }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-200 hover:bg-slate-800 transition text-left cursor-pointer"
+                >
+                  <Home className="w-4 h-4 text-orange-500" />
+                  Accueil
+                </button>
+                <button 
+                  onClick={() => { setCurrentView('dashboard'); setIsMenuOpen(false); }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-purple-300 bg-purple-950/60 border border-purple-800/50 hover:bg-purple-900/60 transition text-left cursor-pointer"
+                >
+                  <LayoutDashboard className="w-4 h-4 text-purple-400" />
+                  Admin Dashboard
+                </button>
+                <button 
+                  onClick={() => { setIsHelpOpen(true); setIsMenuOpen(false); }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-200 hover:bg-slate-800 transition text-left cursor-pointer"
+                >
+                  <HelpCircle className="w-4 h-4 text-slate-400" />
+                  Aide & Support
                 </button>
               </div>
             </div>
-            <div className="lg:col-span-2 bg-white rounded-3xl shadow-xs border border-gray-200 flex flex-col h-[550px]">
-              <div className="flex-1 p-6 overflow-y-auto space-y-4">
-                {messages.map((msg, index) => (
-                  <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-md p-3.5 rounded-2xl text-xs leading-relaxed ${msg.role === 'user' ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-800'}`}>{msg.text}</div>
-                  </div>
-                ))}
-              </div>
-              <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-100 flex gap-2">
-                <input type="text" value={chatInput} onChange={(e) => setChatInput(e.target.value)} placeholder="Ex: 'Valide tous les nouveaux profs'..." className="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none" />
-                <button type="submit" className="px-4 py-2.5 bg-purple-600 text-white font-bold rounded-xl cursor-pointer"><Send className="w-4 h-4" /></button>
-              </form>
-            </div>
-          </div>
-        )}
 
-        {activeTab === 'existants' && (
-          <div className="bg-white rounded-2xl shadow-xs border border-gray-200 p-6">
-            <h2 className="text-lg font-black text-gray-900 mb-6">Professeurs Actifs sur l'Accueil</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {professeursExistants.map((p, i) => (
-                <div key={p.id || i} className="p-4 bg-gray-50 rounded-xl border border-gray-100 flex justify-between items-center">
-                  <div className="flex items-center gap-3">
-                    {p.photo_url || p.photo_URL ? (
-                      <img src={p.photo_url || p.photo_URL} alt={p.Nom || p.Prénom} className="w-10 h-10 rounded-full object-cover border" />
-                    ) : (
-                      <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 font-bold text-xs">
-                        {p.Nom ? p.Nom.charAt(0) : (p.Prénom ? p.Prénom.charAt(0) : '?')}
-                      </div>
-                    )}
-                    <div>
-                      <h3 className="font-bold text-gray-900 text-sm">{`${p.Prénom || ''} ${p.Nom || ''}`.trim()}</h3>
-                      <p className="text-xs text-gray-500">{p.matiere || p.subject} • {p.ville || p.city}</p>
-                    </div>
-                  </div>
-                  <span className="font-bold text-sm text-emerald-600">{p.tarif || p.price} MAD/h</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'nouveaux' && (
-          <div className="bg-white rounded-2xl shadow-xs border border-gray-200 p-6 space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-lg font-black text-gray-900">Demandes de professeurs & Preuves de paiement</h2>
-              <button onClick={fetchDataFromSupabase} className="px-4 py-2 bg-blue-50 text-blue-700 font-bold text-xs rounded-xl flex items-center gap-2 cursor-pointer">
-                <RefreshCw className={`w-3.5 h-3.5 ${isLoadingDb ? 'animate-spin' : ''}`} /> <span>Actualiser</span>
+            <div className="pt-4 border-t border-slate-800">
+              <button 
+                onClick={handleLogout}
+                className="w-full flex items-center justify-center gap-2 bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-800/50 font-bold py-3 rounded-xl text-xs transition cursor-pointer"
+              >
+                <LogOut className="w-4 h-4" />
+                Déconnexion
               </button>
             </div>
-
-            {professeursNouveaux.length === 0 ? (
-              <p className="text-gray-400 text-sm py-12 text-center">Aucune nouvelle demande en attente.</p>
-            ) : (
-              <div className="overflow-x-auto border border-gray-200 rounded-2xl">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="bg-gray-50 text-gray-700 uppercase font-bold text-[10px] tracking-wider border-b border-gray-200">
-                      <th className="p-3">Photo</th>
-                      <th className="p-3">Prénom & Nom</th>
-                      <th className="p-3">Profession</th>
-                      <th className="p-3">Âge</th>
-                      <th className="p-3">Ville</th>
-                      <th className="p-3">Matière</th>
-                      <th className="p-3">Tarif</th>
-                      <th className="p-3">Contact</th>
-                      <th className="p-3">Transaction / Reçu</th>
-                      <th className="p-3 text-center">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {professeursNouveaux.map((req, i) => {
-                      const prenomVal = req['Prénom'] || req.prenom || '';
-                      const nomVal = req['Nom'] || req.nom || '';
-                      const fullName = (`${prenomVal} ${nomVal}`).trim() || 'N/A';
-                      
-                      const photoUrl = req.photo_url || req.photo_URL || '';
-                      const professionVal = req.profession || 'N/A';
-                      const ageVal = req.age || 'N/A';
-                      const villeVal = req.ville || req.city || 'N/A';
-                      const matiereVal = req.matiere || req.subject || 'N/A';
-                      const tarifVal = req.tarif || req.price;
-                      const emailVal = req.email || 'N/A';
-                      const telVal = req.telephone || '';
-                      
-                      const recuVal = req['numero de recu'] || 'N/A';
-                      const transVal = req['numero de transaction'] || 'N/A';
-
-                      return (
-                        <tr key={req.id || i} className="hover:bg-gray-50/80 transition cursor-pointer" onClick={() => setSelectedRequest(req)}>
-                          <td className="p-3 whitespace-nowrap">
-                            {photoUrl ? (
-                              <img src={photoUrl} alt={fullName} className="w-9 h-9 rounded-full object-cover border shadow-2xs" />
-                            ) : (
-                              <div className="w-9 h-9 rounded-full bg-gray-200 flex items-center justify-center text-gray-400">
-                                <ImageIcon className="w-4 h-4" />
-                              </div>
-                            )}
-                          </td>
-                          <td className="p-3 font-bold text-gray-900 whitespace-nowrap">
-                            {fullName}
-                          </td>
-                          <td className="p-3 font-medium text-purple-700">{professionVal}</td>
-                          <td className="p-3 text-gray-600">{ageVal}</td>
-                          <td className="p-3 font-medium text-gray-800">{villeVal}</td>
-                          <td className="p-3 text-gray-800 font-semibold">{matiereVal}</td>
-                          <td className="p-3 font-bold text-emerald-600 whitespace-nowrap">
-                            {tarifVal ? `${tarifVal} MAD` : 'N/A'}
-                          </td>
-                          <td className="p-3 text-gray-600">
-                            <div>{emailVal}</div>
-                            <div className="text-gray-400 font-mono text-[11px]">{telVal}</div>
-                          </td>
-                          <td className="p-3 whitespace-nowrap">
-                            <div className="space-y-0.5">
-                              {recuVal && recuVal !== 'N/A' && <span className="font-bold text-gray-800 block">Reçu: #{recuVal}</span>}
-                              {transVal && transVal !== 'N/A' && (
-                                <span className="text-indigo-600 font-mono bg-indigo-50 px-1.5 py-0.5 rounded text-[10px] inline-block" title={transVal}>
-                                  Trans: {transVal}
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          <td className="p-3 whitespace-nowrap text-center" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex items-center justify-center gap-1.5">
-                              <button onClick={() => setSelectedRequest(req)} title="Voir tous les détails" className="p-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition cursor-pointer">
-                                <Eye className="w-4 h-4" />
-                              </button>
-                              <button onClick={() => handleApproveRequest(req)} title="Accepter & Publier" className="p-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition cursor-pointer shadow-2xs">
-                                <CheckCircle className="w-4 h-4" />
-                              </button>
-                              <button onClick={() => handleRejectRequest(req.id)} title="Rejeter définitivement" className="p-2 bg-white border border-red-200 text-red-600 hover:bg-red-50 rounded-lg transition cursor-pointer">
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
           </div>
-        )}
-      </main>
-
-      {/* MODALE DE DÉTAIL */}
-      {selectedRequest && (() => {
-        const recuVal = selectedRequest['numero de recu'];
-        const transVal = selectedRequest['numero de transaction'];
-        
-        const hasRecu = recuVal && recuVal !== 'N/A' && String(recuVal).trim() !== '';
-        const hasValidTrans = transVal && transVal !== 'N/A' && String(transVal).trim() !== '';
-        
-        const photoUrl = selectedRequest.photo_url || selectedRequest.photo_URL;
-        const fullName = (`${selectedRequest['Prénom'] || selectedRequest.prenom || ''} ${selectedRequest['Nom'] || selectedRequest.nom || ''}`).trim() || 'Détails du Professeur';
-
-        return (
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-2xs flex items-center justify-center p-4">
-            <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-200 p-8 relative animate-in fade-in zoom-in duration-200">
-              <button onClick={() => setSelectedRequest(null)} className="absolute top-6 right-6 p-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full transition cursor-pointer">
-                <X className="w-5 h-5" />
-              </button>
-
-              <div className="flex items-center gap-4 mb-6 pb-6 border-b border-gray-100">
-                <div className="shrink-0 relative group cursor-pointer" onClick={() => photoUrl && setPreviewImage(photoUrl)}>
-                  {photoUrl ? (
-                    <>
-                      <img 
-                        src={photoUrl} 
-                        alt="Profil" 
-                        className="w-16 h-16 rounded-full object-cover shadow-md border-2 border-purple-200 group-hover:opacity-90 transition" 
-                      />
-                      <div className="absolute inset-0 bg-black/30 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
-                        <ZoomIn className="w-6 h-6 text-white" />
-                      </div>
-                    </>
-                  ) : (
-                    <div className="w-16 h-16 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 font-bold text-lg shadow-xs">
-                      {fullName.charAt(0)}
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <h3 className="text-2xl font-black text-gray-900">
-                    {fullName}
-                  </h3>
-                  <p className="text-purple-600 font-bold text-sm">{selectedRequest.profession || 'Profession non spécifiée'}</p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    Demande reçue le : {selectedRequest['date de demande'] ? new Date(selectedRequest['date de demande']).toLocaleDateString() : 'N/A'} 
-                    <span className="text-purple-600 ml-1.5 font-semibold">• Clique sur la photo pour l'agrandir</span>
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 text-xs mb-6">
-                <div className="bg-gray-50 p-3.5 rounded-2xl border border-gray-100">
-                  <span className="text-gray-400 block font-medium mb-0.5">Âge</span>
-                  <span className="font-bold text-gray-800 text-sm">{selectedRequest.age || 'N/A'} ans</span>
-                </div>
-                <div className="bg-gray-50 p-3.5 rounded-2xl border border-gray-100">
-                  <span className="text-gray-400 block font-medium mb-0.5">Ville</span>
-                  <span className="font-bold text-gray-800 text-sm">{selectedRequest.ville || selectedRequest.city || 'N/A'}</span>
-                </div>
-                <div className="bg-gray-50 p-3.5 rounded-2xl border border-gray-100">
-                  <span className="text-gray-400 block font-medium mb-0.5">Matière enseignée</span>
-                  <span className="font-bold text-gray-800 text-sm">{selectedRequest.matiere || selectedRequest.subject || 'N/A'}</span>
-                </div>
-                <div className="bg-gray-50 p-3.5 rounded-2xl border border-gray-100">
-                  <span className="text-gray-400 block font-medium mb-0.5">Tarif horaire</span>
-                  <span className="font-bold text-emerald-600 text-sm">{(selectedRequest.tarif || selectedRequest.price) ? `${selectedRequest.tarif || selectedRequest.price} MAD` : 'N/A'}</span>
-                </div>
-
-                {/* NIVEAUX ENSEIGNÉS */}
-                <div className="col-span-2 bg-red-50/60 p-3.5 rounded-2xl border border-red-100">
-                  <span className="text-[#FF5A5F] font-bold block mb-1 flex items-center gap-1.5">
-                    <Layers className="w-4 h-4" /> Niveaux enseignés
-                  </span>
-                  <div className="flex flex-wrap gap-1.5 mt-1">
-                    {Array.isArray(selectedRequest.niveau || selectedRequest.Niveau) && (selectedRequest.niveau || selectedRequest.Niveau).length > 0 ? (
-                      (selectedRequest.niveau || selectedRequest.Niveau).map((lvl: string, idx: number) => (
-                        <span key={idx} className="bg-white text-gray-800 border border-red-200 px-2.5 py-1 rounded-lg text-xs font-semibold shadow-2xs">
-                          {lvl}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="text-gray-500 font-medium">Aucun niveau spécifié</span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="col-span-2 bg-gray-50 p-3.5 rounded-2xl border border-gray-100">
-                  <span className="text-gray-400 block font-medium mb-0.5">Dernier diplôme</span>
-                  <span className="font-bold text-gray-800 text-sm">{selectedRequest['dernier diplome'] || selectedRequest.dernier_diplome || 'N/A'}</span>
-                </div>
-                
-                {/* DISPONIBILITÉS GRAPHIQUES */}
-                <div className="col-span-2">
-                  {renderAvailabilityGrid(selectedRequest.disponibilities || selectedRequest.disponibilites || selectedRequest.disponibilités || '')}
-                </div>
-
-                <div className="bg-gray-50 p-3.5 rounded-2xl border border-gray-100">
-                  <span className="text-gray-400 block font-medium mb-0.5">Email</span>
-                  <span className="font-bold text-gray-800">{selectedRequest.email || 'N/A'}</span>
-                </div>
-                <div className="bg-gray-50 p-3.5 rounded-2xl border border-gray-100">
-                  <span className="text-gray-400 block font-medium mb-0.5">Téléphone</span>
-                  <span className="font-bold text-gray-800">{selectedRequest.telephone || 'N/A'}</span>
-                </div>
-
-                {/* NUMÉRO DE REÇU */}
-                {hasRecu && (
-                  <div className="bg-purple-50/60 p-3.5 rounded-2xl border border-purple-100 col-span-2">
-                    <span className="text-purple-600 block font-medium mb-0.5">Numéro de reçu (Wafacash / Cashplus)</span>
-                    <span className="font-bold text-purple-900 text-sm">#{recuVal}</span>
-                  </div>
-                )}
-
-                {/* NUMÉRO DE TRANSACTION */}
-                {!hasRecu && hasValidTrans && (
-                  <div className="bg-indigo-50/60 p-3.5 rounded-2xl border border-indigo-100 col-span-2">
-                    <span className="text-indigo-600 block font-medium mb-0.5">Numéro de transaction (Virement / Versement)</span>
-                    <span className="font-bold text-indigo-900 font-mono text-sm">{transVal}</span>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex gap-3 justify-end pt-4 border-t border-gray-100">
-                <button onClick={() => handleRejectRequest(selectedRequest.id)} className="px-5 py-3 bg-white border border-red-200 text-red-600 hover:bg-red-50 font-bold text-xs rounded-xl transition cursor-pointer">
-                  Rejeter définitivement
-                </button>
-                <button onClick={() => handleApproveRequest(selectedRequest)} className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition shadow-md cursor-pointer flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4" />
-                  <span>Accepter & Publier sur le site</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* VISIONNEUSE PLEIN ÉCRAN POUR LA PHOTO EN GRAND FORMAT */}
-      {previewImage && (
-        <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setPreviewImage(null)}>
-          <button onClick={() => setPreviewImage(null)} className="absolute top-6 right-6 p-3 bg-white/10 hover:bg-white/20 text-white rounded-full transition cursor-pointer shadow-lg">
-            <X className="w-6 h-6" />
-          </button>
-          <div className="relative max-w-4xl max-h-[90vh] overflow-hidden rounded-2xl shadow-2xl flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
-            <img src={previewImage} alt="Photo en grand format" className="max-w-full max-h-[85vh] object-contain rounded-2xl border border-white/10 shadow-2xl" />
-          </div>
+          <div className="flex-grow" onClick={() => setIsMenuOpen(false)} />
         </div>
       )}
-    </div>
+
+      {/* CONTENU CONDITIONNEL : ACCUEIL OU DASHBOARD */}
+      {currentView === 'dashboard' ? (
+        <AdminDashboardPage />
+      ) : (
+        <>
+          {/* HERO SECTION */}
+          <section className="bg-white border-b border-slate-200/60 py-16 lg:py-24 px-4 sm:px-8 relative overflow-hidden">
+            <div className="absolute top-1/2 right-0 -translate-y-1/2 w-[700px] h-[700px] bg-slate-100/60 rounded-full blur-[160px] pointer-events-none -z-10" />
+            
+            <div className="max-w-[90rem] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-center">
+              
+              <div className="lg:col-span-6 space-y-6 text-center lg:text-left lg:pl-12">
+                
+                <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-slate-900 leading-[1.2] tracking-tight">
+                  Trouvez le meilleur professeur <br />
+                  <span className="text-purple-600 inline-block min-w-[280px]">
+                    {currentText}
+                    <span className="inline-block w-1 h-8 sm:h-12 ml-1 bg-purple-500 animate-pulse align-middle"></span>
+                  </span>
+                </h1>
+
+                <p className="text-base sm:text-lg text-slate-600 leading-relaxed max-w-xl mx-auto lg:mx-0">
+                  Recherchez librement parmi nos meilleurs professeurs qualifiés. <strong className="text-slate-900 font-semibold">Aucun frais d'agence, aucun paiement requis</strong> : contactez directement votre professeur en un clic.
+                </p>
+
+                <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 text-xs sm:text-sm font-semibold pt-2">
+                  <span className="flex items-center gap-2 text-emerald-700 bg-emerald-50 px-3.5 py-2 rounded-xl border border-emerald-200/60 shadow-2xs">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                    Profils Vérifiés
+                  </span>
+                  <span className="flex items-center gap-2 text-slate-700 bg-slate-100 px-3.5 py-2 rounded-xl shadow-2xs">
+                    <CheckCircle2 className="w-4 h-4 text-slate-700" />
+                    0 DH de frais
+                  </span>
+                  <span className="flex items-center gap-2 text-slate-700 bg-slate-100 px-3.5 py-2 rounded-xl shadow-2xs">
+                    <PhoneCall className="w-4 h-4 text-slate-700" />
+                    Contact Direct
+                  </span>
+                </div>
+              </div>
+
+              <div className="lg:col-span-6 relative w-full flex items-center justify-center lg:justify-end">
+                <div className="relative w-full max-w-4xl transform hover:scale-[1.02] transition duration-500">
+                  <img 
+                    src="/Design sans titre(6).png" 
+                    alt="Illustration Design" 
+                    className="w-full h-auto object-contain mix-blend-multiply scale-125"
+                  />
+                </div>
+              </div>
+
+            </div>
+          </section>
+
+          {/* SECTION FILTRES ET RESULTATS */}
+          <section className="max-w-[90rem] mx-auto px-4 sm:px-8 py-12 w-full grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
+            <aside className="lg:col-span-3 space-y-6">
+              <form onSubmit={handleApplyFilters} className="bg-white p-6 rounded-3xl border border-slate-200/85 shadow-sm space-y-5 sticky top-24 backdrop-blur-md">
+                
+                <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                  <h3 className="font-bold text-slate-900 flex items-center gap-2 text-sm">
+                    <Filter className="w-4 h-4 text-slate-700" />
+                    Filtrer les professeurs
+                  </h3>
+                  <button 
+                    type="button" 
+                    onClick={handleReset} 
+                    className="text-xs text-slate-500 hover:text-slate-900 font-semibold cursor-pointer flex items-center gap-1 transition group"
+                  >
+                    <RefreshCcw className="w-3 h-3 group-hover:rotate-180 transition duration-500" />
+                    Réinitialiser
+                  </button>
+                </div>
+
+                {/* Matière */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                    <BookOpen className="w-3.5 h-3.5 text-slate-700" />
+                    Matière
+                  </label>
+                  <select 
+                    value={selectedSubject}
+                    onChange={(e) => setSelectedSubject(e.target.value)}
+                    className="w-full bg-slate-50/80 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-800 font-medium focus:bg-white focus:border-slate-700 focus:ring-4 focus:ring-slate-100 focus:outline-none transition duration-200 cursor-pointer"
+                  >
+                    <option value="">Toutes les matières</option>
+                    {subjects.map((sub, idx) => (
+                      <option key={idx} value={sub}>{sub}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Ville */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-slate-700" />
+                    Ville
+                  </label>
+                  <input 
+                    type="text" 
+                    placeholder="Ex: Casablanca, Rabat..." 
+                    value={selectedCity}
+                    onChange={(e) => setSelectedCity(e.target.value)}
+                    className="w-full bg-slate-50/80 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 font-medium focus:bg-white focus:border-slate-700 focus:ring-4 focus:ring-slate-100 focus:outline-none transition duration-200"
+                  />
+                </div>
+
+                {/* Niveau d'études */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                    <GraduationCap className="w-3.5 h-3.5 text-slate-700" />
+                    Niveau d'études
+                  </label>
+                  <select 
+                    value={selectedLevel}
+                    onChange={(e) => setSelectedLevel(e.target.value)}
+                    className="w-full bg-slate-50/80 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-800 font-medium focus:bg-white focus:border-slate-700 focus:ring-4 focus:ring-slate-100 focus:outline-none transition duration-200 cursor-pointer"
+                  >
+                    <option value="">Tous les niveaux</option>
+                    {levels.map((lvl, idx) => (
+                      <option key={idx} value={lvl}>{lvl}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Tarif horaire */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                    <DollarSign className="w-3.5 h-3.5 text-slate-700" />
+                    Tarif horaire
+                  </label>
+                  <select 
+                    value={priceRange}
+                    onChange={(e) => setPriceRange(e.target.value)}
+                    className="w-full bg-slate-50/80 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-800 font-medium focus:bg-white focus:border-slate-700 focus:ring-4 focus:ring-slate-100 focus:outline-none transition duration-200 cursor-pointer"
+                  >
+                    <option value="">Tous les tarifs</option>
+                    <option value="0-100">Moins de 100 DH/h</option>
+                    <option value="100-150">100 DH - 150 DH/h</option>
+                    <option value="150-200">150 DH - 200 DH/h</option>
+                    <option value="200+">Plus de 200 DH/h</option>
+                  </select>
+                </div>
+
+                {/* Lieu du cours */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700">Lieu du cours</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setLocationType(locationType === 'domicile' ? '' : 'domicile')}
+                      className={`flex flex-col items-center justify-center p-3 rounded-xl border text-xs font-semibold transition-all duration-200 cursor-pointer ${
+                        locationType === 'domicile' ? 'bg-slate-100 border-slate-800 text-slate-900 shadow-xs scale-[1.02]' : 'bg-slate-50/80 border-slate-200 text-slate-600 hover:bg-slate-100 hover:border-slate-300'
+                      }`}
+                    >
+                      <Home className="w-4 h-4 mb-1" />
+                      À domicile
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLocationType(locationType === 'en_ligne' ? '' : 'en_ligne')}
+                      className={`flex flex-col items-center justify-center p-3 rounded-xl border text-xs font-semibold transition-all duration-200 cursor-pointer ${
+                        locationType === 'en_ligne' ? 'bg-slate-100 border-slate-800 text-slate-900 shadow-xs scale-[1.02]' : 'bg-slate-50/80 border-slate-200 text-slate-600 hover:bg-slate-100 hover:border-slate-300'
+                      }`}
+                    >
+                      <Laptop className="w-4 h-4 mb-1" />
+                      En ligne
+                    </button>
+                  </div>
+                </div>
+
+                <button 
+                  type="submit" 
+                  className="w-full bg-slate-900 hover:bg-slate-800 text-white font-extrabold py-3.5 rounded-xl text-xs transition-all duration-300 shadow-md shadow-slate-900/10 hover:shadow-slate-900/20 flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+                >
+                  <Search className="w-4 h-4" />
+                  Appliquer les filtres
+                </button>
+
+              </form>
+            </aside>
+
+            <div className="lg:col-span-9 space-y-6">
+              
+              <div className="flex items-center justify-between text-xs px-1">
+                <h2 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                  <Award className="w-5 h-5 text-slate-700" />
+                  Nos Professeurs au Maroc
+                </h2>
+                <span className="font-bold bg-slate-200/70 text-slate-700 px-3 py-1 rounded-full">{professors.length} trouvé(s)</span>
+              </div>
+
+              {loading ? (
+                <div className="bg-white rounded-3xl border border-slate-200/80 p-16 text-center flex flex-col items-center justify-center gap-3 shadow-xs">
+                  <Loader2 className="w-8 h-8 text-slate-700 animate-spin" />
+                  <p className="text-sm font-semibold text-slate-600">Recherche des professeurs en cours...</p>
+                </div>
+              ) : professors.length === 0 ? (
+                <div className="bg-white rounded-3xl border border-slate-200/80 p-16 text-center space-y-4 shadow-xs">
+                  <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center mx-auto animate-bounce">
+                    <Search className="w-6 h-6" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-base font-bold text-slate-900">Aucun professeur trouvé</p>
+                    <p className="text-xs text-slate-500">Aucun profil ne correspond exactement à vos critères de recherche actuels.</p>
+                  </div>
+                  <button 
+                    onClick={handleReset} 
+                    className="bg-slate-100 text-slate-800 text-xs font-bold px-5 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-200 transition cursor-pointer shadow-xs active:scale-95"
+                  >
+                    Réinitialiser les filtres
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {professors.map((prof) => {
+                    const nomField = prof.Nom || prof.nom || '';
+                    const prenomField = prof.Prénom || prof.prenom || '';
+                    
+                    const fullName = (nomField || prenomField)
+                      ? `${prenomField} ${nomField}`.trim()
+                      : (prof.name || 'Professeur');
+
+                    const photo = prof.photo_URL || prof.photo_url || prof.photo || prof.avatar_url;
+                    const city = prof.ville || prof.city || "Maroc";
+                    const subject = prof.matiere || prof.subject || "Soutien scolaire";
+                    const price = Number(prof.tarif !== undefined && prof.tarif !== null ? prof.tarif : prof.price) || 0;
+
+                    return (
+                      <div key={prof.id} className="bg-white rounded-3xl overflow-hidden border border-slate-200/80 shadow-md hover:shadow-xl transition-all duration-300 flex flex-col justify-between group">
+                        
+                        <div className="relative h-72 w-full bg-slate-900 overflow-hidden">
+                          {photo ? (
+                            <img 
+                              src={photo} 
+                              alt={fullName} 
+                              className="w-full h-full object-cover group-hover:scale-105 transition duration-700"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 flex items-center justify-center relative overflow-hidden group-hover:scale-105 transition duration-700">
+                              <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px]" />
+                              <div className="w-24 h-24 rounded-full bg-slate-600/60 border-2 border-slate-500/50 flex items-center justify-center text-slate-200 shadow-inner backdrop-blur-sm">
+                                <User className="w-12 h-12 stroke-[1.5]" />
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+
+                          <div className="absolute top-4 left-4 bg-black/40 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1 rounded-full border border-white/10 flex items-center gap-1.5">
+                            <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                            Vérifié
+                          </div>
+
+                          <div className="absolute bottom-4 left-4 right-4 text-white">
+                            <h3 className="text-xl font-black tracking-tight">{fullName}</h3>
+                            <p className="text-xs text-slate-200 font-medium flex items-center gap-1 mt-0.5">
+                              <MapPin className="w-3.5 h-3.5 text-slate-300" />
+                              {city} (face à face & webcam)
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="p-5 space-y-4 flex flex-col justify-between flex-grow bg-white">
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between text-xs font-bold text-slate-700">
+                              <span className="bg-emerald-50 text-emerald-700 border border-emerald-200/60 px-2.5 py-0.5 rounded-full text-[10px]">
+                                Disponible
+                              </span>
+                            </div>
+
+                            <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed font-medium">
+                              <strong className="text-slate-900">{subject}</strong> - {prof.niveau ? `Niveau : ${prof.niveau}. ` : ''} Professeur qualifié prêt à vous accompagner vers la réussite.
+                            </p>
+                          </div>
+
+                          <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                            <div>
+                              <div className="text-sm font-black text-slate-900">
+                                {price} MAD<span className="text-[10px] font-normal text-slate-500">/h</span>
+                              </div>
+                              <div className="text-[10px] font-bold text-rose-600">
+                                1er cours offert
+                              </div>
+                            </div>
+
+                            <Link 
+                              href={`/professeurs/${prof.id}`}
+                              className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold px-5 py-2.5 rounded-xl transition duration-200 shadow-sm active:scale-95"
+                            >
+                              Contacter
+                            </Link>
+                          </div>
+
+                        </div>
+
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+            </div>
+
+          </section>
+        </>
+      )}
+
+      <Footer 
+        onNavigateHome={() => setCurrentView('home')} 
+        onOpenHelp={() => setIsHelpOpen(true)} 
+      />
+
+      <HelpModal 
+        isOpen={isHelpOpen} 
+        onClose={() => setIsHelpOpen(false)} 
+        helpSection={helpSection} 
+        setHelpSection={setHelpSection} 
+      />
+
+    </main>
   );
 }
