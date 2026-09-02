@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -8,7 +8,7 @@ import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
 import HelpModal from '../../components/HelpModal';
 import { 
-  MapPin, Clock, CheckCircle2, Send, Lock, Share2, User, Heart, Upload, Star
+  MapPin, Clock, CheckCircle2, Send, Lock, Share2, User, Heart, Upload, Star, AlertCircle
 } from 'lucide-react';
 
 const supabase = createClient(
@@ -26,6 +26,11 @@ export default function ProfessorProfilePage() {
 
   const [prof, setProf] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+
+  // États pour la notation interactive
+  const [userRating, setUserRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [hasVoted, setHasVoted] = useState(false);
 
   const [formData, setFormData] = useState({
     fullName: '',
@@ -57,7 +62,8 @@ export default function ProfessorProfilePage() {
         const rawTarif = data.tarif || data.price || data.tarif_horaire;
         const formattedPrice = rawTarif ? `${rawTarif} DH` : "Sur demande";
 
-        // Transformation des disponibilités
+        const professorBio = data.bio || data.description || "";
+
         const rawDispos: string[] = data.disponibilites || [];
         const availabilityGridMap: Record<string, boolean> = {};
         
@@ -76,13 +82,14 @@ export default function ProfessorProfilePage() {
           tags: data.tags || [data.matiere || "Soutien Scolaire", "Pédagogie"],
           title: data.title || data.matiere || "Cours particuliers et soutien scolaire adaptés à vos besoins",
           price: formattedPrice,
-          rating: data.rating || "5",
-          reviewsCount: data.reviews_count || "1",
+          rating: Number(data.rating) || 5,
+          reviewsCount: Number(data.reviews_count) || 1,
           responseTime: data.response_time || "1h",
           studentsCount: data.students_count || "2",
           cities: [villeProf],
           levels: data.levels || ["Primaire", "Collège", "Lycée"],
-          description: data.description || "Pour nos cours nous allons voir le nécessaire pour réussir vos études d'une façon amusante et approfondir vos connaissances.",
+          bio: professorBio,
+          hasBio: !!data.bio && data.bio.trim().length > 0,
           availabilityGrid: availabilityGridMap
         });
       } else {
@@ -93,13 +100,14 @@ export default function ProfessorProfilePage() {
           tags: ["Soutien Scolaire"],
           title: "Professeur particulier motivé",
           price: "Sur demande",
-          rating: "5",
-          reviewsCount: "1",
+          rating: 5,
+          reviewsCount: 1,
           responseTime: "1h",
           studentsCount: "2",
           cities: ["Maroc"],
           levels: ["Primaire", "Collège", "Lycée"],
-          description: "Pour nos cours nous allons voir le nécessaire pour réussir vos études.",
+          bio: "",
+          hasBio: false,
           availabilityGrid: {}
         });
       }
@@ -108,6 +116,24 @@ export default function ProfessorProfilePage() {
 
     fetchProf();
   }, [params?.id]);
+
+  // Gestion du vote par étoiles dynamique
+  const handleRate = (rateValue: number) => {
+    if (hasVoted) return;
+    setUserRating(rateValue);
+    setHasVoted(true);
+
+    // Calcul dynamique de la nouvelle moyenne
+    const currentTotalScore = prof.rating * prof.reviewsCount;
+    const newReviewsCount = prof.reviewsCount + 1;
+    const newRating = Number(((currentTotalScore + rateValue) / newReviewsCount).toFixed(1));
+
+    setProf((prev: any) => ({
+      ...prev,
+      rating: newRating,
+      reviewsCount: newReviewsCount
+    }));
+  };
 
   const handleSubmitContact = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -174,7 +200,6 @@ export default function ProfessorProfilePage() {
         {/* COLONNE GAUCHE (Contenu principal) */}
         <section className="lg:col-span-7 space-y-10">
           
-          {/* Tags du haut */}
           <div className="flex flex-wrap gap-2">
             {prof.tags.map((tag: string, idx: number) => (
               <span key={idx} className="bg-red-50 text-red-500 text-xs font-semibold px-3 py-1.5 rounded-full">
@@ -183,12 +208,10 @@ export default function ProfessorProfilePage() {
             ))}
           </div>
 
-          {/* Grand Titre */}
-          <h1 className="text-3xl sm:text-4xl font-black text-gray-900 leading-tight">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-gray-900 leading-tight">
             {prof.title}
           </h1>
 
-          {/* Lieux du cours */}
           <div className="space-y-3">
             <h3 className="text-base font-bold text-gray-900">Lieux du cours</h3>
             <div className="flex flex-wrap gap-3">
@@ -199,15 +222,28 @@ export default function ProfessorProfilePage() {
             </div>
           </div>
 
-          {/* À propos du professeur */}
           <div className="space-y-3 pt-4 border-t border-gray-100">
-            <h3 className="text-xl font-bold text-gray-900">À propos de {prof.name}</h3>
-            <p className="text-base text-gray-700 leading-relaxed">
-              {prof.description}
-            </p>
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-bold text-gray-900">À propos de {prof.name}</h3>
+            </div>
+
+            {prof.hasBio ? (
+              <p className="text-2xl sm:text-3xl font-black text-gray-900 leading-tight">
+                {prof.bio}
+              </p>
+            ) : (
+              <div className="bg-amber-50 border border-amber-200 p-5 rounded-2xl space-y-3">
+                <div className="flex items-center gap-2 text-amber-800 font-bold text-sm">
+                  <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
+                  <span>Ajoutez votre biographie pour attirer plus d'élèves !</span>
+                </div>
+                <p className="text-sm text-amber-700">
+                  {prof.bio || "Aucune description détaillée n'a encore été renseignée. Rédigez votre parcours, votre méthodologie et votre passion pour inspirer confiance aux futurs élèves."}
+                </p>
+              </div>
+            )}
           </div>
 
-          {/* À propos du cours */}
           <div className="space-y-3 pt-4 border-t border-gray-100">
             <h3 className="text-xl font-bold text-gray-900">À propos du cours</h3>
             <div className="flex flex-wrap gap-2 pb-2">
@@ -219,7 +255,7 @@ export default function ProfessorProfilePage() {
             </p>
           </div>
 
-          {/* SECTION DISPONIBILITÉ (Grille) */}
+          {/* SECTION DISPONIBILITÉ */}
           <div className="space-y-4 pt-6 border-t border-gray-100">
             <h3 className="text-xl font-bold text-gray-900">
               Disponibilité
@@ -255,11 +291,10 @@ export default function ProfessorProfilePage() {
         </section>
 
 
-        {/* COLONNE DROITE (Carte Flottante style Superprof) */}
+        {/* COLONNE DROITE (Carte Flottante) */}
         <aside className="lg:col-span-5 sticky top-6">
           <div className="bg-white border border-gray-200/80 rounded-3xl p-6 shadow-xl space-y-6">
             
-            {/* Header de la carte */}
             <div className="flex items-start justify-between relative">
               <div className="flex gap-2 text-gray-400 absolute right-0 top-0">
                 <button className="p-2 hover:text-gray-600 transition cursor-pointer"><Heart className="w-5 h-5" /></button>
@@ -268,10 +303,11 @@ export default function ProfessorProfilePage() {
 
               <div className="flex flex-col items-center w-full pt-2">
                 {prof.avatar ? (
-                  <img src={prof.avatar} className="w-24 h-24 rounded-full object-cover shadow-sm border border-gray-100" alt={prof.name} />
+                  <img src={prof.avatar} className="w-24 h-24 rounded-full object-cover shadow-md border-2 border-orange-100" alt={prof.name} />
                 ) : (
-                  <div className="w-24 h-24 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center relative overflow-hidden shadow-inner">
-                    <User className="w-14 h-14 absolute -bottom-1" />
+                  // Avatar moderne et élégant remplaçant l'ancienne image moche
+                  <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-orange-500 to-rose-500 text-white flex items-center justify-center font-black text-2xl shadow-md border-2 border-white">
+                    {prof.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)}
                   </div>
                 )}
                 
@@ -284,7 +320,6 @@ export default function ProfessorProfilePage() {
               </div>
             </div>
 
-            {/* Statistiques (Tarif, Réponse, Élèves) */}
             <div className="space-y-3 pt-2 border-t border-gray-100 text-sm">
               <div className="flex justify-between items-center">
                 <span className="text-gray-500">Tarif</span>
@@ -300,7 +335,6 @@ export default function ProfessorProfilePage() {
               </div>
             </div>
 
-            {/* Bouton d'action */}
             <button 
               onClick={() => document.getElementById('formulaire-contact')?.scrollIntoView({ behavior: 'smooth' })}
               className="w-full bg-rose-500 hover:bg-rose-600 text-white font-bold py-3.5 rounded-xl text-base transition shadow-md cursor-pointer"
@@ -308,10 +342,37 @@ export default function ProfessorProfilePage() {
               Contacter
             </button>
 
-            <div className="text-center">
-              <span className="text-xs text-rose-500 font-semibold bg-rose-50 px-3 py-1 rounded-full inline-block">
-                1er cours offert
+            {/* Section Donner son avis / Étoiles (Maximum 5 étoiles) */}
+            <div className="bg-gray-50 border border-gray-100 rounded-2xl p-4 text-center space-y-2">
+              <span className="text-xs font-bold text-gray-700 block">
+                {hasVoted ? "Merci pour votre avis !" : `Donner votre avis sur ${prof.name}`}
               </span>
+              <div className="flex justify-center gap-1.5">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    type="button"
+                    disabled={hasVoted}
+                    onClick={() => handleRate(star)}
+                    onMouseEnter={() => !hasVoted && setHoverRating(star)}
+                    onMouseLeave={() => !hasVoted && setHoverRating(0)}
+                    className={`transition-transform duration-150 ${hasVoted ? 'cursor-default' : 'cursor-pointer hover:scale-110'}`}
+                  >
+                    <Star 
+                      className={`w-6 h-6 ${
+                        (hoverRating || userRating) >= star 
+                          ? 'fill-amber-400 text-amber-400' 
+                          : 'text-gray-300'
+                      }`} 
+                    />
+                  </button>
+                ))}
+              </div>
+              {hasVoted && (
+                <p className="text-[11px] text-emerald-600 font-semibold">
+                  Votre note de {userRating}/5 a bien été enregistrée.
+                </p>
+              )}
             </div>
 
           </div>
@@ -319,8 +380,7 @@ export default function ProfessorProfilePage() {
 
       </div>
 
-
-      {/* --- FORMULAIRE DE CONTACT DIRECT EN BAS --- */}
+      {/* FORMULAIRE DE CONTACT */}
       <section className="bg-gray-50/50 border-t border-gray-100 py-16 px-4 sm:px-8">
         <div id="formulaire-contact" className="max-w-3xl mx-auto bg-white p-6 sm:p-10 rounded-3xl border border-orange-200 shadow-xl space-y-6">
           
