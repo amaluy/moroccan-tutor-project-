@@ -1,13 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export default function SetPasswordPage() {
   const searchParams = useSearchParams();
@@ -21,36 +21,59 @@ export default function SetPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  useEffect(() => {
+    if (initialEmail) {
+      setEmail(initialEmail);
+    }
+  }, [initialEmail]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
-    if (!email) {
+    const targetEmail = email.trim();
+
+    if (!targetEmail) {
       setError('Veuillez entrer une adresse e-mail.');
       setLoading(false);
       return;
     }
 
-    // Vérification que les deux mots de passe sont identiques
     if (password !== confirmPassword) {
       setError('Les mots de passe ne correspondent pas.');
       setLoading(false);
       return;
     }
 
+    if (!supabaseUrl || !supabaseAnonKey) {
+      setError("Configuration Supabase manquante dans le fichier .env.local.");
+      setLoading(false);
+      return;
+    }
+
     try {
+      console.log("Mise à jour du mot de passe pour:", targetEmail);
+
+      // On utilise .ilike pour être insensible à la casse (majuscules/minuscules)
+      // et on retire .select() pour éviter l'erreur 406 Not Acceptable
       const { error: dbError } = await supabase
         .from('professors')
         .update({ password: password })
-        .eq('email', email);
+        .ilike('email', targetEmail);
 
-      if (dbError) throw dbError;
+      if (dbError) {
+        console.error("Erreur Supabase:", dbError);
+        throw dbError;
+      }
 
-      // Redirection immédiate vers le dashboard du professeur
+      // Enregistrement de la session dans le localStorage
+      localStorage.setItem('user_email', targetEmail);
+      
+      // Redirection immédiate vers le dashboard
       router.push('/prof/dashboard');
     } catch (err: any) {
-      setError(err.message || 'Une erreur est survenue.');
+      setError(err.message || 'Une erreur est survenue lors de la mise à jour.');
       setLoading(false);
     }
   };
@@ -111,7 +134,7 @@ export default function SetPasswordPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-white bg-orange-600 hover:bg-orange-700 font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50 transition-colors mt-2"
+            className="w-full py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-white bg-orange-600 hover:bg-orange-700 font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50 transition-colors mt-2 cursor-pointer"
           >
             {loading ? 'Traitement en cours...' : 'Activer mon compte'}
           </button>
