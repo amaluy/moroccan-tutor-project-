@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { 
   MapPin, BookOpen, ChevronDown, 
-  HelpCircle, GraduationCap, Menu, X, Home, Info, ArrowRight
+  ShieldAlert, LogOut, HelpCircle, GraduationCap, User, Menu, X, Home, Info, ArrowRight
 } from 'lucide-react';
 
 const VILLES = [
@@ -17,29 +17,54 @@ const MATIERES = [
   "Anglais", "Arabe", "Économie", "Informatique", "Aide aux devoirs"
 ];
 
-interface PublicNavbarProps {
+interface NavbarProps {
   isMenuOpen: boolean;
   setIsMenuOpen: (open: boolean) => void;
+  onLogoutClick: () => void;
   onOpenHelp: () => void;
   onSelectCity?: (city: string) => void;
   onSelectSubject?: (subject: string) => void;
 }
 
-export default function PublicNavbar({
+export default function Navbar({
   isMenuOpen,
   setIsMenuOpen,
+  onLogoutClick,
   onOpenHelp,
   onSelectCity,
   onSelectSubject
-}: PublicNavbarProps) {
+}: NavbarProps) {
   const [openDropdown, setOpenDropdown] = useState<'villes' | 'matieres' | null>(null);
+
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isProfessor, setIsProfessor] = useState(false);
+
+  useEffect(() => {
+    const email = localStorage.getItem('user_email');
+    const profId = localStorage.getItem('professor_id');
+
+    setUserEmail(email);
+
+    const adminEmails = ['louizisalaheddine@gmail.com', 'berrada0amal@gmail.com'];
+    const userIsAdmin = (email && adminEmails.includes(email)) || localStorage.getItem('is_admin') === 'true';
+    setIsAdmin(userIsAdmin);
+
+    if (userIsAdmin) {
+      setIsProfessor(false);
+      localStorage.removeItem('professor_id');
+    } else {
+      setIsProfessor(!!profId);
+    }
+  }, []);
 
   return (
     <>
       <nav className="bg-white border-b border-gray-100 sticky top-0 z-40 shadow-sm w-full">
+        {/* Bouton Burger collé à l'extrême gauche, reste de la navbar aligné proprement */}
         <div className="flex items-center justify-between h-16 px-4 sm:px-6 w-full">
           
-          {/* GAUCHE : Bouton Burger + Logo */}
+          {/* GAUCHE : Bouton Burger (Collé à l'extrême gauche) + Logo */}
           <div className="flex items-center gap-3">
             <button 
               onClick={() => setIsMenuOpen(true)}
@@ -135,28 +160,42 @@ export default function PublicNavbar({
             </button>
           </div>
 
-          {/* DROITE : Actions publiques */}
+          {/* DROITE : Actions contextuelles */}
           <div className="flex items-center gap-3">
-            <Link 
-              href="/donner-cours"
-              className="hidden sm:inline-flex border border-[#FF5733] text-[#FF5733] hover:bg-[#FF5733] hover:text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow-sm"
-            >
-              Donner des cours
-            </Link>
+            {!isProfessor && !isAdmin && (
+              <Link 
+                href="/donner-cours"
+                className="hidden sm:inline-flex border border-[#FF5733] text-[#FF5733] hover:bg-[#FF5733] hover:text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow-sm"
+              >
+                Donner des cours
+              </Link>
+            )}
 
-            <Link
-              href="/connexion"
-              className="bg-[#FF5733] hover:bg-[#e0482b] text-white text-xs font-bold px-4 py-2.5 rounded-xl transition shadow-sm flex items-center gap-1.5"
-            >
-              <span>Se connecter</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
+            {isProfessor && (
+              <Link 
+                href="/prof/dashboard"
+                className="bg-orange-50 hover:bg-orange-100 text-orange-600 border border-orange-200 text-xs font-bold px-3.5 py-2 rounded-xl transition flex items-center gap-2 shadow-sm"
+              >
+                <GraduationCap className="w-4 h-4" />
+                <span>Mon Dashboard Prof</span>
+              </Link>
+            )}
+
+            {!userEmail && (
+              <Link
+                href="/connexion"
+                className="bg-[#FF5733] hover:bg-[#e0482b] text-white text-xs font-bold px-4 py-2.5 rounded-xl transition shadow-sm flex items-center gap-1.5"
+              >
+                <span>Se connecter</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            )}
           </div>
 
         </div>
       </nav>
 
-      {/* --- PANNEAU LATÉRAL (DRAWER PUBLIC) --- */}
+      {/* --- PANNEAU LATÉRAL (DRAWER) --- */}
       {isMenuOpen && (
         <div className="fixed inset-0 z-50 flex">
           <div 
@@ -179,46 +218,75 @@ export default function PublicNavbar({
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-4 py-6 space-y-1">
-              <div className="text-[10px] font-extrabold uppercase tracking-widest text-gray-500 px-3 mb-2">Navigation</div>
-              <Link 
-                href="/" 
-                onClick={() => setIsMenuOpen(false)}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-800 hover:text-white transition"
-              >
-                <Home className="w-4 h-4 text-[#FF5733]" />
-                <span>Accueil</span>
-              </Link>
-              <Link 
-                href="/qui-sommes-nous" 
-                onClick={() => setIsMenuOpen(false)}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-800 hover:text-white transition"
-              >
-                <Info className="w-4 h-4 text-[#FF5733]" />
-                <span>Qui sommes-nous ?</span>
-              </Link>
-              <button 
-                onClick={() => {
-                  setIsMenuOpen(false);
-                  onOpenHelp();
-                }}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-800 hover:text-white transition text-left cursor-pointer"
-              >
-                <HelpCircle className="w-4 h-4 text-[#FF5733]" />
-                <span>Aide & Support</span>
-              </button>
+            <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
+              
+              <div className="space-y-1">
+                <div className="text-[10px] font-extrabold uppercase tracking-widest text-gray-500 px-3 mb-2">Navigation</div>
+                <Link 
+                  href="/" 
+                  onClick={() => setIsMenuOpen(false)}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-800 hover:text-white transition"
+                >
+                  <Home className="w-4 h-4 text-[#FF5733]" />
+                  <span>Accueil</span>
+                </Link>
+                <Link 
+                  href="/qui-sommes-nous" 
+                  onClick={() => setIsMenuOpen(false)}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-800 hover:text-white transition"
+                >
+                  <Info className="w-4 h-4 text-[#FF5733]" />
+                  <span>Qui sommes-nous ?</span>
+                </Link>
+                <button 
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    onOpenHelp();
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-800 hover:text-white transition text-left cursor-pointer"
+                >
+                  <HelpCircle className="w-4 h-4 text-[#FF5733]" />
+                  <span>Aide & Support</span>
+                </button>
+              </div>
+
+              {/* SECTION ADMIN (Espace Admin + Déconnexion) */}
+              {isAdmin && (
+                <div className="pt-4 border-t border-gray-800 space-y-1">
+                  <div className="text-[10px] font-extrabold uppercase tracking-widest text-amber-500 px-3 mb-2">Administration</div>
+                  
+                  <Link
+                    href="/admin"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 transition border border-amber-500/20"
+                  >
+                    <ShieldAlert className="w-4 h-4 text-amber-400" />
+                    <span>Espace Admin</span>
+                  </Link>
+
+                  <button
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      onLogoutClick();
+                    }}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-rose-400 hover:bg-rose-500/10 transition text-left cursor-pointer"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span>Déconnexion</span>
+                  </button>
+                </div>
+              )}
+
             </div>
 
-            <div className="p-4 border-t border-gray-800 bg-gray-950/50">
-              <Link
-                href="/connexion"
-                onClick={() => setIsMenuOpen(false)}
-                className="w-full py-2.5 bg-[#FF5733] hover:bg-[#e0482b] text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-2 shadow-sm"
-              >
-                <span>Se connecter / Espace Prof</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
-            </div>
+            {userEmail && (
+              <div className="p-4 border-t border-gray-800 bg-gray-950/50 flex items-center justify-between">
+                <div className="flex items-center gap-2 truncate text-xs text-gray-400">
+                  <User className="w-4 h-4 text-[#FF5733] shrink-0" />
+                  <span className="truncate">{userEmail}</span>
+                </div>
+              </div>
+            )}
 
           </div>
         </div>

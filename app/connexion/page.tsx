@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
-import { ChevronLeft, ArrowRight, ShieldCheck, GraduationCap, Users, Lock, KeyRound } from 'lucide-react';
+import { ChevronLeft, ArrowRight, ShieldCheck, GraduationCap, Users, KeyRound } from 'lucide-react';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || '',
@@ -15,71 +15,84 @@ const supabase = createClient(
 export default function ConnexionPage() {
   const router = useRouter();
   const [currentPage, setCurrentPage] = useState<'landing' | 'about'>('landing');
-  const [email, setEmail] = useState('berrada0amal@gmail.com');
+  
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  
   const [isProfessor, setIsProfessor] = useState(false);
   const [professorData, setProfessorData] = useState<any>(null);
   const [errorMessage, setErrorMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  // Étape 1 : Vérifier si l'email appartient à un professeur
+  // Étape 1 : Vérifier l'e-mail dans la base de données
   const handleCheckEmail = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) return;
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail) return;
+    
     setIsLoading(true);
     setErrorMessage('');
 
     try {
-      // On cherche si l'email existe dans la table professors
+      // On cherche l'e-mail dans la table professors
       const { data, error } = await supabase
         .from('professors')
         .select('*')
-        .eq('email', email.trim().toLowerCase())
+        .ilike('email', cleanEmail)
         .maybeSingle();
 
-      if (data) {
-        // C'est un professeur ! On lui demande son mot de passe
-        setProfessorData(data);
-        setIsProfessor(true);
-      } else {
-        // Ce n'est pas un professeur, connexion classique (élève / utilisateur)
-        localStorage.setItem('user_email', email.trim());
-        
-        if (email.trim().toLowerCase() === 'berrada0amal@gmail.com') {
-          localStorage.setItem('is_admin', 'true');
-        } else {
-          localStorage.removeItem('is_admin');
-        }
-        localStorage.removeItem('professor_id');
+      if (error) throw error;
 
-        router.replace('/');
+      if (data) {
+        // Règle stricte : Est-ce que le mot de passe est NULL ou vide ?
+        const isPasswordEmpty = !data.password || String(data.password).trim() === '';
+
+        if (isPasswordEmpty) {
+          // Si le mot de passe est NULL, redirection vers set-password
+          router.push(`/set-password?email=${encodeURIComponent(cleanEmail)}`);
+        } else {
+          // S'il y a déjà un mot de passe -> On lui demande de le saisir sur la page de connexion
+          setProfessorData(data);
+          setIsProfessor(true);
+          setIsLoading(false);
+        }
+      } else {
+        // L'e-mail n'appartient pas à la table professors -> Refus
+        setErrorMessage("Vous n'avez pas le droit de vous connecter. Cet e-mail n'est pas reconnu.");
+        setIsLoading(false);
       }
     } catch (err) {
       console.error("Erreur lors de la vérification :", err);
       setErrorMessage("Une erreur est survenue. Veuillez réessayer.");
-    } finally {
       setIsLoading(false);
     }
   };
 
-  // Étape 2 : Vérifier le mot de passe du professeur
+  // Étape 2 : Vérifier le mot de passe pour les comptes qui en ont déjà un
   const handleProfessorLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setErrorMessage('');
 
-    // On compare le mot de passe entré avec celui de la base de données
     if (professorData && professorData.password === password) {
-      // Mot de passe correct ! On sauvegarde les infos du prof
-      localStorage.setItem('user_email', email.trim());
-      localStorage.setItem('professor_id', professorData.id);
+      const cleanEmail = email.trim().toLowerCase();
       
-      if (email.trim().toLowerCase() === 'berrada0amal@gmail.com') {
-        localStorage.setItem('is_admin', 'true');
-      }
+      localStorage.setItem('user_email', cleanEmail);
+      
+      // Vérification robuste du rôle admin pour rediriger vers /admin ou /prof/dashboard
+      const isAdmin = professorData.is_admin === true || 
+                      String(professorData.is_admin).toLowerCase() === 'true';
 
-      router.replace('/');
+      if (isAdmin) {
+        localStorage.setItem('is_admin', 'true');
+        localStorage.removeItem('professor_id');
+        router.replace('/admin');
+      } else {
+        localStorage.setItem('professor_id', professorData.id);
+        localStorage.removeItem('is_admin');
+        router.replace('/prof/dashboard');
+      }
     } else {
       setErrorMessage("Mot de passe incorrect. Veuillez réessayer.");
       setIsLoading(false);
@@ -89,16 +102,9 @@ export default function ConnexionPage() {
   return (
     <main className="min-h-screen bg-[#F5F5F7] text-gray-900 font-sans flex flex-col justify-between selection:bg-[#FF5A5F] selection:text-white">
       <Navbar 
-        isLoggedIn={false}
-        currentPage={currentPage}
-        setCurrentPage={(page) => {
-          if (page === 'about' || page === 'landing') {
-            setCurrentPage(page);
-          }
-        }}
         isMenuOpen={isMenuOpen}
         setIsMenuOpen={setIsMenuOpen}
-        onLoginClick={() => {}}
+        onOpenHelp={() => {}}
       />
 
       {currentPage === 'about' && (
@@ -137,7 +143,7 @@ export default function ConnexionPage() {
           </h1>
 
           <p className="text-base sm:text-lg md:text-xl text-gray-600 font-medium max-w-2xl mb-10 leading-relaxed">
-            Les élèves, les professeurs qualifiés et les meilleurs cours de soutien réunis sur une seule et même plateforme.
+            Les professeurs qualifiés et les meilleurs cours de soutien réunis sur une seule et même plateforme.
           </p>
 
           {!isProfessor ? (
@@ -156,17 +162,17 @@ export default function ConnexionPage() {
                 disabled={isLoading}
                 className="w-full sm:w-auto px-6 py-3.5 bg-[#FF5A5F] hover:bg-[#E0484C] text-white font-bold rounded-xl transition text-sm sm:text-base shrink-0 shadow-md flex items-center justify-center gap-2 cursor-pointer"
               >
-                <span>{isLoading ? 'Vérification...' : "S'inscrire / Se connecter"}</span>
+                <span>{isLoading ? 'Vérification...' : "Se connecter"}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </form>
           ) : (
-            /* FORMULAIRE ÉTAPE 2 : MOT DE PASSE PROFESSEUR */
+            /* FORMULAIRE ÉTAPE 2 : MOT DE PASSE */
             <form onSubmit={handleProfessorLogin} className="w-full max-w-xl flex flex-col gap-3 bg-white p-5 rounded-2xl shadow-xl border border-orange-200 mb-4 text-left animate-in fade-in duration-200">
               <div className="flex items-center justify-between border-b border-gray-100 pb-3">
                 <div className="flex items-center gap-2 text-xs font-bold text-orange-600 bg-orange-50 px-3 py-1 rounded-full">
                   <KeyRound className="w-3.5 h-3.5" />
-                  <span>Espace Professeur détecté</span>
+                  <span>Mot de passe requis</span>
                 </div>
                 <button 
                   type="button" 
@@ -178,7 +184,7 @@ export default function ConnexionPage() {
               </div>
 
               <p className="text-xs text-gray-600">
-                Bonjour, un compte professeur est associé à <b>{email}</b>. Veuillez entrer votre mot de passe pour vous connecter :
+                Un compte protégé est associé à <b>{email}</b>. Veuillez entrer votre mot de passe :
               </p>
 
               <div className="flex flex-col sm:flex-row gap-3 pt-1">
@@ -188,7 +194,7 @@ export default function ConnexionPage() {
                   autoFocus
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Votre mot de passe professeur" 
+                  placeholder="Votre mot de passe" 
                   className="w-full px-4 py-3.5 text-gray-800 placeholder-gray-400 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#FF5A5F] font-medium"
                 />
                 <button 

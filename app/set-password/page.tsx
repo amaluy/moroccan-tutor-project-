@@ -55,23 +55,38 @@ export default function SetPasswordPage() {
     try {
       console.log("Mise à jour du mot de passe pour:", targetEmail);
 
-      // On utilise .ilike pour être insensible à la casse (majuscules/minuscules)
-      // et on retire .select() pour éviter l'erreur 406 Not Acceptable
-      const { error: dbError } = await supabase
+      // 1. Mettre à jour le mot de passe et récupérer les données (dont is_admin et id)
+      const { data, error: dbError } = await supabase
         .from('professors')
         .update({ password: password })
-        .ilike('email', targetEmail);
+        .ilike('email', targetEmail)
+        .select()
+        .single();
 
       if (dbError) {
         console.error("Erreur Supabase:", dbError);
         throw dbError;
       }
 
-      // Enregistrement de la session dans le localStorage
+      // 2. Enregistrement de la session dans le localStorage
       localStorage.setItem('user_email', targetEmail);
-      
-      // Redirection immédiate vers le dashboard
-      router.push('/prof/dashboard');
+
+      // 3. Vérification robuste du rôle admin pour rediriger vers /admin ou /prof/dashboard
+      const isAdmin = data && (
+        data.is_admin === true || 
+        String(data.is_admin).toLowerCase() === 'true'
+      );
+
+      if (isAdmin) {
+        localStorage.setItem('is_admin', 'true');
+        localStorage.removeItem('professor_id');
+        router.replace('/admin');
+      } else {
+        localStorage.setItem('professor_id', data.id);
+        localStorage.removeItem('is_admin');
+        router.replace('/prof/dashboard');
+      }
+
     } catch (err: any) {
       setError(err.message || 'Une erreur est survenue lors de la mise à jour.');
       setLoading(false);
@@ -85,7 +100,7 @@ export default function SetPasswordPage() {
           Créez votre mot de passe
         </h2>
         <p className="text-sm text-gray-600 text-center mb-6">
-          Définissez votre mot de passe pour accéder à votre espace professeur ProfMaroc.
+          Définissez votre mot de passe pour accéder à votre espace sur ProfMaroc.
         </p>
 
         {error && (
