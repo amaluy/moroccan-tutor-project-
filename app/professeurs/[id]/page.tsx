@@ -5,11 +5,10 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import Footer from '../../components/Footer';
 import HelpModal from '../../components/HelpModal';
-import Navbar from '../../components/Navbar'; // Standard navbar component if needed, or omit if standard layout uses something else
 import { supabase } from '@/lib/supabase';
 import { 
   MapPin, Star, Share2, Heart, Loader2, 
-  CheckCircle2, AlertTriangle, ArrowLeft
+  AlertTriangle, ArrowLeft
 } from 'lucide-react';
 
 interface Professor {
@@ -79,9 +78,9 @@ export default function ProfessorDetail() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <main className="min-h-screen bg-[#faf9f6] flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-8 h-8 text-pink-500 animate-spin" />
+          <Loader2 className="w-8 h-8 text-rose-500 animate-spin" />
           <p className="text-sm font-semibold text-slate-600">Chargement du profil...</p>
         </div>
       </main>
@@ -90,7 +89,7 @@ export default function ProfessorDetail() {
 
   if (!professor) {
     return (
-      <main className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center space-y-4">
+      <main className="min-h-screen bg-[#faf9f6] flex flex-col items-center justify-center p-6 text-center space-y-4">
         <h1 className="text-2xl font-black text-slate-900">Professeur introuvable</h1>
         <p className="text-sm text-slate-500">Le profil que vous recherchez n'existe pas ou a été supprimé.</p>
         <Link href="/" className="bg-slate-900 text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow">
@@ -113,7 +112,6 @@ export default function ProfessorDetail() {
   const bio = professor.bio || professor.description || "";
   const level = professor.niveau || professor.level || "Tous niveaux";
 
-  // Initials for avatar fallback matching design "SS"
   const getInitials = (name: string) => {
     return name
       .split(' ')
@@ -124,10 +122,10 @@ export default function ProfessorDetail() {
   };
 
   return (
-    <main className="min-h-screen bg-[#faf9f6] text-slate-900 font-sans flex flex-col justify-between">
+    <main className="min-h-screen bg-[#faf9f6] text-slate-900 font-sans flex flex-col justify-between relative overflow-x-hidden">
       
       {/* Top Header Navigation */}
-      <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+      <header className="bg-white/80 backdrop-blur-md border-b border-slate-200/60 px-6 py-4 flex items-center justify-between sticky top-0 z-30">
         <Link href="/" className="flex items-center gap-2 text-xs font-bold text-slate-700 hover:text-slate-900 transition">
           <ArrowLeft className="w-4 h-4" /> Retour aux recherches
         </Link>
@@ -138,57 +136,81 @@ export default function ProfessorDetail() {
         </div>
       </header>
 
-      {/* Main Content Container matching layout reference */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 w-full grid grid-cols-1 lg:grid-cols-12 gap-12">
+      {/* SECTION PLEINE LARGEUR AVEC IMAGE DE FOND CORRIGÉE */}
+      <div className="w-full relative border-b border-slate-200/40 pt-10 pb-16 min-h-[420px] flex items-center bg-[#faf9f6]">
         
-        {/* Left Column: Details & Bio */}
+        {/* Image de fond visible et correctement positionnée */}
+        <div className="absolute inset-0 w-full h-full overflow-hidden">
+          <img 
+            src="/minimaal.jpg" 
+            alt="Arrière-plan minimaliste" 
+            className="w-full h-full object-cover opacity-35"
+          />
+        </div>
+
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-12 items-start w-full">
+          
+          {/* Colonne Gauche */}
+          <div className="lg:col-span-7 space-y-8">
+            
+            {/* Tags */}
+            <div className="flex flex-wrap gap-2">
+              <span className="bg-rose-500 text-white px-3.5 py-1 rounded-full text-xs font-bold shadow-sm">
+                {subject.toLowerCase()}
+              </span>
+              <span className="bg-white/90 backdrop-blur-md border border-slate-200/80 text-slate-700 px-3.5 py-1 rounded-full text-xs font-bold shadow-2xs">
+                Pédagogie
+              </span>
+            </div>
+
+            {/* Main Subject Title */}
+            <h1 className="text-4xl sm:text-5xl font-black text-slate-900 capitalize tracking-tight">
+              {subject}
+            </h1>
+
+            {/* Lieux du cours */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-black text-slate-900">Lieux du cours</h3>
+              <div className="inline-flex items-center gap-2 bg-white/90 backdrop-blur-md border border-slate-200/80 px-4 py-2.5 rounded-2xl text-xs font-semibold text-slate-700 shadow-xs">
+                <MapPin className="w-4 h-4 text-rose-500" />
+                Chez {fullName.toLowerCase()} : {city.toLowerCase()}
+              </div>
+            </div>
+
+            {/* À propos & Bloc "Ajouter votre biographie" */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-black text-slate-900">À propos de {fullName.toLowerCase()}</h3>
+              
+              {!bio ? (
+                <div className="bg-amber-50/95 backdrop-blur-md border border-amber-200/90 rounded-2xl p-4 flex gap-3 text-amber-900 shadow-md">
+                  <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                  <div className="space-y-1 text-xs">
+                    <p className="font-bold">Ajoutez votre biographie pour attirer plus d'élèves !</p>
+                    <p className="text-amber-700 leading-relaxed">
+                      Aucune description détaillée n'a encore été renseignée. Rédigez votre parcours, votre méthodologie et votre passion pour inspirer confiance aux futurs élèves.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-white/95 backdrop-blur-md border border-slate-200/80 rounded-2xl p-5 text-xs text-slate-700 leading-relaxed shadow-md">
+                  {bio}
+                </div>
+              )}
+            </div>
+
+          </div>
+
+          <div className="hidden lg:block lg:col-span-5" />
+
+        </div>
+      </div>
+
+      {/* RESTE DU CONTENU */}
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 w-full grid grid-cols-1 lg:grid-cols-12 gap-12 relative">
+        
+        {/* Colonne de gauche (Suite) */}
         <div className="lg:col-span-7 space-y-8">
           
-          {/* Tags */}
-          <div className="flex flex-wrap gap-2">
-            <span className="bg-rose-50 text-rose-600 border border-rose-100 px-3 py-1 rounded-full text-xs font-bold">
-              {subject.toLowerCase()}
-            </span>
-            <span className="bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-xs font-bold">
-              Pédagogie
-            </span>
-          </div>
-
-          {/* Main Subject Title */}
-          <h1 className="text-4xl sm:text-5xl font-black text-slate-900 capitalize tracking-tight">
-            {subject}
-          </h1>
-
-          {/* Lieux du cours */}
-          <div className="space-y-3">
-            <h3 className="text-sm font-black text-slate-900">Lieux du cours</h3>
-            <div className="inline-flex items-center gap-2 bg-white border border-slate-200/80 px-4 py-2.5 rounded-2xl text-xs font-semibold text-slate-700 shadow-2xs">
-              <MapPin className="w-4 h-4 text-slate-400" />
-              Chez {fullName.toLowerCase()} : {city.toLowerCase()}
-            </div>
-          </div>
-
-          {/* À propos */}
-          <div className="space-y-4">
-            <h3 className="text-sm font-black text-slate-900">À propos de {fullName.toLowerCase()}</h3>
-            
-            {!bio ? (
-              <div className="bg-amber-50/70 border border-amber-200/80 rounded-2xl p-4 flex gap-3 text-amber-900">
-                <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-                <div className="space-y-1 text-xs">
-                  <p className="font-bold">Ajoutez votre biographie pour attirer plus d'élèves !</p>
-                  <p className="text-amber-700 leading-relaxed">
-                    Aucune description détaillée n'a encore été renseignée. Rédigez votre parcours, votre méthodologie et votre passion pour inspirer confiance aux futurs élèves.
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="bg-white border border-slate-200/80 rounded-2xl p-5 text-xs text-slate-700 leading-relaxed">
-                {bio}
-              </div>
-            )}
-          </div>
-
           {/* À propos du cours */}
           <div className="space-y-3">
             <h3 className="text-sm font-black text-slate-900">À propos du cours</h3>
@@ -242,9 +264,9 @@ export default function ProfessorDetail() {
 
         </div>
 
-        {/* Right Column: Floating Contact / Pricing Card */}
-        <div className="lg:col-span-5">
-          <div className="bg-white border border-slate-200/90 rounded-3xl p-6 shadow-xl sticky top-24 space-y-6">
+        {/* Colonne de droite : Carte Flottante de Contact */}
+        <div className="lg:col-span-5 relative">
+          <div className="bg-white/95 backdrop-blur-xl border border-slate-200/90 rounded-3xl p-6 shadow-2xl lg:-mt-48 sticky top-24 space-y-6 z-20">
             
             {/* Top Action Icons */}
             <div className="flex justify-end gap-2 text-slate-400">
@@ -262,10 +284,10 @@ export default function ProfessorDetail() {
                 <img 
                   src={photo} 
                   alt={fullName} 
-                  className="w-24 h-24 rounded-full object-cover shadow-md"
+                  className="w-24 h-24 rounded-full object-cover shadow-md ring-4 ring-rose-500/10"
                 />
               ) : (
-                <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-orange-500 to-rose-500 flex items-center justify-center text-white font-black text-xl shadow-md">
+                <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-orange-500 to-rose-500 flex items-center justify-center text-white font-black text-xl shadow-md ring-4 ring-rose-500/10">
                   {getInitials(fullName)}
                 </div>
               )}
