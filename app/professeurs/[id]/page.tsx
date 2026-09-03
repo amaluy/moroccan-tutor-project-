@@ -37,6 +37,12 @@ interface Professor {
   location?: string;
   bio?: string;
   description?: string;
+  // Nouveaux champs optionnels potentiels dans la base de données
+  statut?: string;
+  type_cours?: string;
+  experience?: string;
+  dernier_diplome?: string;
+  profession?: string;
 }
 
 export default function ProfessorDetail() {
@@ -108,9 +114,17 @@ export default function ProfessorDetail() {
   const photo = professor.photo_URL || professor.photo_url || professor.photo || professor.avatar_url;
   const city = professor.ville || professor.city || "Casablanca";
   const subject = professor.matiere || professor.subject || "math";
-  const price = Number(professor.tarif !== undefined && professor.tarif !== null ? professor.tarif : professor.price) || 44;
+  const price = Number(professor.tarif !== undefined && professor.tarif !== null ? professor.tarif : professor.price) || 250;
   const bio = professor.bio || professor.description || "";
   const level = professor.niveau || professor.level || "Tous niveaux";
+
+  // Récupération des nouvelles informations ou valeurs par défaut
+  const statut = professor.statut || "Indépendant";
+  const typeCours = professor.type_cours || "Présentiel & En ligne";
+  const experience = professor.experience || "3 ans";
+  const niveauEnseigne = level;
+  const dernierDiplome = professor.dernier_diplome || "Licence / Master";
+  const profession = professor.profession || "Professeur / Formateur";
 
   const getInitials = (name: string) => {
     return name
@@ -139,7 +153,6 @@ export default function ProfessorDetail() {
       {/* SECTION PLEINE LARGEUR AVEC IMAGE DE FOND */}
       <div className="w-full relative border-b border-slate-200/40 pt-10 pb-16 min-h-[420px] flex items-center bg-[#faf9f6]">
         
-        {/* Image de fond visible et correctement positionnée */}
         <div className="absolute inset-0 w-full h-full overflow-hidden">
           <img 
             src="/minimaal.jpg" 
@@ -153,7 +166,6 @@ export default function ProfessorDetail() {
           {/* Colonne Gauche : Nom, Tags, Lieux et Tarif */}
           <div className="lg:col-span-7 space-y-6">
             
-            {/* Tags */}
             <div className="flex flex-wrap gap-2">
               <span className="bg-rose-500 text-white px-3.5 py-1 rounded-full text-xs font-bold shadow-sm capitalize">
                 {subject.toLowerCase()}
@@ -163,12 +175,10 @@ export default function ProfessorDetail() {
               </span>
             </div>
 
-            {/* Nom et Prénom du professeur à la place de Math */}
             <h1 className="text-4xl sm:text-5xl font-black text-slate-900 capitalize tracking-tight">
               {fullName.toLowerCase()}
             </h1>
 
-            {/* Lieux du cours */}
             <div className="space-y-3">
               <h3 className="text-sm font-black text-slate-900">Lieux du cours</h3>
               <div className="inline-flex items-center gap-2 bg-white/90 backdrop-blur-md border border-slate-200/80 px-4 py-2.5 rounded-2xl text-xs font-semibold text-slate-700 shadow-xs">
@@ -177,7 +187,6 @@ export default function ProfessorDetail() {
               </div>
             </div>
 
-            {/* Tarif placé avant la bio */}
             <div className="inline-flex items-center gap-3 bg-white/90 backdrop-blur-md border border-slate-200/80 px-5 py-3 rounded-2xl shadow-sm">
               <span className="text-xs font-bold text-slate-400">Tarif horaire :</span>
               <span className="text-lg font-black text-slate-900">{price} DH</span>
@@ -208,31 +217,9 @@ export default function ProfessorDetail() {
       {/* RESTE DU CONTENU */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 w-full grid grid-cols-1 lg:grid-cols-12 gap-12 relative">
         
-        {/* Colonne de gauche (Suite : Biographie & Cours) */}
+        {/* Colonne de gauche (Cours & Disponibilité) */}
         <div className="lg:col-span-7 space-y-8">
           
-          {/* À propos & Bloc "Ajouter votre biographie" */}
-          <div className="space-y-4">
-            <h3 className="text-sm font-black text-slate-900">À propos de {fullName.toLowerCase()}</h3>
-            
-            {!bio ? (
-              <div className="bg-amber-50/95 backdrop-blur-md border border-amber-200/90 rounded-2xl p-4 flex gap-3 text-amber-900 shadow-md">
-                <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-                <div className="space-y-1 text-xs">
-                  <p className="font-bold">Ajoutez votre biographie pour attirer plus d'élèves !</p>
-                  <p className="text-amber-700 leading-relaxed">
-                    Aucune description détaillée n'a encore été renseignée. Rédigez votre parcours, votre méthodologie et votre passion pour inspirer confiance aux futurs élèves.
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="bg-white/95 backdrop-blur-md border border-slate-200/80 rounded-2xl p-5 text-xs text-slate-700 leading-relaxed shadow-md">
-                {bio}
-              </div>
-            )}
-          </div>
-
-          {/* À propos du cours */}
           <div className="space-y-3">
             <h3 className="text-sm font-black text-slate-900">À propos du cours</h3>
             <div className="flex flex-wrap gap-2">
@@ -248,7 +235,6 @@ export default function ProfessorDetail() {
             </p>
           </div>
 
-          {/* Disponibilité Table */}
           <div className="space-y-4">
             <h3 className="text-sm font-black text-slate-900">Disponibilité</h3>
             <div className="bg-white border border-slate-200 rounded-2xl p-5 overflow-x-auto shadow-2xs">
@@ -285,11 +271,10 @@ export default function ProfessorDetail() {
 
         </div>
 
-        {/* Colonne de droite : Carte Flottante de Contact */}
+        {/* Colonne de droite : Carte Flottante de Contact & Détails */}
         <div className="lg:col-span-5 relative">
           <div className="bg-white/95 backdrop-blur-xl border border-slate-200/90 rounded-3xl p-6 shadow-2xl sticky top-24 space-y-6 z-20">
             
-            {/* Top Action Icons */}
             <div className="flex justify-end gap-2 text-slate-400">
               <button className="p-2 hover:bg-slate-50 rounded-full transition cursor-pointer">
                 <Heart className="w-4 h-4" />
@@ -299,7 +284,6 @@ export default function ProfessorDetail() {
               </button>
             </div>
 
-            {/* Name & Stars */}
             <div className="flex flex-col items-center text-center space-y-2">
               <h2 className="text-xl font-black text-slate-900 capitalize">{fullName.toLowerCase()}</h2>
               <div className="flex items-center justify-center gap-1 text-xs font-bold text-amber-500">
@@ -309,28 +293,62 @@ export default function ProfessorDetail() {
               </div>
             </div>
 
-            {/* Price and Stats */}
+            {/* BIO INTÉGRÉE DANS LA CARTE */}
+            <div className="space-y-2 pt-2">
+              <h3 className="text-xs font-black text-slate-900">À propos de {fullName.toLowerCase()}</h3>
+              {!bio ? (
+                <div className="bg-amber-50/95 backdrop-blur-md border border-amber-200/90 rounded-2xl p-3 flex gap-2.5 text-amber-900 shadow-xs">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div className="space-y-0.5 text-[11px]">
+                    <p className="font-bold">Ajoutez votre biographie !</p>
+                    <p className="text-amber-700 leading-relaxed">
+                      Aucune description détaillée n'a encore été renseignée.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3 text-[11px] text-slate-700 leading-relaxed">
+                  {bio}
+                </div>
+              )}
+            </div>
+
+            {/* NOUVEAUX CHAMPS ET TARIF (Sans Réponse ni Élèves) */}
             <div className="divide-y divide-slate-100 text-xs font-medium text-slate-600">
-              <div className="py-3 flex items-center justify-between">
+              <div className="py-2.5 flex items-center justify-between">
                 <span className="text-slate-400">Tarif</span>
                 <span className="text-base font-black text-slate-900">{price} DH</span>
               </div>
-              <div className="py-3 flex items-center justify-between">
-                <span className="text-slate-400">Réponse</span>
-                <span className="font-bold text-slate-800">1h</span>
+              <div className="py-2.5 flex items-center justify-between">
+                <span className="text-slate-400">Statut</span>
+                <span className="font-bold text-slate-800">{statut}</span>
               </div>
-              <div className="py-3 flex items-center justify-between">
-                <span className="text-slate-400">Élèves</span>
-                <span className="font-bold text-slate-800">2</span>
+              <div className="py-2.5 flex items-center justify-between">
+                <span className="text-slate-400">Type de cours</span>
+                <span className="font-bold text-slate-800">{typeCours}</span>
+              </div>
+              <div className="py-2.5 flex items-center justify-between">
+                <span className="text-slate-400">Expérience</span>
+                <span className="font-bold text-slate-800">{experience}</span>
+              </div>
+              <div className="py-2.5 flex items-center justify-between">
+                <span className="text-slate-400">Niveau enseigné</span>
+                <span className="font-bold text-slate-800">{niveauEnseigne}</span>
+              </div>
+              <div className="py-2.5 flex items-center justify-between">
+                <span className="text-slate-400">Dernier diplôme</span>
+                <span className="font-bold text-slate-800">{dernierDiplome}</span>
+              </div>
+              <div className="py-2.5 flex items-center justify-between">
+                <span className="text-slate-400">Profession</span>
+                <span className="font-bold text-slate-800">{profession}</span>
               </div>
             </div>
 
-            {/* Action CTA Button */}
             <button className="w-full bg-[#ff2d55] hover:bg-[#e02447] text-white font-extrabold py-3.5 rounded-2xl text-sm transition shadow-lg shadow-rose-500/20 active:scale-95 cursor-pointer">
               Contacter
             </button>
 
-            {/* Review Input Box */}
             <div className="border border-slate-200/80 rounded-2xl p-4 text-center space-y-2 bg-slate-50/50">
               <p className="text-[11px] font-bold text-slate-600">Donner votre avis sur {fullName.toLowerCase()}</p>
               <div className="flex justify-center gap-1 text-slate-300">
