@@ -136,7 +136,7 @@ export default function ProfessorDetail() {
         </div>
       </header>
 
-      {/* SECTION PLEINE LARGEUR AVEC IMAGE DE FOND CORRIGÉE */}
+      {/* SECTION PLEINE LARGEUR AVEC IMAGE DE FOND */}
       <div className="w-full relative border-b border-slate-200/40 pt-10 pb-16 min-h-[420px] flex items-center bg-[#faf9f6]">
         
         {/* Image de fond visible et correctement positionnée */}
@@ -148,14 +148,14 @@ export default function ProfessorDetail() {
           />
         </div>
 
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-12 items-start w-full">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center w-full">
           
-          {/* Colonne Gauche */}
-          <div className="lg:col-span-7 space-y-8">
+          {/* Colonne Gauche : Nom, Tags, Lieux et Tarif */}
+          <div className="lg:col-span-7 space-y-6">
             
             {/* Tags */}
             <div className="flex flex-wrap gap-2">
-              <span className="bg-rose-500 text-white px-3.5 py-1 rounded-full text-xs font-bold shadow-sm">
+              <span className="bg-rose-500 text-white px-3.5 py-1 rounded-full text-xs font-bold shadow-sm capitalize">
                 {subject.toLowerCase()}
               </span>
               <span className="bg-white/90 backdrop-blur-md border border-slate-200/80 text-slate-700 px-3.5 py-1 rounded-full text-xs font-bold shadow-2xs">
@@ -163,9 +163,9 @@ export default function ProfessorDetail() {
               </span>
             </div>
 
-            {/* Main Subject Title */}
+            {/* Nom et Prénom du professeur à la place de Math */}
             <h1 className="text-4xl sm:text-5xl font-black text-slate-900 capitalize tracking-tight">
-              {subject}
+              {fullName.toLowerCase()}
             </h1>
 
             {/* Lieux du cours */}
@@ -177,30 +177,30 @@ export default function ProfessorDetail() {
               </div>
             </div>
 
-            {/* À propos & Bloc "Ajouter votre biographie" */}
-            <div className="space-y-4">
-              <h3 className="text-sm font-black text-slate-900">À propos de {fullName.toLowerCase()}</h3>
-              
-              {!bio ? (
-                <div className="bg-amber-50/95 backdrop-blur-md border border-amber-200/90 rounded-2xl p-4 flex gap-3 text-amber-900 shadow-md">
-                  <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-                  <div className="space-y-1 text-xs">
-                    <p className="font-bold">Ajoutez votre biographie pour attirer plus d'élèves !</p>
-                    <p className="text-amber-700 leading-relaxed">
-                      Aucune description détaillée n'a encore été renseignée. Rédigez votre parcours, votre méthodologie et votre passion pour inspirer confiance aux futurs élèves.
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="bg-white/95 backdrop-blur-md border border-slate-200/80 rounded-2xl p-5 text-xs text-slate-700 leading-relaxed shadow-md">
-                  {bio}
-                </div>
-              )}
+            {/* Tarif placé avant la bio */}
+            <div className="inline-flex items-center gap-3 bg-white/90 backdrop-blur-md border border-slate-200/80 px-5 py-3 rounded-2xl shadow-sm">
+              <span className="text-xs font-bold text-slate-400">Tarif horaire :</span>
+              <span className="text-lg font-black text-slate-900">{price} DH</span>
             </div>
 
           </div>
 
-          <div className="hidden lg:block lg:col-span-5" />
+          {/* Colonne Droite : Grand rectangle pour la photo du professeur */}
+          <div className="lg:col-span-5 flex justify-center lg:justify-end">
+            <div className="w-full max-w-sm h-[320px] rounded-3xl overflow-hidden shadow-2xl border-4 border-white bg-white">
+              {photo ? (
+                <img 
+                  src={photo} 
+                  alt={fullName} 
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-tr from-orange-500 to-rose-500 flex items-center justify-center text-white font-black text-4xl">
+                  {getInitials(fullName)}
+                </div>
+              )}
+            </div>
+          </div>
 
         </div>
       </div>
@@ -208,9 +208,30 @@ export default function ProfessorDetail() {
       {/* RESTE DU CONTENU */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 w-full grid grid-cols-1 lg:grid-cols-12 gap-12 relative">
         
-        {/* Colonne de gauche (Suite) */}
+        {/* Colonne de gauche (Suite : Biographie & Cours) */}
         <div className="lg:col-span-7 space-y-8">
           
+          {/* À propos & Bloc "Ajouter votre biographie" */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-black text-slate-900">À propos de {fullName.toLowerCase()}</h3>
+            
+            {!bio ? (
+              <div className="bg-amber-50/95 backdrop-blur-md border border-amber-200/90 rounded-2xl p-4 flex gap-3 text-amber-900 shadow-md">
+                <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                <div className="space-y-1 text-xs">
+                  <p className="font-bold">Ajoutez votre biographie pour attirer plus d'élèves !</p>
+                  <p className="text-amber-700 leading-relaxed">
+                    Aucune description détaillée n'a encore été renseignée. Rédigez votre parcours, votre méthodologie et votre passion pour inspirer confiance aux futurs élèves.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-white/95 backdrop-blur-md border border-slate-200/80 rounded-2xl p-5 text-xs text-slate-700 leading-relaxed shadow-md">
+                {bio}
+              </div>
+            )}
+          </div>
+
           {/* À propos du cours */}
           <div className="space-y-3">
             <h3 className="text-sm font-black text-slate-900">À propos du cours</h3>
@@ -266,7 +287,7 @@ export default function ProfessorDetail() {
 
         {/* Colonne de droite : Carte Flottante de Contact */}
         <div className="lg:col-span-5 relative">
-          <div className="bg-white/95 backdrop-blur-xl border border-slate-200/90 rounded-3xl p-6 shadow-2xl lg:-mt-48 sticky top-24 space-y-6 z-20">
+          <div className="bg-white/95 backdrop-blur-xl border border-slate-200/90 rounded-3xl p-6 shadow-2xl sticky top-24 space-y-6 z-20">
             
             {/* Top Action Icons */}
             <div className="flex justify-end gap-2 text-slate-400">
@@ -278,27 +299,13 @@ export default function ProfessorDetail() {
               </button>
             </div>
 
-            {/* Avatar & Name */}
-            <div className="flex flex-col items-center text-center space-y-3">
-              {photo ? (
-                <img 
-                  src={photo} 
-                  alt={fullName} 
-                  className="w-24 h-24 rounded-full object-cover shadow-md ring-4 ring-rose-500/10"
-                />
-              ) : (
-                <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-orange-500 to-rose-500 flex items-center justify-center text-white font-black text-xl shadow-md ring-4 ring-rose-500/10">
-                  {getInitials(fullName)}
-                </div>
-              )}
-
-              <div className="space-y-1">
-                <h2 className="text-xl font-black text-slate-900 capitalize">{fullName.toLowerCase()}</h2>
-                <div className="flex items-center justify-center gap-1 text-xs font-bold text-amber-500">
-                  <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                  <span>5</span>
-                  <span className="text-slate-400 font-normal">(1 avis)</span>
-                </div>
+            {/* Name & Stars */}
+            <div className="flex flex-col items-center text-center space-y-2">
+              <h2 className="text-xl font-black text-slate-900 capitalize">{fullName.toLowerCase()}</h2>
+              <div className="flex items-center justify-center gap-1 text-xs font-bold text-amber-500">
+                <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                <span>5</span>
+                <span className="text-slate-400 font-normal">(1 avis)</span>
               </div>
             </div>
 
