@@ -35,7 +35,6 @@ export default function ConnexionPage() {
     setErrorMessage('');
 
     try {
-      // On cherche l'e-mail dans la table professors
       const { data, error } = await supabase
         .from('professors')
         .select('*')
@@ -45,20 +44,16 @@ export default function ConnexionPage() {
       if (error) throw error;
 
       if (data) {
-        // Règle stricte : Est-ce que le mot de passe est NULL ou vide ?
         const isPasswordEmpty = !data.password || String(data.password).trim() === '';
 
         if (isPasswordEmpty) {
-          // Si le mot de passe est NULL, redirection vers set-password
           router.push(`/set-password?email=${encodeURIComponent(cleanEmail)}`);
         } else {
-          // S'il y a déjà un mot de passe -> On lui demande de le saisir sur la page de connexion
           setProfessorData(data);
           setIsProfessor(true);
           setIsLoading(false);
         }
       } else {
-        // L'e-mail n'appartient pas à la table professors -> Refus
         setErrorMessage("Vous n'avez pas le droit de vous connecter. Cet e-mail n'est pas reconnu.");
         setIsLoading(false);
       }
@@ -80,18 +75,17 @@ export default function ConnexionPage() {
       
       localStorage.setItem('user_email', cleanEmail);
       
-      // Vérification robuste du rôle admin
       const isAdmin = professorData.is_admin === true || 
                     String(professorData.is_admin).toLowerCase() === 'true';
 
       if (isAdmin) {
         localStorage.setItem('is_admin', 'true');
         localStorage.removeItem('professor_id');
-        router.replace('/admin'); // <-- Redirige l'administrateur vers admin/page.tsx
+        router.replace('/admin');
       } else {
         localStorage.setItem('professor_id', professorData.id);
         localStorage.removeItem('is_admin');
-        router.replace('/prof/dashboard'); // <-- Redirige le prof vers son dashboard
+        router.replace('/prof');
       }
     } else {
       setErrorMessage("Mot de passe incorrect. Veuillez réessayer.");
@@ -147,7 +141,6 @@ export default function ConnexionPage() {
           </p>
 
           {!isProfessor ? (
-            /* FORMULAIRE ÉTAPE 1 : EMAIL */
             <form onSubmit={handleCheckEmail} className="w-full max-w-xl flex flex-col sm:flex-row items-center gap-3 bg-white p-2 rounded-2xl shadow-xl border border-gray-200/80 mb-4">
               <input 
                 type="email" 
@@ -167,7 +160,6 @@ export default function ConnexionPage() {
               </button>
             </form>
           ) : (
-            /* FORMULAIRE ÉTAPE 2 : MOT DE PASSE */
             <form onSubmit={handleProfessorLogin} className="w-full max-w-xl flex flex-col gap-3 bg-white p-5 rounded-2xl shadow-xl border border-orange-200 mb-4 text-left animate-in fade-in duration-200">
               <div className="flex items-center justify-between border-b border-gray-100 pb-3">
                 <div className="flex items-center gap-2 text-xs font-bold text-orange-600 bg-orange-50 px-3 py-1 rounded-full">
