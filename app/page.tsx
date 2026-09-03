@@ -20,6 +20,8 @@ interface Professor {
   nom?: string;
   prenom?: string;
   name?: string;
+  email?: string;
+  Email?: string;
   photo_URL?: string;
   photo_url?: string;
   avatar_url?: string;
@@ -35,6 +37,7 @@ interface Professor {
   price?: number | string;
   lieu?: string;
   location?: string;
+  is_admin?: boolean;
 }
 
 export default function HomePage() {
@@ -52,7 +55,7 @@ export default function HomePage() {
   const [priceRange, setPriceRange] = useState('');
   const [locationType, setLocationType] = useState('');
 
-  // Effet Machine à écrire fluide (Typewriter avec un curseur violet)
+  // Effet Machine à écrire fluide
   const words = ["en Maths", "en Français", "en Anglais", "en Physique", "en SVT", "en Arabe"];
   const [currentWordIndex, setCurrentWordIndex] = useState(0);
   const [currentText, setCurrentText] = useState("");
@@ -92,16 +95,42 @@ export default function HomePage() {
     "Primaire", "Collège", "Secondaire", "Niveau Supérieur"
   ];
 
+  // Fonction de nettoyage pour éviter d'afficher des crochets ou du JSON brut
+  const formatCleanText = (val: any): string => {
+    if (!val) return '';
+    const str = String(val);
+    try {
+      const parsed = JSON.parse(str);
+      if (Array.isArray(parsed)) {
+        return parsed.join(', ');
+      }
+    } catch {}
+    return str.replace(/[\[\]"]/g, '').trim();
+  };
+
   const fetchProfessors = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.from('professors').select('*');
+      // REQUÊTE SUPABASE : Exclut les is_admin et les emails d'administration dès la source
+      const { data, error } = await supabase
+        .from('professors')
+        .select('*')
+        .or('is_admin.is.null,is_admin.eq.false')
+        .not('email', 'in', '("berrada0amal@gmail.com","louizisalaheddine@gmail.com")');
 
       if (error) {
         console.error('Erreur Supabase:', error);
         setProfessors([]);
       } else {
         let results = data || [];
+
+        // DOUBLE SÉCURITÉ JAVASCRIPT : Filtrage strict pour ne jamais afficher les admins
+        results = results.filter(p => {
+          const email = (p.email || p.Email || '').toLowerCase().trim();
+          if (p.is_admin === true) return false;
+          if (email === 'berrada0amal@gmail.com' || email === 'louizisalaheddine@gmail.com') return false;
+          return true;
+        });
 
         const normalize = (text: string) => {
           return text
@@ -169,7 +198,7 @@ export default function HomePage() {
 
   useEffect(() => {
     fetchProfessors();
-  }, []);
+  }, [selectedSubject, selectedCity, selectedLevel, priceRange, locationType]);
 
   const handleApplyFilters = (e: React.FormEvent) => {
     e.preventDefault();
@@ -182,9 +211,6 @@ export default function HomePage() {
     setSelectedLevel('');
     setPriceRange('');
     setLocationType('');
-    setTimeout(() => {
-      fetchProfessors();
-    }, 50);
   };
 
   return (
@@ -247,7 +273,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* SECTION FILTRES ET RESULTATS (MODIFIÉE EN 3 COLONNES POUR LES PROFS) */}
+      {/* SECTION FILTRES ET RESULTATS */}
       <section className="max-w-[90rem] mx-auto px-4 sm:px-8 py-12 w-full grid grid-cols-1 lg:grid-cols-12 gap-8">
         
         {/* PANNEAU DE FILTRAGE */}
@@ -377,7 +403,7 @@ export default function HomePage() {
           </form>
         </aside>
 
-        {/* LISTE DES RÉSULTATS (3 COLONNES) */}
+        {/* LISTE DES RÉSULTATS */}
         <div className="lg:col-span-9 space-y-6">
           
           <div className="flex items-center justify-between text-xs px-1">
@@ -403,7 +429,6 @@ export default function HomePage() {
                 <p className="text-xs text-slate-500">Aucun profil ne correspond exactement à vos critères de recherche actuels.</p>
               </div>
               <button 
-                key="reset-button-empty"
                 onClick={handleReset} 
                 className="bg-slate-100 text-slate-800 text-xs font-bold px-5 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-200 transition cursor-pointer shadow-xs active:scale-95"
               >
@@ -421,14 +446,14 @@ export default function HomePage() {
                   : (prof.name || 'Professeur');
 
                 const photo = prof.photo_URL || prof.photo_url || prof.photo || prof.avatar_url;
-                const city = prof.ville || prof.city || "Maroc";
-                const subject = prof.matiere || prof.subject || "Soutien scolaire";
+                const city = formatCleanText(prof.ville || prof.city) || "Maroc";
+                const subject = formatCleanText(prof.matiere || prof.subject) || "Soutien scolaire";
+                const levelText = formatCleanText(prof.niveau || prof.level);
                 const price = Number(prof.tarif !== undefined && prof.tarif !== null ? prof.tarif : prof.price) || 0;
 
                 return (
                   <div key={prof.id} className="bg-white rounded-3xl overflow-hidden border border-slate-200/80 shadow-md hover:shadow-xl transition-all duration-300 flex flex-col justify-between group">
                     
-                    {/* EN-TÊTE AVEC GRANDE PHOTO DE FOND OU SILHOUETTE STYLE FACEBOOK */}
                     <div className="relative h-72 w-full bg-slate-900 overflow-hidden">
                       {photo ? (
                         <img 
@@ -437,7 +462,6 @@ export default function HomePage() {
                           className="w-full h-full object-cover group-hover:scale-105 transition duration-700"
                         />
                       ) : (
-                        // Profil par défaut style Facebook (Fond bleu/gris neutre avec une silhouette épurée)
                         <div className="w-full h-full bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 flex items-center justify-center relative overflow-hidden group-hover:scale-105 transition duration-700">
                           <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px]" />
                           <div className="w-24 h-24 rounded-full bg-slate-600/60 border-2 border-slate-500/50 flex items-center justify-center text-slate-200 shadow-inner backdrop-blur-sm">
@@ -446,21 +470,17 @@ export default function HomePage() {
                         </div>
                       )}
 
-                      {/* Dégradé sombre par-dessus pour rendre le texte parfaitement lisible */}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
-                      {/* Bouton Like / Favoris en haut à droite */}
                       <button className="absolute top-4 right-4 w-9 h-9 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white hover:bg-black/60 transition cursor-pointer">
                         <Heart className="w-4 h-4" />
                       </button>
 
-                      {/* Badge "Vérifié" */}
                       <div className="absolute top-4 left-4 bg-black/40 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1 rounded-full border border-white/10 flex items-center gap-1.5">
                         <ShieldCheck className="w-3 h-3 text-emerald-400" />
                         Vérifié
                       </div>
 
-                      {/* Nom et Ville superposés en bas de l'image */}
                       <div className="absolute bottom-4 left-4 right-4 text-white">
                         <h3 className="text-xl font-black tracking-tight">{fullName}</h3>
                         <p className="text-xs text-slate-200 font-medium flex items-center gap-1 mt-0.5">
@@ -470,11 +490,9 @@ export default function HomePage() {
                       </div>
                     </div>
 
-                    {/* CORPS DE LA CARTE (Infos, Note, Prix) */}
                     <div className="p-5 space-y-4 flex flex-col justify-between flex-grow bg-white">
                       
                       <div className="space-y-2">
-                        {/* Note et avis */}
                         <div className="flex items-center justify-between text-xs font-bold text-slate-700">
                           <div className="flex items-center gap-1">
                             <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
@@ -485,13 +503,11 @@ export default function HomePage() {
                           </span>
                         </div>
 
-                        {/* Matière et description */}
                         <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed font-medium">
-                          <strong className="text-slate-900">{subject}</strong> - {prof.niveau ? `Niveau : ${prof.niveau}. ` : ''} Professeur qualifié prêt à vous accompagner vers la réussite.
+                          <strong className="text-slate-900">{subject}</strong> {levelText ? `- Niveau : ${levelText}. ` : ''} Professeur qualifié prêt à vous accompagner vers la réussite.
                         </p>
                       </div>
 
-                      {/* Prix et Bouton Contacter redirigeant vers la page dynamique /professeurs/[id] */}
                       <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
                         <div>
                           <div className="text-sm font-black text-slate-900">
@@ -522,7 +538,7 @@ export default function HomePage() {
 
       </section>
 
-      {/* BANNIÈRE "ÊTES-VOUS PROFESSEUR ?" */}
+      {/* BANNIÈRE REJOIGNEZ-NOUS */}
       <section className="bg-slate-900 py-16 px-4 sm:px-8 text-white relative overflow-hidden shadow-inner">
         <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-slate-800 rounded-full blur-2xl pointer-events-none animate-pulse" />
         <div className="max-w-4xl mx-auto text-center space-y-6 relative z-10">
@@ -551,7 +567,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* SECTION COMMENT ÇA FONCTIONNE */}
+      {/* COMMENT ÇA FONCTIONNE */}
       <section className="bg-white border-t border-slate-200/60 py-20 px-4 sm:px-8">
         <div className="max-w-7xl mx-auto space-y-14">
           <div className="text-center space-y-3">
@@ -560,87 +576,22 @@ export default function HomePage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="bg-slate-50/90 p-10 rounded-[2.5rem] border border-slate-200/80 shadow-md space-y-5 hover:border-slate-400 hover:shadow-xl transition-all duration-300 group">
-              <div className="w-14 h-14 rounded-2xl bg-slate-900 text-white flex items-center justify-center font-black text-lg shadow-md group-hover:scale-110 transition duration-300">1</div>
+            <div className="bg-slate-50/90 p-10 rounded-[2.5rem] border border-slate-200/80 shadow-md space-y-5">
+              <div className="w-14 h-14 rounded-2xl bg-slate-900 text-white flex items-center justify-center font-black text-lg shadow-md">1</div>
               <h3 className="font-bold text-slate-900 text-lg">Trouvez votre prof</h3>
               <p className="text-sm text-slate-600 leading-relaxed">Utilisez les filtres puissants pour dénicher le professeur idéal selon votre matière, votre ville et vos exigences.</p>
             </div>
-            <div className="bg-slate-50/90 p-10 rounded-[2.5rem] border border-slate-200/80 shadow-md space-y-5 hover:border-slate-400 hover:shadow-xl transition-all duration-300 group">
-              <div className="w-14 h-14 rounded-2xl bg-slate-900 text-white flex items-center justify-center font-black text-lg shadow-md group-hover:scale-110 transition duration-300">2</div>
+            <div className="bg-slate-50/90 p-10 rounded-[2.5rem] border border-slate-200/80 shadow-md space-y-5">
+              <div className="w-14 h-14 rounded-2xl bg-slate-900 text-white flex items-center justify-center font-black text-lg shadow-md">2</div>
               <h3 className="font-bold text-slate-900 text-lg">Contactez directement</h3>
               <p className="text-sm text-slate-600 leading-relaxed">Échangez sans intermédiaire ni commission d'agence avec le professeur pour organiser vos cours facilement.</p>
             </div>
-            <div className="bg-slate-50/90 p-10 rounded-[2.5rem] border border-slate-200/80 shadow-md space-y-5 hover:border-slate-400 hover:shadow-xl transition-all duration-300 group">
-              <div className="w-14 h-14 rounded-2xl bg-slate-900 text-white flex items-center justify-center font-black text-lg shadow-md group-hover:scale-110 transition duration-300">3</div>
+            <div className="bg-slate-50/90 p-10 rounded-[2.5rem] border border-slate-200/80 shadow-md space-y-5">
+              <div className="w-14 h-14 rounded-2xl bg-slate-900 text-white flex items-center justify-center font-black text-lg shadow-md">3</div>
               <h3 className="font-bold text-slate-900 text-lg">Progressez sereinement</h3>
               <p className="text-sm text-slate-600 leading-relaxed">Suivez vos cours à domicile ou en ligne et progressez à votre rythme vers la réussite scolaire totale.</p>
             </div>
           </div>
-
-          <div className="text-center pt-2">
-            <Link 
-              href="/comment-ca-fonctionne" 
-              className="inline-flex items-center gap-2 bg-slate-100 hover:bg-slate-900 hover:text-white text-slate-900 font-extrabold px-8 py-4 rounded-2xl text-sm transition-all duration-300 shadow-sm border border-slate-200 group cursor-pointer"
-            >
-              En savoir plus sur le fonctionnement
-              <ExternalLink className="w-4 h-4 group-hover:translate-x-0.5 transition duration-200" />
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* SECTION NOTRE MISSION & VISION */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-8 py-16 w-full">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-          
-          <div className="bg-white p-10 sm:p-14 rounded-[3rem] text-slate-900 flex flex-col items-center text-center space-y-8 shadow-xl border border-slate-200/90 transform hover:-translate-y-1 transition duration-500">
-            <h3 className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight">Notre mission</h3>
-            
-            <div className="w-56 h-56 sm:w-64 sm:h-64 bg-slate-50 rounded-3xl p-6 flex items-center justify-center my-2 shadow-inner border border-slate-100">
-              <img 
-                src="/Design sans titre.png" 
-                alt="Illustration Notre mission" 
-                className="w-full h-full object-contain transform hover:scale-105 transition duration-500"
-              />
-            </div>
-            
-            <p className="text-sm sm:text-base text-slate-600 leading-relaxed max-w-lg">
-              Écrivez ici un paragraphe approfondi qui parle de votre entreprise. Vous pouvez parler des antécédents, de l'histoire, de la mission ou de la philosophie de votre entreprise.
-            </p>
-
-            <Link 
-              href="/notre-mission"
-              className="inline-flex items-center gap-2 text-slate-900 font-extrabold text-sm hover:underline pt-2 group"
-            >
-              Découvrir notre mission complète
-              <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition duration-200" />
-            </Link>
-          </div>
-
-          <div className="bg-slate-900 p-10 sm:p-14 rounded-[3rem] text-white flex flex-col items-center text-center space-y-8 shadow-2xl border border-slate-800 transform hover:-translate-y-1 transition duration-500">
-            <h3 className="text-4xl sm:text-5xl font-black text-white tracking-tight">Notre vision</h3>
-            
-            <div className="w-56 h-56 sm:w-64 sm:h-64 bg-white rounded-3xl p-6 flex items-center justify-center my-2 shadow-xl">
-              <img 
-                src="/Design sans titre(1).png" 
-                alt="Illustration Notre vision" 
-                className="w-full h-full object-contain transform hover:scale-105 transition duration-500"
-              />
-            </div>
-            
-            <p className="text-sm sm:text-base text-slate-300 leading-relaxed max-w-lg">
-              Écrivez ici un paragraphe approfondi qui parle de votre entreprise. Vous pouvez parler des antécédents, de l'histoire, de la vision ou de la philosophie de votre entreprise.
-            </p>
-
-            <Link 
-              href="/notre-mission"
-              className="inline-flex items-center gap-2 text-white font-extrabold text-sm hover:underline pt-2 group"
-            >
-              Découvrir notre vision complète
-              <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition duration-200" />
-            </Link>
-          </div>
-
         </div>
       </section>
 
