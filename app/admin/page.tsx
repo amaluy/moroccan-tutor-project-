@@ -21,6 +21,8 @@ interface Professor {
   nom?: string;
   prenom?: string;
   name?: string;
+  email?: string;
+  Email?: string;
   photo_URL?: string;
   photo_url?: string;
   avatar_url?: string;
@@ -36,6 +38,7 @@ interface Professor {
   price?: number | string;
   lieu?: string;
   location?: string;
+  is_admin?: boolean;
 }
 
 export default function AdminPage() {
@@ -94,14 +97,19 @@ export default function AdminPage() {
     "Primaire", "Collège", "Secondaire", "Niveau Supérieur"
   ];
 
-  // Chargement des professeurs géré de manière propre et réactive dans le useEffect
+  // Chargement des professeurs avec exclusion stricte des administrateurs
   useEffect(() => {
     let isMounted = true;
 
     const loadProfessors = async () => {
       setLoading(true);
       try {
-        const { data, error } = await supabase.from('professors').select('*');
+        // REQUÊTE SUPABASE : Exclut les is_admin et les emails d'administration dès la source
+        const { data, error } = await supabase
+          .from('professors')
+          .select('*')
+          .or('is_admin.is.null,is_admin.eq.false')
+          .not('email', 'in', '("berrada0amal@gmail.com","louizisalaheddine@gmail.com")');
 
         if (!isMounted) return;
 
@@ -110,6 +118,14 @@ export default function AdminPage() {
           setProfessors([]);
         } else {
           let results = data || [];
+
+          // DOUBLE SÉCURITÉ JAVASCRIPT : Filtrage strict pour ne jamais afficher les admins
+          results = results.filter(p => {
+            const email = (p.email || p.Email || '').toLowerCase().trim();
+            if (p.is_admin === true) return false;
+            if (email === 'berrada0amal@gmail.com' || email === 'louizisalaheddine@gmail.com') return false;
+            return true;
+          });
 
           const normalize = (text: string) => {
             return text
@@ -184,7 +200,6 @@ export default function AdminPage() {
 
   const handleApplyFilters = (e: React.FormEvent) => {
     e.preventDefault();
-    // Le déclenchement des filtres est géré automatiquement par le state, mais on peut forcer si besoin
   };
 
   const handleReset = () => {
