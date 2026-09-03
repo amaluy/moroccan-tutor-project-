@@ -5,14 +5,13 @@ import Link from 'next/link';
 import Footer from '../components/Footer';
 import HelpModal from '../components/HelpModal';
 import AdminDashboardPage from './admindashboard';
+import AdminNavbar from './adminNavbar'; // Import de la navbar centralisée
 import { supabase } from '@/lib/supabase';
-import AdminNavbar from './adminNavbar';
 import { 
   Search, MapPin, BookOpen, CheckCircle2, 
   Filter, ShieldCheck, PhoneCall,
   GraduationCap, DollarSign, Laptop, Home, 
-  Award, Loader2, RefreshCcw, User,
-  LayoutDashboard, LogOut, Menu, X, HelpCircle
+  Award, Loader2, RefreshCcw, User
 } from 'lucide-react';
 
 interface Professor {
@@ -95,88 +94,97 @@ export default function AdminPage() {
     "Primaire", "Collège", "Secondaire", "Niveau Supérieur"
   ];
 
-  const fetchProfessors = async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.from('professors').select('*');
-
-      if (error) {
-        console.error('Erreur Supabase:', error);
-        setProfessors([]);
-      } else {
-        let results = data || [];
-
-        const normalize = (text: string) => {
-          return text
-            .toLowerCase()
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")
-            .replace(/[^a-z0-9]/g, "");
-        };
-
-        if (selectedSubject) {
-          const cleanSub = normalize(selectedSubject);
-          results = results.filter(p => {
-            const mat = normalize(String(p.matiere || p.subject || ''));
-            return mat.includes(cleanSub) || cleanSub.includes(mat);
-          });
-        }
-
-        if (selectedCity.trim()) {
-          const cleanCity = normalize(selectedCity);
-          results = results.filter(p => {
-            const city = normalize(String(p.ville || p.city || ''));
-            if (!city) return false;
-            if (city.includes(cleanCity) || cleanCity.includes(city)) return true;
-            if (cleanCity.includes('casa') && city.includes('casa')) return true;
-            return false;
-          });
-        }
-
-        if (selectedLevel) {
-          const cleanLvl = normalize(selectedLevel);
-          results = results.filter(p => {
-            const lvl = normalize(String(p.niveau || p.level || ''));
-            if (!lvl) return true;
-            return lvl.includes(cleanLvl) || cleanLvl.includes(lvl);
-          });
-        }
-
-        if (priceRange) {
-          results = results.filter(p => {
-            const priceVal = Number(p.tarif !== undefined && p.tarif !== null ? p.tarif : p.price) || 0;
-            if (priceRange === '0-100') return priceVal <= 100;
-            if (priceRange === '100-150') return priceVal >= 100 && priceVal <= 150;
-            if (priceRange === '150-200') return priceVal >= 150 && priceVal <= 200;
-            if (priceRange === '200+') return priceVal >= 200;
-            return true;
-          });
-        }
-
-        if (locationType) {
-          results = results.filter(p => {
-            const loc = normalize(String(p.lieu || p.location || ''));
-            if (!loc) return true; 
-            return loc.includes(normalize(locationType));
-          });
-        }
-
-        setProfessors(results);
-      }
-    } catch (err) {
-      console.error('Erreur de chargement:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Chargement des professeurs géré de manière propre et réactive dans le useEffect
   useEffect(() => {
-    fetchProfessors();
-  }, []);
+    let isMounted = true;
+
+    const loadProfessors = async () => {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase.from('professors').select('*');
+
+        if (!isMounted) return;
+
+        if (error) {
+          console.error('Erreur Supabase:', error);
+          setProfessors([]);
+        } else {
+          let results = data || [];
+
+          const normalize = (text: string) => {
+            return text
+              .toLowerCase()
+              .normalize("NFD")
+              .replace(/[\u0300-\u036f]/g, "")
+              .replace(/[^a-z0-9]/g, "");
+          };
+
+          if (selectedSubject) {
+            const cleanSub = normalize(selectedSubject);
+            results = results.filter(p => {
+              const mat = normalize(String(p.matiere || p.subject || ''));
+              return mat.includes(cleanSub) || cleanSub.includes(mat);
+            });
+          }
+
+          if (selectedCity.trim()) {
+            const cleanCity = normalize(selectedCity);
+            results = results.filter(p => {
+              const city = normalize(String(p.ville || p.city || ''));
+              if (!city) return false;
+              if (city.includes(cleanCity) || cleanCity.includes(city)) return true;
+              if (cleanCity.includes('casa') && city.includes('casa')) return true;
+              return false;
+            });
+          }
+
+          if (selectedLevel) {
+            const cleanLvl = normalize(selectedLevel);
+            results = results.filter(p => {
+              const lvl = normalize(String(p.niveau || p.level || ''));
+              if (!lvl) return true;
+              return lvl.includes(cleanLvl) || cleanLvl.includes(lvl);
+            });
+          }
+
+          if (priceRange) {
+            results = results.filter(p => {
+              const priceVal = Number(p.tarif !== undefined && p.tarif !== null ? p.tarif : p.price) || 0;
+              if (priceRange === '0-100') return priceVal <= 100;
+              if (priceRange === '100-150') return priceVal >= 100 && priceVal <= 150;
+              if (priceRange === '150-200') return priceVal >= 150 && priceVal <= 200;
+              if (priceRange === '200+') return priceVal >= 200;
+              return true;
+            });
+          }
+
+          if (locationType) {
+            results = results.filter(p => {
+              const loc = normalize(String(p.lieu || p.location || ''));
+              if (!loc) return true; 
+              return loc.includes(normalize(locationType));
+            });
+          }
+
+          setProfessors(results);
+        }
+      } catch (err) {
+        if (isMounted) console.error('Erreur de chargement:', err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    loadProfessors();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedSubject, selectedCity, selectedLevel, priceRange, locationType]);
 
   const handleApplyFilters = (e: React.FormEvent) => {
     e.preventDefault();
-    fetchProfessors();
+    // Le déclenchement des filtres est géré automatiquement par le state, mais on peut forcer si besoin
   };
 
   const handleReset = () => {
@@ -185,122 +193,24 @@ export default function AdminPage() {
     setSelectedLevel('');
     setPriceRange('');
     setLocationType('');
-    setTimeout(() => {
-      fetchProfessors();
-    }, 50);
-  };
-
-  const handleLogout = () => {
-    window.location.href = '/';
   };
 
   return (
     <main className="min-h-screen bg-slate-50/50 text-slate-900 font-sans flex flex-col justify-between selection:bg-slate-700 selection:text-white">
       
-      {/* BARRE DE NAVIGATION SUPÉRIEURE (MODIFIÉE POUR ADMIN) */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-50 px-4 sm:px-8 py-3.5 flex items-center justify-between shadow-xs">
-        <div className="flex items-center gap-6">
-          <button 
-            onClick={() => setIsMenuOpen(true)}
-            className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
-          
-          <div className="flex items-center gap-2 cursor-pointer" onClick={() => setCurrentView('home')}>
-            <span className="text-xl font-black tracking-tight text-slate-900">prof<span className="text-orange-600">maroc</span></span>
-            <span className="text-[10px] font-bold bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">Admin</span>
-          </div>
-        </div>
-
-        {/* BOUTONS ADMIN À DROITE */}
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setCurrentView('home')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
-              currentView === 'home' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'
-            }`}
-          >
-            Accueil Admin
-          </button>
-
-          <button
-            onClick={() => setCurrentView('dashboard')}
-            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
-              currentView === 'dashboard' ? 'bg-purple-600 text-white shadow-md shadow-purple-600/20' : 'bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200/60'
-            }`}
-          >
-            <LayoutDashboard className="w-3.5 h-3.5" />
-            Admin Dashboard
-          </button>
-
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200/60 transition cursor-pointer"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-            Déconnexion
-          </button>
-        </div>
-      </header>
-
-      {/* MENU LATÉRAL (HAMBURGER) MIS À JOUR */}
-      {isMenuOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex justify-start">
-          <div className="w-80 bg-slate-900 text-white h-full p-6 flex flex-col justify-between shadow-2xl animate-in slide-in-from-left duration-300">
-            <div className="space-y-8">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-                <div className="flex items-center gap-2">
-                  <span className="text-xl font-black tracking-tight text-white">prof<span className="text-orange-500">maroc</span></span>
-                  <span className="text-[10px] font-bold bg-purple-900 text-purple-300 px-2 py-0.5 rounded-full">Admin</span>
-                </div>
-                <button 
-                  onClick={() => setIsMenuOpen(false)}
-                  className="p-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white transition cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="space-y-2">
-                <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 px-3">NAVIGATION</p>
-                <button 
-                  onClick={() => { setCurrentView('home'); setIsMenuOpen(false); }}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-200 hover:bg-slate-800 transition text-left cursor-pointer"
-                >
-                  <Home className="w-4 h-4 text-orange-500" />
-                  Accueil
-                </button>
-                <button 
-                  onClick={() => { setCurrentView('dashboard'); setIsMenuOpen(false); }}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-purple-300 bg-purple-950/60 border border-purple-800/50 hover:bg-purple-900/60 transition text-left cursor-pointer"
-                >
-                  <LayoutDashboard className="w-4 h-4 text-purple-400" />
-                  Admin Dashboard
-                </button>
-                <button 
-                  onClick={() => { setIsHelpOpen(true); setIsMenuOpen(false); }}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-200 hover:bg-slate-800 transition text-left cursor-pointer"
-                >
-                  <HelpCircle className="w-4 h-4 text-slate-400" />
-                  Aide & Support
-                </button>
-              </div>
-            </div>
-
-            <div className="pt-4 border-t border-slate-800">
-              <button 
-                onClick={handleLogout}
-                className="w-full flex items-center justify-center gap-2 bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-800/50 font-bold py-3 rounded-xl text-xs transition cursor-pointer"
-              >
-                <LogOut className="w-4 h-4" />
-                Déconnexion
-              </button>
-            </div>
-          </div>
-          <div className="flex-grow" onClick={() => setIsMenuOpen(false)} />
-        </div>
-      )}
+      {/* UTILISATION DE LA NAVBAR ADMIN CENTRALISÉE */}
+      <AdminNavbar 
+        isMenuOpen={isMenuOpen}
+        setIsMenuOpen={setIsMenuOpen}
+        onOpenHelp={() => setIsHelpOpen(true)}
+        onSelectCity={(city) => {
+          setSelectedCity(city === "En ligne" ? "" : city);
+          if(city === "En ligne") setLocationType("en_ligne");
+        }}
+        onSelectSubject={(subject) => setSelectedSubject(subject)}
+        currentView={currentView}
+        setCurrentView={setCurrentView}
+      />
 
       {/* CONTENU CONDITIONNEL : ACCUEIL OU DASHBOARD */}
       {currentView === 'dashboard' ? (

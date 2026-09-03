@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { 
   MapPin, BookOpen, ChevronDown, 
-  HelpCircle, GraduationCap, Menu, X, Home, LayoutDashboard, ArrowRight
+  HelpCircle, GraduationCap, Menu, X, Home, Info, LayoutDashboard, ArrowRight 
 } from 'lucide-react';
 
 const VILLES = [
@@ -61,18 +61,18 @@ export default function AdminNavbar({
                 <span className="text-xl font-black tracking-tight text-gray-900 leading-none">
                   prof<span className="text-[#FF5733]">maroc</span>
                 </span>
-                <span className="text-[10px] font-bold text-[#FF5733] tracking-wider uppercase mt-0.5">Admin Panel</span>
+                <span className="text-[10px] font-bold text-[#FF5733] tracking-wider uppercase mt-0.5">Admin</span>
               </div>
             </Link>
           </div>
 
-          {/* CENTRE : Menu Horizontal (identique au public + filtres) */}
-          <div className="hidden lg:flex items-center gap-6 text-sm font-bold text-gray-700">
+          {/* CENTRE : Menu Horizontal (ACCUEIL, VILLES, MATIÈRES, QUI SOMMES-NOUS ?, AIDE) */}
+          <div className="hidden lg:flex items-center gap-7 text-sm font-bold text-gray-700">
             <button 
               onClick={() => setCurrentView && setCurrentView('home')}
               className={`hover:text-[#FF5733] transition cursor-pointer ${currentView === 'home' ? 'text-[#FF5733]' : ''}`}
             >
-              ACCUEIL ADMIN
+              ACCUEIL
             </button>
 
             {/* Dropdown VILLES */}
@@ -135,20 +135,24 @@ export default function AdminNavbar({
               )}
             </div>
 
+            <Link href="/qui-sommes-nous" className="hover:text-[#FF5733] transition">
+              QUI SOMMES NOUS ?
+            </Link>
+
             <button onClick={onOpenHelp} className="hover:text-[#FF5733] transition flex items-center gap-1.5 cursor-pointer">
               <HelpCircle className="w-4 h-4 text-[#FF5733]" />
               <span>AIDE</span>
             </button>
           </div>
 
-          {/* DROITE : Bascule Dashboard / Site Public */}
+          {/* DROITE : Dashboard / Site Public */}
           <div className="flex items-center gap-3">
             <button 
               onClick={() => setCurrentView && setCurrentView(currentView === 'dashboard' ? 'home' : 'dashboard')}
-              className="hidden sm:inline-flex items-center gap-2 border border-[#FF5733] text-[#FF5733] hover:bg-[#FF5733] hover:text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow-sm cursor-pointer"
+              className="hidden sm:inline-flex items-center gap-1.5 border border-[#FF5733] text-[#FF5733] hover:bg-[#FF5733] hover:text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow-sm cursor-pointer"
             >
-              <LayoutDashboard className="w-4 h-4" />
-              <span>{currentView === 'dashboard' ? 'Voir Accueil Admin' : 'Dashboard Stats'}</span>
+              <LayoutDashboard className="w-3.5 h-3.5" />
+              <span>{currentView === 'dashboard' ? 'Accueil Admin' : 'Dashboard'}</span>
             </button>
 
             <Link 
@@ -209,6 +213,15 @@ export default function AdminNavbar({
                 <LayoutDashboard className="w-4 h-4 text-[#FF5733]" />
                 <span>Dashboard & Stats</span>
               </button>
+
+              <Link 
+                href="/qui-sommes-nous" 
+                onClick={() => setIsMenuOpen(false)}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-800 hover:text-white transition"
+              >
+                <Info className="w-4 h-4 text-[#FF5733]" />
+                <span>Qui sommes-nous ?</span>
+              </Link>
 
               <button 
                 onClick={() => {
