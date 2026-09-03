@@ -8,7 +8,7 @@ import HelpModal from '../../components/HelpModal';
 import { supabase } from '@/lib/supabase';
 import { 
   MapPin, Star, Share2, Heart, Loader2, 
-  AlertTriangle, ArrowLeft
+  AlertTriangle, ArrowLeft, Calendar, Check
 } from 'lucide-react';
 
 interface Professor {
@@ -37,12 +37,15 @@ interface Professor {
   location?: string;
   bio?: string;
   description?: string;
-  // Nouveaux champs optionnels potentiels dans la base de données
   statut?: string;
   type_cours?: string;
   experience?: string;
   dernier_diplome?: string;
   profession?: string;
+  age?: number | string;
+  total_etoiles?: number | string;
+  disponibilites?: string[]; // Tableau de type ["matin-lu", "matin-me", etc.]
+  created_at?: string;
 }
 
 export default function ProfessorDetail() {
@@ -112,19 +115,42 @@ export default function ProfessorDetail() {
     : (professor.name || 'Professeur');
 
   const photo = professor.photo_URL || professor.photo_url || professor.photo || professor.avatar_url;
-  const city = professor.ville || professor.city || "Casablanca";
-  const subject = professor.matiere || professor.subject || "math";
+  const city = professor.ville || professor.city || "Marrakech";
+  const subject = professor.matiere || professor.subject || "Français";
   const price = Number(professor.tarif !== undefined && professor.tarif !== null ? professor.tarif : professor.price) || 250;
   const bio = professor.bio || professor.description || "";
-  const level = professor.niveau || professor.level || "Tous niveaux";
+  const level = professor.niveau || professor.level || "lyceecollege";
 
-  // Récupération des nouvelles informations ou valeurs par défaut
-  const statut = professor.statut || "Indépendant";
-  const typeCours = professor.type_cours || "Présentiel & En ligne";
-  const experience = professor.experience || "3 ans";
+  const statut = professor.statut || "Professeur Confirmé";
+  const typeCours = professor.type_cours || "domicile";
+  const experience = professor.experience || "1-3ans";
   const niveauEnseigne = level;
   const dernierDiplome = professor.dernier_diplome || "Licence / Master";
-  const profession = professor.profession || "Professeur / Formateur";
+  const profession = professor.profession || "etudiant";
+  const age = professor.age || "24 ans";
+  const totalEtoiles = professor.total_etoiles || "15 étoiles";
+
+  // Récupération des disponibilités (tableau de chaînes type "matin-lu", "apresmidi-ve", etc.)
+  const availabilities = professor.disponibilites || [];
+
+  // Fonction pour vérifier si un créneau est présent dans les disponibilités du prof
+  // timeKey : "matin", "midi", "apresmidi" (ou "apres-midi" selon le format de la base)
+  // dayKey : "lu", "ma", "me", "je", "ve", "sa", "di"
+  const isAvailable = (timeKey: string, dayKey: string) => {
+    // On teste plusieurs variantes possibles pour être sûr de matcher avec la base de données
+    const formats = [
+      `${timeKey}-${dayKey}`,
+      `${timeKey.replace('-', '')}-${dayKey}`,
+      `${timeKey}_${dayKey}`
+    ];
+    return availabilities.some(slot => 
+      formats.some(f => slot.toLowerCase().includes(f.toLowerCase()))
+    );
+  };
+
+  const createdAtFormatted = professor.created_at 
+    ? new Date(professor.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) 
+    : "28 août 2026";
 
   const getInitials = (name: string) => {
     return name
@@ -134,6 +160,22 @@ export default function ProfessorDetail() {
       .toUpperCase()
       .substring(0, 2);
   };
+
+  const days = [
+    { key: 'lu', label: 'Lu' },
+    { key: 'ma', label: 'Ma' },
+    { key: 'me', label: 'Me' },
+    { key: 'je', label: 'Je' },
+    { key: 've', label: 'Ve' },
+    { key: 'sa', label: 'Sa' },
+    { key: 'di', label: 'Di' },
+  ];
+
+  const timeSlots = [
+    { key: 'matin', label: 'Matin' },
+    { key: 'midi', label: 'Midi' },
+    { key: 'apresmidi', label: 'Après-midi' },
+  ];
 
   return (
     <main className="min-h-screen bg-[#faf9f6] text-slate-900 font-sans flex flex-col justify-between relative overflow-x-hidden">
@@ -163,21 +205,21 @@ export default function ProfessorDetail() {
 
         <div className="max-w-6xl mx-auto px-4 sm:px-6 relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center w-full">
           
-          {/* Colonne Gauche : Nom, Tags, Lieux et Tarif */}
           <div className="lg:col-span-7 space-y-6">
-            
             <div className="flex flex-wrap gap-2">
               <span className="bg-rose-500 text-white px-3.5 py-1 rounded-full text-xs font-bold shadow-sm capitalize">
                 {subject.toLowerCase()}
-              </span>
-              <span className="bg-white/90 backdrop-blur-md border border-slate-200/80 text-slate-700 px-3.5 py-1 rounded-full text-xs font-bold shadow-2xs">
-                Pédagogie
               </span>
             </div>
 
             <h1 className="text-4xl sm:text-5xl font-black text-slate-900 capitalize tracking-tight">
               {fullName.toLowerCase()}
             </h1>
+
+            <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+              <Calendar className="w-3.5 h-3.5 text-rose-500" />
+              <span>Profil créé le {createdAtFormatted}</span>
+            </div>
 
             <div className="space-y-3">
               <h3 className="text-sm font-black text-slate-900">Lieux du cours</h3>
@@ -191,18 +233,12 @@ export default function ProfessorDetail() {
               <span className="text-xs font-bold text-slate-400">Tarif horaire :</span>
               <span className="text-lg font-black text-slate-900">{price} DH</span>
             </div>
-
           </div>
 
-          {/* Colonne Droite : Grand rectangle pour la photo du professeur */}
           <div className="lg:col-span-5 flex justify-center lg:justify-end">
             <div className="w-full max-w-sm h-[320px] rounded-3xl overflow-hidden shadow-2xl border-4 border-white bg-white">
               {photo ? (
-                <img 
-                  src={photo} 
-                  alt={fullName} 
-                  className="w-full h-full object-cover"
-                />
+                <img src={photo} alt={fullName} className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full bg-gradient-to-tr from-orange-500 to-rose-500 flex items-center justify-center text-white font-black text-4xl">
                   {getInitials(fullName)}
@@ -217,7 +253,7 @@ export default function ProfessorDetail() {
       {/* RESTE DU CONTENU */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 w-full grid grid-cols-1 lg:grid-cols-12 gap-12 relative">
         
-        {/* Colonne de gauche (Cours & Disponibilité) */}
+        {/* Colonne de gauche (Cours & Disponibilité Dynamique) */}
         <div className="lg:col-span-7 space-y-8">
           
           <div className="space-y-3">
@@ -242,28 +278,31 @@ export default function ProfessorDetail() {
                 <thead>
                   <tr className="border-b border-slate-100 text-slate-400 font-medium">
                     <th className="pb-3 text-left"></th>
-                    <th className="pb-3">Lu</th>
-                    <th className="pb-3">Ma</th>
-                    <th className="pb-3">Me</th>
-                    <th className="pb-3">Je</th>
-                    <th className="pb-3">Ve</th>
-                    <th className="pb-3">Sa</th>
-                    <th className="pb-3">Di</th>
+                    {days.map((day) => (
+                      <th key={day.key} className="pb-3">{day.label}</th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                  <tr>
-                    <td className="py-3 text-left font-bold text-slate-700">Matin</td>
-                    <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
-                  </tr>
-                  <tr>
-                    <td className="py-3 text-left font-bold text-slate-700">Midi</td>
-                    <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
-                  </tr>
-                  <tr>
-                    <td className="py-3 text-left font-bold text-slate-700">Après-midi</td>
-                    <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
-                  </tr>
+                  {timeSlots.map((slot) => (
+                    <tr key={slot.key}>
+                      <td className="py-3.5 text-left font-bold text-slate-700">{slot.label}</td>
+                      {days.map((day) => {
+                        const available = isAvailable(slot.key, day.key);
+                        return (
+                          <td key={day.key} className="py-3.5 align-middle">
+                            {available ? (
+                              <div className="w-6 h-6 mx-auto bg-rose-500 text-white rounded-full flex items-center justify-center shadow-xs">
+                                <Check className="w-3.5 h-3.5 stroke-[3]" />
+                              </div>
+                            ) : (
+                              <span className="text-slate-200">—</span>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -271,7 +310,7 @@ export default function ProfessorDetail() {
 
         </div>
 
-        {/* Colonne de droite : Carte Flottante de Contact & Détails */}
+        {/* Colonne de droite : Carte Flottante */}
         <div className="lg:col-span-5 relative">
           <div className="bg-white/95 backdrop-blur-xl border border-slate-200/90 rounded-3xl p-6 shadow-2xl sticky top-24 space-y-6 z-20">
             
@@ -293,7 +332,6 @@ export default function ProfessorDetail() {
               </div>
             </div>
 
-            {/* BIO INTÉGRÉE DANS LA CARTE */}
             <div className="space-y-2 pt-2">
               <h3 className="text-xs font-black text-slate-900">À propos de {fullName.toLowerCase()}</h3>
               {!bio ? (
@@ -313,11 +351,20 @@ export default function ProfessorDetail() {
               )}
             </div>
 
-            {/* NOUVEAUX CHAMPS ET TARIF (Sans Réponse ni Élèves) */}
             <div className="divide-y divide-slate-100 text-xs font-medium text-slate-600">
               <div className="py-2.5 flex items-center justify-between">
                 <span className="text-slate-400">Tarif</span>
                 <span className="text-base font-black text-slate-900">{price} DH</span>
+              </div>
+              <div className="py-2.5 flex items-center justify-between">
+                <span className="text-slate-400">Total des étoiles</span>
+                <span className="font-bold text-amber-500 flex items-center gap-1">
+                  <Star className="w-3.5 h-3.5 fill-amber-400" /> {totalEtoiles}
+                </span>
+              </div>
+              <div className="py-2.5 flex items-center justify-between">
+                <span className="text-slate-400">Âge</span>
+                <span className="font-bold text-slate-800">{age}</span>
               </div>
               <div className="py-2.5 flex items-center justify-between">
                 <span className="text-slate-400">Statut</span>
