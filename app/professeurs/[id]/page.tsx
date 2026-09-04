@@ -8,7 +8,7 @@ import HelpModal from '../../components/HelpModal';
 import { supabase } from '@/lib/supabase';
 import { 
   MapPin, Star, Share2, Heart, Loader2, 
-  AlertTriangle, ArrowLeft, Calendar, Check
+  AlertTriangle, ArrowLeft, Calendar, Clock
 } from 'lucide-react';
 
 interface Professor {
@@ -44,7 +44,7 @@ interface Professor {
   profession?: string;
   age?: number | string;
   total_etoiles?: number | string;
-  disponibilites?: string[]; // Tableau de type ["matin-lu", "matin-me", etc.]
+  disponibilites?: any;
   created_at?: string;
 }
 
@@ -130,22 +130,37 @@ export default function ProfessorDetail() {
   const age = professor.age || "24 ans";
   const totalEtoiles = professor.total_etoiles || "15 étoiles";
 
-  // Récupération des disponibilités (tableau de chaînes type "matin-lu", "apresmidi-ve", etc.)
-  const availabilities = professor.disponibilites || [];
+  // --- TRAITEMENT ROBUSTE DES DISPONIBILITÉS ---
+  let availabilities: string[] = [];
+  if (Array.isArray(professor.disponibilites)) {
+    availabilities = professor.disponibilites;
+  } else if (typeof professor.disponibilites === 'string') {
+    try {
+      const parsed = JSON.parse(professor.disponibilites);
+      if (Array.isArray(parsed)) availabilities = parsed;
+    } catch {
+      const cleaned = professor.disponibilites.replace(/[{}]/g, '');
+      availabilities = cleaned.split(',').map(s => s.trim().replace(/^["']|["']$/g, ''));
+    }
+  }
 
-  // Fonction pour vérifier si un créneau est présent dans les disponibilités du prof
-  // timeKey : "matin", "midi", "apresmidi" (ou "apres-midi" selon le format de la base)
-  // dayKey : "lu", "ma", "me", "je", "ve", "sa", "di"
-  const isAvailable = (timeKey: string, dayKey: string) => {
-    // On teste plusieurs variantes possibles pour être sûr de matcher avec la base de données
-    const formats = [
-      `${timeKey}-${dayKey}`,
-      `${timeKey.replace('-', '')}-${dayKey}`,
-      `${timeKey}_${dayKey}`
-    ];
-    return availabilities.some(slot => 
-      formats.some(f => slot.toLowerCase().includes(f.toLowerCase()))
-    );
+  // Fonction pour rendre le format "matin-lu" lisible (ex: "Lundi - Matin")
+  const formatSlot = (slot: string) => {
+    const parts = slot.split('-');
+    if (parts.length !== 2) return slot;
+    const [time, day] = parts;
+
+    const dayMap: Record<string, string> = {
+      lu: 'Lundi', ma: 'Mardi', me: 'Mercredi', je: 'Jeudi', ve: 'Vendredi', sa: 'Samedi', di: 'Dimanche'
+    };
+    const timeMap: Record<string, string> = {
+      matin: 'Matin', midi: 'Midi', apresmidi: 'Après-midi', 'apres-midi': 'Après-midi'
+    };
+
+    const readableDay = dayMap[day.toLowerCase()] || day;
+    const readableTime = timeMap[time.toLowerCase()] || time;
+
+    return `${readableDay} (${readableTime})`;
   };
 
   const createdAtFormatted = professor.created_at 
@@ -160,22 +175,6 @@ export default function ProfessorDetail() {
       .toUpperCase()
       .substring(0, 2);
   };
-
-  const days = [
-    { key: 'lu', label: 'Lu' },
-    { key: 'ma', label: 'Ma' },
-    { key: 'me', label: 'Me' },
-    { key: 'je', label: 'Je' },
-    { key: 've', label: 'Ve' },
-    { key: 'sa', label: 'Sa' },
-    { key: 'di', label: 'Di' },
-  ];
-
-  const timeSlots = [
-    { key: 'matin', label: 'Matin' },
-    { key: 'midi', label: 'Midi' },
-    { key: 'apresmidi', label: 'Après-midi' },
-  ];
 
   return (
     <main className="min-h-screen bg-[#faf9f6] text-slate-900 font-sans flex flex-col justify-between relative overflow-x-hidden">
@@ -253,7 +252,7 @@ export default function ProfessorDetail() {
       {/* RESTE DU CONTENU */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 w-full grid grid-cols-1 lg:grid-cols-12 gap-12 relative">
         
-        {/* Colonne de gauche (Cours & Disponibilité Dynamique) */}
+        {/* Colonne de gauche (Cours & Disponibilités en Boutons) */}
         <div className="lg:col-span-7 space-y-8">
           
           <div className="space-y-3">
@@ -271,41 +270,24 @@ export default function ProfessorDetail() {
             </p>
           </div>
 
+          {/* Affichage des disponibilités sous forme de boutons */}
           <div className="space-y-4">
-            <h3 className="text-sm font-black text-slate-900">Disponibilité</h3>
-            <div className="bg-white border border-slate-200 rounded-2xl p-5 overflow-x-auto shadow-2xs">
-              <table className="w-full text-center text-xs text-slate-600">
-                <thead>
-                  <tr className="border-b border-slate-100 text-slate-400 font-medium">
-                    <th className="pb-3 text-left"></th>
-                    {days.map((day) => (
-                      <th key={day.key} className="pb-3">{day.label}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {timeSlots.map((slot) => (
-                    <tr key={slot.key}>
-                      <td className="py-3.5 text-left font-bold text-slate-700">{slot.label}</td>
-                      {days.map((day) => {
-                        const available = isAvailable(slot.key, day.key);
-                        return (
-                          <td key={day.key} className="py-3.5 align-middle">
-                            {available ? (
-                              <div className="w-6 h-6 mx-auto bg-rose-500 text-white rounded-full flex items-center justify-center shadow-xs">
-                                <Check className="w-3.5 h-3.5 stroke-[3]" />
-                              </div>
-                            ) : (
-                              <span className="text-slate-200">—</span>
-                            )}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <h3 className="text-sm font-black text-slate-900">Créneaux de disponibilité</h3>
+            {availabilities.length === 0 ? (
+              <p className="text-xs text-slate-400 italic">Aucune disponibilité renseignée pour le moment.</p>
+            ) : (
+              <div className="flex flex-wrap gap-2.5">
+                {availabilities.map((slot, index) => (
+                  <div 
+                    key={index}
+                    className="bg-white border border-slate-200 text-slate-800 px-4 py-2.5 rounded-xl text-xs font-bold shadow-2xs flex items-center gap-2 hover:border-rose-500 transition cursor-default"
+                  >
+                    <Clock className="w-3.5 h-3.5 text-rose-500" />
+                    {formatSlot(slot)}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
         </div>

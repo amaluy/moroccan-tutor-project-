@@ -25,26 +25,33 @@ export default function ProfProfilePage() {
     async function fetchProfessorProfile() {
       try {
         setLoading(true);
-        // Récupérer l'utilisateur connecté via Supabase Auth
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        if (!user) {
-          setMessage({ type: 'error', text: 'Aucun utilisateur connecté détecté.' });
+        setMessage(null);
+
+        // 1. Récupérer l'ID ou l'e-mail stocké dans le localStorage lors de la connexion
+        const savedId = localStorage.getItem('professor_id');
+        const savedEmail = localStorage.getItem('user_email');
+
+        let query = supabase.from('professors').select('*');
+
+        if (savedId) {
+          query = query.eq('id', savedId);
+        } else if (savedEmail) {
+          query = query.ilike('email', savedEmail.trim());
+        } else {
+          setMessage({ type: 'error', text: 'Aucune session active trouvée. Veuillez vous reconnecter.' });
           setLoading(false);
           return;
         }
 
-        // Récupérer les informations du professeur correspondant à l'email connecté
-        const { data, error } = await supabase
-          .from('professors')
-          .select('*')
-          .eq('email', user.email)
-          .single();
+        const { data, error } = await query.maybeSingle();
 
         if (error) {
           console.error('Erreur Supabase:', error);
           setMessage({ type: 'error', text: 'Impossible de charger vos données de profil.' });
         } else if (data) {
+          // Sauvegarder l'ID pour les prochaines fois
+          localStorage.setItem('professor_id', data.id);
+
           setProfessorData({
             id: data.id || '',
             nom: data.nom || data.Nom || '',
@@ -56,9 +63,12 @@ export default function ProfProfilePage() {
             lieu: data.lieu || data.location || '',
             photo_url: data.photo_url || data.photo_URL || data.avatar_url || '',
           });
+        } else {
+          setMessage({ type: 'error', text: 'Profil professeur introuvable dans la base de données.' });
         }
       } catch (err) {
         console.error('Erreur chargement profil:', err);
+        setMessage({ type: 'error', text: 'Erreur lors du chargement de vos informations.' });
       } finally {
         setLoading(false);
       }
@@ -74,6 +84,11 @@ export default function ProfProfilePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!professorData.id) {
+      setMessage({ type: 'error', text: 'ID introuvable. Impossible d’enregistrer.' });
+      return;
+    }
+
     setSaving(true);
     setMessage(null);
 
@@ -86,7 +101,7 @@ export default function ProfProfilePage() {
           matiere: professorData.matiere,
           ville: professorData.ville,
           niveau: professorData.niveau,
-          tarif: professorData.tarif,
+          tarif: professorData.tarif ? Number(professorData.tarif) : null,
           lieu: professorData.lieu,
           photo_url: professorData.photo_url,
         })
@@ -113,7 +128,7 @@ export default function ProfProfilePage() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-12">
-      <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-8 space-y-6">
+      <div className="bg-white rounded-3xl border border-slate-200/85 shadow-sm p-8 space-y-6">
         
         <div className="flex items-center justify-between border-b border-slate-100 pb-5">
           <div>

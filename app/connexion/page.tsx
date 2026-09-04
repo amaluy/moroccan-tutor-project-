@@ -73,17 +73,18 @@ export default function ConnexionPage() {
     if (professorData && professorData.password === password) {
       const cleanEmail = email.trim().toLowerCase();
       
+      // Stockage sécurisé et complet des informations de session
       localStorage.setItem('user_email', cleanEmail);
+      localStorage.setItem('professor_id', professorData.id); // <-- Enregistrement indispensable de l'ID
+      localStorage.setItem('professor_data', JSON.stringify(professorData));
       
       const isAdmin = professorData.is_admin === true || 
                     String(professorData.is_admin).toLowerCase() === 'true';
 
       if (isAdmin) {
         localStorage.setItem('is_admin', 'true');
-        localStorage.removeItem('professor_id');
         router.replace('/admin');
       } else {
-        localStorage.setItem('professor_id', professorData.id);
         localStorage.removeItem('is_admin');
         router.replace('/prof');
       }

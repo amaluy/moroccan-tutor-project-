@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { 
   MapPin, BookOpen, ChevronDown, 
   HelpCircle, GraduationCap, Menu, X, User, Info, LayoutDashboard, ArrowRight 
@@ -23,8 +24,6 @@ interface ProfNavbarProps {
   onOpenHelp: () => void;
   onSelectCity?: (city: string) => void;
   onSelectSubject?: (subject: string) => void;
-  currentView?: 'home' | 'dashboard' | 'profile';
-  setCurrentView?: (view: 'home' | 'dashboard' | 'profile') => void;
 }
 
 export default function ProfNavbar({
@@ -33,9 +32,8 @@ export default function ProfNavbar({
   onOpenHelp,
   onSelectCity,
   onSelectSubject,
-  currentView,
-  setCurrentView
 }: ProfNavbarProps) {
+  const router = useRouter();
   const [openDropdown, setOpenDropdown] = useState<'villes' | 'matieres' | null>(null);
 
   return (
@@ -66,14 +64,11 @@ export default function ProfNavbar({
             </Link>
           </div>
 
-          {/* CENTRE : Menu Horizontal (ACCUEIL, VILLES, MATIÈRES, QUI SOMMES-NOUS ?, AIDE) */}
+          {/* CENTRE : Menu Horizontal */}
           <div className="hidden lg:flex items-center gap-7 text-sm font-bold text-gray-700">
-            <button 
-              onClick={() => setCurrentView && setCurrentView('home')}
-              className={`hover:text-[#FF5733] transition cursor-pointer ${currentView === 'home' ? 'text-[#FF5733]' : ''}`}
-            >
+            <Link href="/prof" className="hover:text-[#FF5733] transition cursor-pointer">
               ACCUEIL
-            </button>
+            </Link>
 
             {/* Dropdown VILLES */}
             <div 
@@ -145,15 +140,15 @@ export default function ProfNavbar({
             </button>
           </div>
 
-          {/* DROITE : Dashboard / Mon Profil Prof / Site Public */}
+          {/* DROITE : Dashboard / Site Public */}
           <div className="flex items-center gap-3">
-            <button 
-              onClick={() => setCurrentView && setCurrentView(currentView === 'dashboard' ? 'home' : 'dashboard')}
+            <Link 
+              href="/prof/dashboard"
               className="hidden sm:inline-flex items-center gap-1.5 border border-[#FF5733] text-[#FF5733] hover:bg-[#FF5733] hover:text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow-sm cursor-pointer"
             >
               <LayoutDashboard className="w-3.5 h-3.5" />
-              <span>{currentView === 'dashboard' ? 'Accueil Prof' : 'Dashboard'}</span>
-            </button>
+              <span>Dashboard</span>
+            </Link>
 
             <Link 
               href="/"
@@ -193,33 +188,25 @@ export default function ProfNavbar({
             <div className="flex-1 overflow-y-auto px-4 py-6 space-y-1">
               <div className="text-[10px] font-extrabold uppercase tracking-widest text-gray-500 px-3 mb-2">Espace Professeur</div>
               
-              {/* Lien vers Mon Profil Prof */}
-              <button 
-                onClick={() => {
-                  if (setCurrentView) setCurrentView('profile');
-                  setIsMenuOpen(false);
-                }}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition text-left cursor-pointer ${
-                  currentView === 'profile' ? 'bg-[#FF5733] text-white' : 'hover:bg-gray-800 hover:text-white'
-                }`}
+              {/* Redirection vers /prof/profile */}
+              <Link 
+                href="/prof/profile"
+                onClick={() => setIsMenuOpen(false)}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-800 hover:text-white transition text-left cursor-pointer"
               >
-                <User className={`w-4 h-4 ${currentView === 'profile' ? 'text-white' : 'text-[#FF5733]'}`} />
+                <User className="w-4 h-4 text-[#FF5733]" />
                 <span>Mon Profil Prof</span>
-              </button>
+              </Link>
 
-              {/* Lien vers Dashboard */}
-              <button 
-                onClick={() => {
-                  if (setCurrentView) setCurrentView('dashboard');
-                  setIsMenuOpen(false);
-                }}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition text-left cursor-pointer ${
-                  currentView === 'dashboard' ? 'bg-[#FF5733] text-white' : 'hover:bg-gray-800 hover:text-white'
-                }`}
+              {/* Redirection vers /prof/dashboard */}
+              <Link 
+                href="/prof/dashboard"
+                onClick={() => setIsMenuOpen(false)}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-800 hover:text-white transition text-left cursor-pointer"
               >
-                <LayoutDashboard className={`w-4 h-4 ${currentView === 'dashboard' ? 'text-white' : 'text-[#FF5733]'}`} />
+                <LayoutDashboard className="w-4 h-4 text-[#FF5733]" />
                 <span>Dashboard & Demandes</span>
-              </button>
+              </Link>
 
               <Link 
                 href="/qui-sommes-nous" 
