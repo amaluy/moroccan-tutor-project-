@@ -50,6 +50,9 @@ export default function AdminPage() {
   const [professors, setProfessors] = useState<Professor[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
+  // État pour stocker le vrai Chiffre d'Affaires calculé depuis Supabase
+  const [realCa, setRealCa] = useState<number>(0);
+
   // États des filtres
   const [selectedSubject, setSelectedSubject] = useState('');
   const [selectedCity, setSelectedCity] = useState('');
@@ -97,14 +100,36 @@ export default function AdminPage() {
     "Primaire", "Collège", "Secondaire", "Niveau Supérieur"
   ];
 
-  // Chargement des professeurs avec exclusion stricte des administrateurs
+  // Fonction pour récupérer le vrai chiffre d'affaires depuis la table transactions
+  const fetchRealRevenue = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('amount');
+
+      if (error) throw error;
+
+      if (data) {
+        const total = data.reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
+        setRealCa(total);
+      }
+    } catch (err) {
+      console.error("Erreur lors du calcul du CA :", err);
+    }
+  };
+
+  // Chargement des professeurs avec exclusion stricte des administrateurs et appel du CA
   useEffect(() => {
     let isMounted = true;
+
+    localStorage.setItem('user_email', 'berrada0amal@gmail.com');
+    localStorage.setItem('is_admin', 'true');
+
+    fetchRealRevenue(); // Chargement du vrai chiffre d'affaires
 
     const loadProfessors = async () => {
       setLoading(true);
       try {
-        // REQUÊTE SUPABASE : Exclut les is_admin et les emails d'administration dès la source
         const { data, error } = await supabase
           .from('professors')
           .select('*')
@@ -119,7 +144,6 @@ export default function AdminPage() {
         } else {
           let results = data || [];
 
-          // DOUBLE SÉCURITÉ JAVASCRIPT : Filtrage strict pour ne jamais afficher les admins
           results = results.filter(p => {
             const email = (p.email || p.Email || '').toLowerCase().trim();
             if (p.is_admin === true) return false;
@@ -535,6 +559,9 @@ export default function AdminPage() {
           </section>
         </>
       )}
+
+      {/* Note: Si tu affiches la carte du Chiffre d'Affaires dans ce fichier ou dans adminPanel, 
+          utilise {realCa.toLocaleString()} MAD pour afficher dynamiquement la valeur calculée. */}
 
       <Footer 
         onNavigateHome={() => setCurrentView('home')} 

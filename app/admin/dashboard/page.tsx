@@ -25,6 +25,7 @@ export default function AdminDashboardPage() {
 
   const [professeursNouveaux, setProfesseursNouveaux] = useState<any[]>([]);
   const [professeursExistants, setProfesseursExistants] = useState<any[]>([]);
+  const [realCa, setRealCa] = useState<number>(0);
   const [isLoadingDb, setIsLoadingDb] = useState(true);
   const [dbError, setDbError] = useState<string | null>(null);
 
@@ -49,16 +50,39 @@ export default function AdminDashboardPage() {
     setDbError(null);
 
     try {
+      // 1. Récupérer les professeurs existants
       const { data: profsData, error: profsError } = await supabase.from('professors').select('*');
       if (profsError) setDbError(profsError.message);
       else if (profsData) setProfesseursExistants(profsData);
 
+      // 2. Récupérer les nouvelles demandes
       const { data: reqsData, error: reqsError } = await supabase.from('requests').select('*');
       if (reqsError) {
         setDbError(reqsError.message);
       } else if (reqsData) {
         setProfesseursNouveaux(reqsData);
       }
+
+      // 3. Calculer le Chiffre d'Affaires réel depuis la table des transactions ou des requêtes
+      // (Vérifie si tes montants sont dans 'transactions' ou 'requests')
+      let totalCa = 0;
+      
+      const { data: transData, error: transError } = await supabase.from('transactions').select('*');
+      if (!transError && transData && transData.length > 0) {
+        totalCa = transData.reduce((sum, item) => {
+          const montant = Number(item.montant || item.amount || item.tarif || 0);
+          return sum + montant;
+        }, 0);
+      } else if (reqsData && reqsData.length > 0) {
+        // Fallback : si les transactions sont stockées dans les demandes/recus
+        totalCa = reqsData.reduce((sum, item) => {
+          const montant = Number(item.montant || item.amount || item.tarif || 0);
+          return sum + montant;
+        }, 0);
+      }
+
+      setRealCa(totalCa);
+
     } catch (err: any) {
       setDbError(err.message || 'Erreur réseau');
     } finally {
@@ -280,9 +304,9 @@ export default function AdminDashboardPage() {
               <span className="p-1.5 bg-white/10 rounded-full"><ChevronRight className="w-4 h-4 text-white" /></span>
             </div>
             <div>
-              <h3 className="text-2xl font-black">2 185 430 MAD</h3>
+              <h3 className="text-2xl font-black">{realCa.toLocaleString()} MAD</h3>
               <p className="text-[10px] text-emerald-300 font-bold mt-1 flex items-center gap-1">
-                <span className="text-emerald-400">▲ 12,4 %</span> vs mois précédent
+                <span className="text-emerald-400">Transactions Réelles</span> Supabase
               </p>
             </div>
           </div>
@@ -329,9 +353,9 @@ export default function AdminDashboardPage() {
             <div className="flex justify-between items-center">
               <div>
                 <h2 className="text-base font-black text-gray-900">Évolution du chiffre d'affaires (MAD)</h2>
-                <p className="text-xs text-gray-400">Croissance mensuelle sur l'année en cours</p>
+                <p className="text-xs text-gray-400">Total calculé en temps réel depuis les transactions</p>
               </div>
-              <span className="px-3 py-1 bg-amber-100 text-amber-800 font-black text-xs rounded-full">2,19 M MAD</span>
+              <span className="px-3 py-1 bg-amber-100 text-amber-800 font-black text-xs rounded-full">{realCa.toLocaleString()} MAD</span>
             </div>
 
             <div className="h-52 w-full flex items-end justify-between gap-2 pt-6 px-2 relative bg-gradient-to-b from-amber-50/50 to-transparent rounded-2xl border border-dashed border-gray-100">
@@ -380,7 +404,7 @@ export default function AdminDashboardPage() {
 
             <div className="p-3 bg-gray-50 rounded-2xl border border-gray-100 text-center">
               <span className="text-[10px] text-gray-400 block">Total National</span>
-              <span className="text-sm font-black text-[#103D3B]">2,19 M MAD</span>
+              <span className="text-sm font-black text-[#103D3B]">{realCa.toLocaleString()} MAD</span>
             </div>
           </div>
         </div>
@@ -527,7 +551,7 @@ export default function AdminDashboardPage() {
         </div>
       </main>
 
-      {/* ================= PANNEAU LATÉRAL COULISSANT (CORRIGÉ AVEC LES OPTIONS DU DASHBOARD) ================= */}
+      {/* ================= PANNEAU LATÉRAL COULISSANT ================= */}
       {isMobileMenuOpen && (
         <div className="fixed inset-0 z-50 flex">
           <div className="fixed inset-0 bg-black/40 backdrop-blur-xs transition-opacity" onClick={() => setIsMobileMenuOpen(false)}></div>
