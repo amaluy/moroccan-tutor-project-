@@ -8,7 +8,7 @@ import HelpModal from '../../components/HelpModal';
 import { supabase } from '@/lib/supabase';
 import { 
   MapPin, Star, Share2, Heart, Loader2, 
-  ArrowLeft, Calendar, Clock, Save, Edit3, Check
+  ArrowLeft, Calendar, Clock, Save, Edit3, Check, ShieldAlert
 } from 'lucide-react';
 
 export default function ProfessorPrivateProfile() {
@@ -16,12 +16,13 @@ export default function ProfessorPrivateProfile() {
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [helpSection, setHelpSection] = useState<'recherche' | 'acceptee' | 'refusee' | 'avis' | 'inscription' | 'compte'>('recherche');
 
   // Identifiants et emails
-  const [profEmail, setProfEmail] = useState<string>('samielidrissi@gmail.com');
+  const [profEmail, setProfEmail] = useState<string>('');
   const [professorId, setProfessorId] = useState<any>(null);
 
   // États modifiables
@@ -49,34 +50,64 @@ export default function ProfessorPrivateProfile() {
     const fetchProfessorProfile = async () => {
       setLoading(true);
       try {
-        const rawEmail = localStorage.getItem('professor_email') || 'samielidrissi@gmail.com';
-        setProfEmail(rawEmail);
+        // Recherche robuste : on regarde toutes les clés possibles dans le localStorage
+        const rawEmail = 
+          localStorage.getItem('professor_email') || 
+          localStorage.getItem('user_email') || 
+          localStorage.getItem('email');
+        
+        const storedId = 
+          localStorage.getItem('professor_id') || 
+          localStorage.getItem('user_id');
 
+        if (!rawEmail && !storedId) {
+          setErrorMessage("Aucun professeur connecté. Veuillez vous connecter.");
+          setLoading(false);
+          return;
+        }
+
+        // Récupération de tous les profs pour une vérification robuste insensible à la casse
         const { data: allProfs, error } = await supabase.from('professors').select('*');
 
         if (error) {
-          console.error("Erreur Supabase:", error);
-        } else if (allProfs && allProfs.length > 0) {
-          const cleanTarget = rawEmail.toLowerCase().replace(/[\s.]/g, '');
+          throw error;
+        }
 
-          const matchedProf = allProfs.find((p: any) => {
-            const emailField = p.email || p.Email;
-            if (!emailField) return false;
-            const dbEmailClean = emailField.toLowerCase().replace(/[\s.]/g, '');
-            return dbEmailClean === cleanTarget;
-          });
+        if (allProfs) {
+          let matchedProf = null;
+
+          // 1. On essaie de retrouver par ID si l'ID est stocké
+          if (storedId) {
+            matchedProf = allProfs.find((p: any) => String(p.id) === String(storedId));
+          }
+
+          // 2. Sinon, on cherche par email
+          if (!matchedProf && rawEmail) {
+            const cleanTarget = rawEmail.toLowerCase().trim();
+            matchedProf = allProfs.find((p: any) => {
+              const emailField = p.email || p.Email;
+              if (!emailField) return false;
+              return emailField.toLowerCase().trim() === cleanTarget;
+            });
+          }
 
           if (matchedProf) {
+            const finalEmail = matchedProf.email || matchedProf.Email || rawEmail || '';
+            setProfEmail(finalEmail);
             setProfessorId(matchedProf.id);
+            
+            // On sécurise le localStorage pour les prochaines fois
+            localStorage.setItem('professor_email', finalEmail);
+            localStorage.setItem('professor_id', matchedProf.id);
+
             fillData(matchedProf);
           } else {
-            const defaultProf = allProfs[allProfs.length - 1];
-            setProfessorId(defaultProf.id);
-            fillData(defaultProf);
+            setErrorMessage(`Aucun profil professeur trouvé pour : ${rawEmail || storedId}`);
           }
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('Erreur de chargement:', err);
+        setErrorMessage("Erreur lors de la récupération de votre profil.");
       } finally {
         setLoading(false);
       }
@@ -92,7 +123,6 @@ export default function ProfessorPrivateProfile() {
     setVille(data.ville || data.city || data.Ville || '');
     setNiveau(data.niveau || data.level || data.Niveau || '');
     setTarif(data.tarif !== undefined && data.tarif !== null ? data.tarif : (data.price || data.Tarif || '250'));
-    // Utilisation du bon nom de colonne avec majuscules
     setPhotoUrl(data.photo_URL || data.photo_url || data.photo || data.avatar_url || '');
     setBio(data.bio && data.bio !== 'EMPTY' ? data.bio : '');
     setCreatedAt(data.created_at || '');
@@ -123,10 +153,9 @@ export default function ProfessorPrivateProfile() {
     setSuccessMessage(null);
     try {
       if (!professorId) {
-        throw new Error("ID du professeur introuvable pour la mise à jour.");
+        throw new Error("Action non autorisée : ID de profil manquant.");
       }
 
-      // Utilisation exacte de 'photo_URL', 'Nom', 'Prénom' selon votre base Supabase
       const { error } = await supabase
         .from('professors')
         .update({
@@ -181,7 +210,27 @@ export default function ProfessorPrivateProfile() {
       <main className="min-h-screen bg-[#faf9f6] flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="w-8 h-8 text-rose-500 animate-spin" />
-          <p className="text-sm font-semibold text-slate-600">Chargement de votre profil...</p>
+          <p className="text-sm font-semibold text-slate-600">Vérification de vos accès sécurisés...</p>
+        </div>
+      </main>
+    );
+  }
+
+  // ÉCRAN DE SÉCURITÉ SI LE COMPTE N'EXISTE PAS
+  if (errorMessage) {
+    return (
+      <main className="min-h-screen bg-[#faf9f6] flex items-center justify-center p-6">
+        <div className="bg-white border border-rose-200 rounded-3xl p-8 max-w-md w-full text-center space-y-4 shadow-xl">
+          <div className="w-12 h-12 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mx-auto">
+            <ShieldAlert className="w-6 h-6" />
+          </div>
+          <h2 className="text-lg font-black text-slate-900">Accès restreint</h2>
+          <p className="text-xs text-slate-600 leading-relaxed">{errorMessage}</p>
+          <div className="pt-2">
+            <Link href="/prof" className="inline-block bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs px-6 py-3 rounded-xl transition">
+              Retourner à l'espace connexion
+            </Link>
+          </div>
         </div>
       </main>
     );
