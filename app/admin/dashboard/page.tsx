@@ -6,7 +6,8 @@ import Link from 'next/link';
 import { 
   BookOpen, Users, Sparkles, Bot, Send, RefreshCw, 
   CheckCircle, Trash2, Image as ImageIcon, Eye, X, Clock, 
-  BarChart3, Upload, Settings, HelpCircle, Plus, Bell, ChevronRight, TrendingUp, MapPin, Menu 
+  BarChart3, Upload, Settings, HelpCircle, Plus, Bell, ChevronRight, TrendingUp, MapPin, Menu,
+  LayoutDashboard, CheckSquare, Calendar as CalendarIcon, Users2, LogOut
 } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 
@@ -526,72 +527,103 @@ export default function AdminDashboardPage() {
         </div>
       </main>
 
-      {/* ================= PANNEAU LATÉRAL COULISSANT (DRAWER NOIR) ================= */}
+      {/* ================= PANNEAU LATÉRAL COULISSANT (CORRIGÉ AVEC LES OPTIONS DU DASHBOARD) ================= */}
       {isMobileMenuOpen && (
         <div className="fixed inset-0 z-50 flex">
-          <div className="fixed inset-0 bg-black/70 backdrop-blur-xs transition-opacity" onClick={() => setIsMobileMenuOpen(false)}></div>
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-xs transition-opacity" onClick={() => setIsMobileMenuOpen(false)}></div>
 
-          <div className="relative w-80 bg-[#0A1128] text-white flex flex-col justify-between shadow-2xl z-10 h-full border-r border-gray-800 animate-in slide-in-from-left duration-300">
+          <div className="relative w-80 bg-white text-gray-800 flex flex-col justify-between shadow-2xl z-10 h-full border-r border-gray-100 animate-in slide-in-from-left duration-300">
             <div>
-              <div className="p-6 flex items-center justify-between border-b border-gray-800/80">
-                <div className="flex items-center gap-3">
-                  <div className="bg-gradient-to-tr from-amber-500 to-red-500 p-2 rounded-xl text-white shadow-md">
-                    <BookOpen className="w-5 h-5" />
+              {/* En-tête du menu */}
+              <div className="p-6 flex items-center justify-between border-b border-gray-100">
+                <div className="flex items-center gap-2.5">
+                  <div className="bg-orange-50 p-1.5 rounded-xl border border-orange-100">
+                    <BookOpen className="w-5 h-5 text-[#FF5733]" />
                   </div>
-                  <span className="font-black text-lg tracking-tight text-white">profmaroc</span>
+                  <div>
+                    <span className="text-base font-black tracking-tight text-gray-900">prof<span className="text-[#FF5733]">maroc</span></span>
+                    <p className="text-[9px] font-extrabold text-red-500 uppercase tracking-widest leading-none mt-0.5">ADMIN PANEL</p>
+                  </div>
                 </div>
                 <button 
                   onClick={() => setIsMobileMenuOpen(false)} 
-                  className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-full transition cursor-pointer"
+                  className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
-              <div className="p-6 space-y-6">
+              {/* Liens de navigation du Dashboard */}
+              <div className="p-4 space-y-6">
                 <div>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Navigation Admin</p>
-                  <nav className="space-y-2">
+                  <p className="text-[10px] font-extrabold uppercase tracking-widest text-gray-400 px-3 mb-2">MENU</p>
+                  <nav className="space-y-1">
                     <button 
                       onClick={() => { setActiveMenu('dashboard'); setIsMobileMenuOpen(false); }} 
-                      className="w-full flex items-center gap-3.5 px-4 py-3 rounded-xl font-bold text-xs text-gray-200 hover:bg-white/10 transition cursor-pointer text-left"
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold bg-[#0f2922] text-white transition shadow-xs cursor-pointer text-left"
                     >
-                      <MapPin className="w-4 h-4 text-amber-500" /> <span>Accueil Admin</span>
+                      <LayoutDashboard className="w-4 h-4 text-emerald-400" /> <span>Dashboard</span>
                     </button>
                     <button 
-                      onClick={() => { setActiveMenu('dashboard'); setIsMobileMenuOpen(false); }} 
-                      className="w-full flex items-center gap-3.5 px-4 py-3 rounded-xl font-bold text-xs text-gray-200 hover:bg-white/10 transition cursor-pointer text-left"
+                      onClick={() => { setActiveMenu('tasks'); setIsMobileMenuOpen(false); }} 
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition cursor-pointer text-left"
                     >
-                      <BarChart3 className="w-4 h-4 text-amber-500" /> <span>Dashboard & Stats</span>
+                      <div className="flex items-center gap-3">
+                        <CheckSquare className="w-4 h-4 text-gray-400" />
+                        <span>Tasks</span>
+                      </div>
+                      <span className="text-[10px] font-bold bg-red-100 text-red-600 px-2 py-0.5 rounded-full">4</span>
+                    </button>
+                    <button 
+                      onClick={() => { setActiveMenu('calendar'); setIsMobileMenuOpen(false); }} 
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition cursor-pointer text-left"
+                    >
+                      <CalendarIcon className="w-4 h-4 text-gray-400" /> <span>Calendar</span>
+                    </button>
+                    <button 
+                      onClick={() => { setActiveMenu('analytics'); setIsMobileMenuOpen(false); }} 
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition cursor-pointer text-left"
+                    >
+                      <BarChart3 className="w-4 h-4 text-gray-400" /> <span>Analytics</span>
+                    </button>
+                    <button 
+                      onClick={() => { setActiveMenu('team'); setIsMobileMenuOpen(false); }} 
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition cursor-pointer text-left"
+                    >
+                      <Users2 className="w-4 h-4 text-gray-400" /> <span>Team</span>
+                    </button>
+                  </nav>
+                </div>
+
+                <div>
+                  <p className="text-[10px] font-extrabold uppercase tracking-widest text-gray-400 px-3 mb-2">GENERAL</p>
+                  <nav className="space-y-1">
+                    <button 
+                      onClick={() => { setActiveMenu('settings'); setIsMobileMenuOpen(false); }} 
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition cursor-pointer text-left"
+                    >
+                      <Settings className="w-4 h-4 text-gray-400" /> <span>Settings</span>
                     </button>
                     <button 
                       onClick={() => { setActiveMenu('help'); setIsMobileMenuOpen(false); }} 
-                      className="w-full flex items-center gap-3.5 px-4 py-3 rounded-xl font-bold text-xs text-gray-200 hover:bg-white/10 transition cursor-pointer text-left"
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition cursor-pointer text-left"
                     >
-                      <HelpCircle className="w-4 h-4 text-amber-500" /> <span>Qui sommes-nous ?</span>
-                    </button>
-                    <button 
-                      onClick={() => { setActiveMenu('help'); setIsMobileMenuOpen(false); }} 
-                      className="w-full flex items-center gap-3.5 px-4 py-3 rounded-xl font-bold text-xs text-gray-200 hover:bg-white/10 transition cursor-pointer text-left"
-                    >
-                      <Settings className="w-4 h-4 text-amber-500" /> <span>Aide & Support</span>
+                      <HelpCircle className="w-4 h-4 text-gray-400" /> <span>Help</span>
                     </button>
                   </nav>
                 </div>
               </div>
             </div>
 
-            <div className="p-6 border-t border-gray-800/80 bg-[#070D1F]">
+            {/* Pied du menu : Bouton Quitter vers le site public */}
+            <div className="p-4 border-t border-gray-100 bg-gray-50/50">
               <Link 
                 href="/" 
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="w-full py-3.5 px-4 bg-[#FF5A5F] hover:bg-[#e0484d] text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-between transition cursor-pointer"
+                className="w-full py-2.5 px-3 hover:bg-red-50 text-red-600 text-sm font-semibold rounded-xl transition flex items-center gap-3 cursor-pointer"
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center font-bold text-[10px]">N</div>
-                  <span>Quitter l'admin (Site Public)</span>
-                </div>
-                <ChevronRight className="w-4 h-4" />
+                <LogOut className="w-4 h-4" />
+                <span>Logout</span>
               </Link>
             </div>
           </div>
