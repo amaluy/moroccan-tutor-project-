@@ -2,15 +2,17 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import Footer from '../../components/Footer';
 import HelpModal from '../../components/HelpModal';
 import { supabase } from '@/lib/supabase';
 import { 
   MapPin, Star, Share2, Heart, Loader2, 
-  AlertTriangle, ArrowLeft, Calendar, Clock, Save, Edit3, Check
+  ArrowLeft, Calendar, Clock, Save, Edit3, Check
 } from 'lucide-react';
 
 export default function ProfessorPrivateProfile() {
+  const router = useRouter();
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -18,7 +20,11 @@ export default function ProfessorPrivateProfile() {
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [helpSection, setHelpSection] = useState<'recherche' | 'acceptee' | 'refusee' | 'avis' | 'inscription' | 'compte'>('recherche');
 
-  // États modifiables du profil
+  // Identifiants et emails
+  const [profEmail, setProfEmail] = useState<string>('samielidrissi@gmail.com');
+  const [professorId, setProfessorId] = useState<any>(null);
+
+  // États modifiables
   const [nom, setNom] = useState('');
   const [prenom, setPrenom] = useState('');
   const [matiere, setMatiere] = useState('');
@@ -28,7 +34,7 @@ export default function ProfessorPrivateProfile() {
   const [photoUrl, setPhotoUrl] = useState('');
   const [bio, setBio] = useState('');
   
-  // Données d'affichage non modifiables ou calculées
+  // Données d'affichage
   const [createdAt, setCreatedAt] = useState('');
   const [totalEtoiles, setTotalEtoiles] = useState('15 étoiles');
   const [age, setAge] = useState('24 ans');
@@ -38,52 +44,35 @@ export default function ProfessorPrivateProfile() {
   const [dernierDiplome, setDernierDiplome] = useState('Licence / Master');
   const [profession, setProfession] = useState('etudiant');
   const [availabilities, setAvailabilities] = useState<string[]>([]);
-  const [userEmail, setUserEmail] = useState<string>('');
 
   useEffect(() => {
     const fetchProfessorProfile = async () => {
       setLoading(true);
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        const currentEmail = user?.email || 'berrada0amal@gmail.com'; // Fallback sécurisé
-        setUserEmail(currentEmail);
+        const rawEmail = localStorage.getItem('professor_email') || 'samielidrissi@gmail.com';
+        setProfEmail(rawEmail);
 
-        const { data, error } = await supabase
-          .from('professors')
-          .select('*')
-          .eq('email', currentEmail)
-          .single();
+        const { data: allProfs, error } = await supabase.from('professors').select('*');
 
-        if (error || !data) {
-          console.error('Erreur Supabase:', error);
-        } else {
-          setNom(data.Nom || data.nom || '');
-          setPrénom(data.Prénom || data.prenom || '');
-          setMatiere(data.matiere || data.subject || '');
-          setVille(data.ville || data.city || '');
-          setNiveau(data.niveau || data.level || '');
-          setTarif(data.tarif !== undefined && data.tarif !== null ? data.tarif : (data.price || ''));
-          setPhotoUrl(data.photo_URL || data.photo_url || data.photo || data.avatar_url || '');
-          setBio(data.bio || data.description || '');
-          setCreatedAt(data.created_at || '');
-          setTotalEtoiles(data.total_etoiles || '15 étoiles');
-          setAge(data.age || '24 ans');
-          setStatut(data.statut || 'Professeur Confirmé');
-          setTypeCours(data.type_cours || 'domicile');
-          setExperience(data.experience || '1-3ans');
-          setDernierDiplome(data.dernier_diplome || 'Licence / Master');
-          setProfession(data.profession || 'etudiant');
+        if (error) {
+          console.error("Erreur Supabase:", error);
+        } else if (allProfs && allProfs.length > 0) {
+          const cleanTarget = rawEmail.toLowerCase().replace(/[\s.]/g, '');
 
-          if (Array.isArray(data.disponibilites)) {
-            setAvailabilities(data.disponibilites);
-          } else if (typeof data.disponibilites === 'string') {
-            try {
-              const parsed = JSON.parse(data.disponibilites);
-              if (Array.isArray(parsed)) setAvailabilities(parsed);
-            } catch {
-              const cleaned = data.disponibilites.replace(/[{}]/g, '');
-              setAvailabilities(cleaned.split(',').map((s: string) => s.trim().replace(/^["']|["']$/g, '')));
-            }
+          const matchedProf = allProfs.find((p: any) => {
+            const emailField = p.email || p.Email;
+            if (!emailField) return false;
+            const dbEmailClean = emailField.toLowerCase().replace(/[\s.]/g, '');
+            return dbEmailClean === cleanTarget;
+          });
+
+          if (matchedProf) {
+            setProfessorId(matchedProf.id);
+            fillData(matchedProf);
+          } else {
+            const defaultProf = allProfs[allProfs.length - 1];
+            setProfessorId(defaultProf.id);
+            fillData(defaultProf);
           }
         }
       } catch (err) {
@@ -96,39 +85,78 @@ export default function ProfessorPrivateProfile() {
     fetchProfessorProfile();
   }, []);
 
+  const fillData = (data: any) => {
+    setNom(data.Nom || data.nom || '');
+    setPrenom(data.Prénom || data.prenom || '');
+    setMatiere(data.matiere || data.subject || data.Matiere || '');
+    setVille(data.ville || data.city || data.Ville || '');
+    setNiveau(data.niveau || data.level || data.Niveau || '');
+    setTarif(data.tarif !== undefined && data.tarif !== null ? data.tarif : (data.price || data.Tarif || '250'));
+    // Utilisation du bon nom de colonne avec majuscules
+    setPhotoUrl(data.photo_URL || data.photo_url || data.photo || data.avatar_url || '');
+    setBio(data.bio && data.bio !== 'EMPTY' ? data.bio : '');
+    setCreatedAt(data.created_at || '');
+    setTotalEtoiles(data.total_etoiles || '15 étoiles');
+    setAge(data.age || '24 ans');
+    setStatut(data.statut || 'Professeur Confirmé');
+    setTypeCours(data.type_cours || 'domicile');
+    setExperience(data.experience || '1-3ans');
+    setDernierDiplome(data.dernier_diplome || 'Licence / Master');
+    setProfession(data.profession || 'etudiant');
+
+    const disp = data.disponibilites || data.Disponibilites;
+    if (Array.isArray(disp)) {
+      setAvailabilities(disp);
+    } else if (typeof disp === 'string') {
+      try {
+        const parsed = JSON.parse(disp);
+        if (Array.isArray(parsed)) setAvailabilities(parsed);
+      } catch {
+        const cleaned = disp.replace(/[{}]/g, '');
+        setAvailabilities(cleaned.split(',').map((s: string) => s.trim().replace(/^["']|["']$/g, '')));
+      }
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     setSuccessMessage(null);
     try {
+      if (!professorId) {
+        throw new Error("ID du professeur introuvable pour la mise à jour.");
+      }
+
+      // Utilisation exacte de 'photo_URL', 'Nom', 'Prénom' selon votre base Supabase
       const { error } = await supabase
         .from('professors')
         .update({
-          nom: nom,
-          prenom: prenom,
+          Nom: nom,
+          Prénom: prenom,
           matiere: matiere,
           ville: ville,
           niveau: niveau,
           tarif: Number(tarif),
-          photo_url: photoUrl,
+          photo_URL: photoUrl, 
           bio: bio,
         })
-        .eq('email', userEmail);
+        .eq('id', professorId);
 
       if (error) throw error;
-      setSuccessMessage('Profil mis à jour avec succès !');
-      setTimeout(() => setSuccessMessage(null), 4000);
-    } catch (err) {
+
+      setSuccessMessage('Modifications enregistrées ! Redirection...');
+      
+      setTimeout(() => {
+        router.push('/');
+      }, 1200);
+
+    } catch (err: any) {
       console.error('Erreur lors de la sauvegarde:', err);
-      alert('Erreur lors de la sauvegarde des modifications.');
-    } finally {
+      alert(`Erreur lors de la sauvegarde: ${err.message || 'Erreur inconnue'}`);
       setSaving(false);
     }
   };
 
-  const setPrénom = setPrenom;
   const fullName = `${prenom} ${nom}`.trim() || 'Professeur';
-  const displaySubject = matiere || 'Français';
-  const displayCity = ville || 'marrakech';
   const displayPrice = Number(tarif) || 250;
 
   const formatSlot = (slot: string) => {
@@ -162,10 +190,9 @@ export default function ProfessorPrivateProfile() {
   return (
     <main className="min-h-screen bg-[#faf9f6] text-slate-900 font-sans flex flex-col justify-between relative overflow-x-hidden">
       
-      {/* BARRE SUPÉRIEURE D'ÉDITION PRIVÉE */}
       <div className="bg-slate-900 text-white px-6 py-2.5 flex items-center justify-between sticky top-0 z-40 shadow-md">
         <div className="flex items-center gap-2 text-xs font-bold">
-          <Edit3 className="w-4 h-4 text-rose-400" /> Mode Édition Privé (Vue Professeur)
+          <Edit3 className="w-4 h-4 text-rose-400" /> Mon Espace Professeur ({profEmail})
         </div>
         <div className="flex items-center gap-4">
           {successMessage && (
@@ -184,27 +211,21 @@ export default function ProfessorPrivateProfile() {
         </div>
       </div>
 
-      {/* Top Header Navigation Standard */}
       <header className="bg-white/85 backdrop-blur-md border-b border-slate-200/60 px-6 py-4 flex items-center justify-between sticky top-[45px] z-30">
         <Link href="/prof" className="flex items-center gap-2 text-xs font-bold text-slate-700 hover:text-slate-900 transition">
           <ArrowLeft className="w-4 h-4" /> Retour au tableau de bord
         </Link>
-        <div className="flex items-center gap-4">
-          <span className="text-xs font-black tracking-wider text-slate-900 flex items-center gap-1">
-            <span className="text-rose-500 text-base">🎓</span> profmaroc
-          </span>
-        </div>
+        <span className="text-xs font-black tracking-wider text-slate-900 flex items-center gap-1">
+          <span className="text-rose-500 text-base">🎓</span> profmaroc
+        </span>
       </header>
 
-      {/* SECTION PLEINE LARGEUR AVEC IMAGE DE FOND (Même design exact que la page publique) */}
       <div className="w-full relative border-b border-slate-200/40 pt-10 pb-16 min-h-[420px] flex items-center bg-[#faf9f6]">
-        
         <div className="absolute inset-0 w-full h-full overflow-hidden">
           <img src="/minimaal.jpg" alt="Arrière-plan minimaliste" className="w-full h-full object-cover opacity-35" />
         </div>
 
         <div className="max-w-6xl mx-auto px-4 sm:px-6 relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center w-full">
-          
           <div className="lg:col-span-7 space-y-6">
             <div className="flex flex-wrap gap-2 items-center">
               <input 
@@ -217,20 +238,20 @@ export default function ProfessorPrivateProfile() {
               <span className="text-[11px] text-slate-400 italic">← modifiable</span>
             </div>
 
-            <div className="flex flex-wrap gap-2 items-center">
+            <div className="flex flex-wrap gap-3 items-center">
               <input 
                 type="text" 
                 value={prenom} 
                 onChange={(e) => setPrenom(e.target.value)} 
                 placeholder="Prénom"
-                className="text-3xl sm:text-4xl font-black text-slate-900 bg-white/70 border border-slate-300 rounded-xl px-3 py-1 outline-none capitalize w-48"
+                className="text-3xl sm:text-4xl font-black text-slate-900 bg-white/80 border border-slate-300 rounded-xl px-3 py-1.5 outline-none capitalize shadow-xs w-auto min-w-[180px]"
               />
               <input 
                 type="text" 
                 value={nom} 
                 onChange={(e) => setNom(e.target.value)} 
                 placeholder="Nom"
-                className="text-3xl sm:text-4xl font-black text-slate-900 bg-white/70 border border-slate-300 rounded-xl px-3 py-1 outline-none capitalize w-48"
+                className="text-3xl sm:text-4xl font-black text-slate-900 bg-white/80 border border-slate-300 rounded-xl px-3 py-1.5 outline-none capitalize shadow-xs w-auto min-w-[180px]"
               />
             </div>
 
@@ -243,7 +264,7 @@ export default function ProfessorPrivateProfile() {
               <h3 className="text-sm font-black text-slate-900">Lieux du cours & Ville</h3>
               <div className="inline-flex items-center gap-2 bg-white/90 backdrop-blur-md border border-slate-200/80 px-4 py-2.5 rounded-2xl text-xs font-semibold text-slate-700 shadow-xs">
                 <MapPin className="w-4 h-4 text-rose-500" />
-                <span>Chez {fullName.toLowerCase()} :</span>
+                <span>Chez le professeur :</span>
                 <input 
                   type="text" 
                   value={ville} 
@@ -265,7 +286,6 @@ export default function ProfessorPrivateProfile() {
             </div>
           </div>
 
-          {/* Photo et son input d'URL juste en dessous */}
           <div className="lg:col-span-5 flex flex-col items-center lg:items-end gap-3">
             <div className="w-full max-w-sm h-[280px] rounded-3xl overflow-hidden shadow-2xl border-4 border-white bg-white">
               {photoUrl ? (
@@ -287,16 +307,11 @@ export default function ProfessorPrivateProfile() {
               />
             </div>
           </div>
-
         </div>
       </div>
 
-      {/* RESTE DU CONTENU (Mise en page publique avec champs modifiables) */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 w-full grid grid-cols-1 lg:grid-cols-12 gap-12 relative">
-        
-        {/* Colonne de gauche (Cours & Disponibilités) */}
         <div className="lg:col-span-7 space-y-8">
-          
           <div className="space-y-3">
             <h3 className="text-sm font-black text-slate-900">À propos du cours (Niveau)</h3>
             <input 
@@ -306,12 +321,8 @@ export default function ProfessorPrivateProfile() {
               placeholder="ex: lyceecollege"
               className="w-full max-w-sm bg-white border border-slate-200 px-3.5 py-2 rounded-xl text-xs font-medium text-slate-800 outline-none shadow-xs"
             />
-            <p className="text-xs text-slate-600 leading-relaxed pt-2">
-              Concernant mes cours, je vise tous les niveaux. Mon but est de donner une meilleure formation aux élèves tout en travaillant sur leur réflexe artistique ou académique.
-            </p>
           </div>
 
-          {/* Affichage des disponibilités sous forme de boutons */}
           <div className="space-y-4">
             <h3 className="text-sm font-black text-slate-900">Créneaux de disponibilité</h3>
             {availabilities.length === 0 ? (
@@ -319,10 +330,7 @@ export default function ProfessorPrivateProfile() {
             ) : (
               <div className="flex flex-wrap gap-2.5">
                 {availabilities.map((slot, index) => (
-                  <div 
-                    key={index}
-                    className="bg-white border border-slate-200 text-slate-800 px-4 py-2.5 rounded-xl text-xs font-bold shadow-2xs flex items-center gap-2"
-                  >
+                  <div key={index} className="bg-white border border-slate-200 text-slate-800 px-4 py-2.5 rounded-xl text-xs font-bold shadow-2xs flex items-center gap-2">
                     <Clock className="w-3.5 h-3.5 text-rose-500" />
                     {formatSlot(slot)}
                   </div>
@@ -330,13 +338,10 @@ export default function ProfessorPrivateProfile() {
               </div>
             )}
           </div>
-
         </div>
 
-        {/* Colonne de droite : Carte Flottante (avec zone de texte modifiable pour la bio) */}
         <div className="lg:col-span-5 relative">
           <div className="bg-white/95 backdrop-blur-xl border border-slate-200/90 rounded-3xl p-6 shadow-2xl sticky top-24 space-y-6 z-20">
-            
             <div className="flex justify-end gap-2 text-slate-400">
               <button className="p-2 hover:bg-slate-50 rounded-full transition"><Heart className="w-4 h-4" /></button>
               <button className="p-2 hover:bg-slate-50 rounded-full transition"><Share2 className="w-4 h-4" /></button>
@@ -351,7 +356,6 @@ export default function ProfessorPrivateProfile() {
               </div>
             </div>
 
-            {/* Biographie modifiable directement dans la carte */}
             <div className="space-y-2 pt-2">
               <h3 className="text-xs font-black text-slate-900">Votre biographie (Modifiable)</h3>
               <textarea 
@@ -412,24 +416,12 @@ export default function ProfessorPrivateProfile() {
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               Enregistrer les modifications
             </button>
-
           </div>
         </div>
-
       </div>
 
-      <Footer 
-        onNavigateHome={() => {}} 
-        onOpenHelp={() => setIsHelpOpen(true)} 
-      />
-
-      <HelpModal 
-        isOpen={isHelpOpen} 
-        onClose={() => setIsHelpOpen(false)} 
-        helpSection={helpSection} 
-        setHelpSection={setHelpSection} 
-      />
-
+      <Footer onNavigateHome={() => {}} onOpenHelp={() => setIsHelpOpen(true)} />
+      <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} helpSection={helpSection} setHelpSection={setHelpSection} />
     </main>
   );
 }
