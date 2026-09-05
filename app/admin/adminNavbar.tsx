@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { 
   MapPin, BookOpen, ChevronDown, 
   HelpCircle, GraduationCap, Menu, X, Home, Info, LayoutDashboard, ArrowRight 
@@ -36,7 +37,13 @@ export default function AdminNavbar({
   currentView,
   setCurrentView
 }: AdminNavbarProps) {
+  const pathname = usePathname();
   const [openDropdown, setOpenDropdown] = useState<'villes' | 'matieres' | null>(null);
+
+  // INTERDICTION : Si on est dans le dashboard (admin/dashboard), on ne rend rien du tout
+  if (pathname?.includes('/admin/dashboard')) {
+    return null;
+  }
 
   return (
     <>
@@ -147,13 +154,13 @@ export default function AdminNavbar({
 
           {/* DROITE : Dashboard / Site Public */}
           <div className="flex items-center gap-3">
-            <button 
-              onClick={() => setCurrentView && setCurrentView(currentView === 'dashboard' ? 'home' : 'dashboard')}
+            <Link 
+              href="/admin/dashboard"
               className="hidden sm:inline-flex items-center gap-1.5 border border-[#FF5733] text-[#FF5733] hover:bg-[#FF5733] hover:text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow-sm cursor-pointer"
             >
               <LayoutDashboard className="w-3.5 h-3.5" />
-              <span>{currentView === 'dashboard' ? 'Accueil Admin' : 'Dashboard'}</span>
-            </button>
+              <span>Dashboard</span>
+            </Link>
 
             <Link 
               href="/"
@@ -192,27 +199,23 @@ export default function AdminNavbar({
 
             <div className="flex-1 overflow-y-auto px-4 py-6 space-y-1">
               <div className="text-[10px] font-extrabold uppercase tracking-widest text-gray-500 px-3 mb-2">Navigation Admin</div>
-              <button 
-                onClick={() => {
-                  if (setCurrentView) setCurrentView('home');
-                  setIsMenuOpen(false);
-                }}
+              <Link 
+                href="/admin"
+                onClick={() => setIsMenuOpen(false)}
                 className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-800 hover:text-white transition text-left cursor-pointer"
               >
                 <Home className="w-4 h-4 text-[#FF5733]" />
                 <span>Accueil Admin</span>
-              </button>
+              </Link>
 
-              <button 
-                onClick={() => {
-                  if (setCurrentView) setCurrentView('dashboard');
-                  setIsMenuOpen(false);
-                }}
+              <Link 
+                href="/admin/dashboard"
+                onClick={() => setIsMenuOpen(false)}
                 className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-800 hover:text-white transition text-left cursor-pointer"
               >
                 <LayoutDashboard className="w-4 h-4 text-[#FF5733]" />
                 <span>Dashboard & Stats</span>
-              </button>
+              </Link>
 
               <Link 
                 href="/qui-sommes-nous" 

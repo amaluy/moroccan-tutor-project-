@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Footer from '../components/Footer';
 import HelpModal from '../components/HelpModal';
-import AdminDashboardPage from './admindashboard';
+import AdminDashboardPage from './dashboard/adminPanel';
 import AdminNavbar from './adminNavbar'; // Import de la navbar centralisée
 import { supabase } from '@/lib/supabase';
 import { 
