@@ -4,11 +4,11 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { 
-  BookOpen, Users, Sparkles, Bot, Send, RefreshCw, 
-  CheckCircle, Trash2, Image as ImageIcon, Eye, X, Clock, 
-  BarChart3, Upload, Settings, HelpCircle, Plus, Bell, ChevronRight, TrendingUp, MapPin, Menu,
+  BookOpen, Users, CheckCircle, Trash2, Image as ImageIcon, Eye, X, Clock, 
+  BarChart3, Upload, Settings, HelpCircle, Plus, Bell, ChevronRight, TrendingUp, Menu,
   LayoutDashboard, CheckSquare, Calendar as CalendarIcon, Users2, LogOut
 } from 'lucide-react';
+
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -20,7 +20,7 @@ export default function AdminDashboardPage() {
   const [authorized, setAuthorized] = useState(false);
   
   const [activeMenu, setActiveMenu] = useState<'dashboard' | 'tasks' | 'calendar' | 'analytics' | 'team' | 'settings' | 'help'>('dashboard');
-  const [activeTab, setActiveTab] = useState<'ia_agent' | 'existants' | 'nouveaux'>('nouveaux');
+  const [activeTab, setActiveTab] = useState<'existants' | 'nouveaux'>('nouveaux');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const [professeursNouveaux, setProfesseursNouveaux] = useState<any[]>([]);
@@ -32,11 +32,6 @@ export default function AdminDashboardPage() {
 
   const [selectedRequest, setSelectedRequest] = useState<any | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
-  
-  const [chatInput, setChatInput] = useState('');
-  const [messages, setMessages] = useState<any[]>([
-    { role: 'assistant', text: "Bonjour Émil ! Je suis ton assistant IA. Je surveille tes tables Supabase 'professors' et 'requests'. Dis-moi par exemple : 'Valide tous les nouveaux profs' ou demande-moi le statut de la plateforme !" }
-  ]);
 
   useEffect(() => {
     localStorage.setItem('user_email', 'berrada0amal@gmail.com');
@@ -232,38 +227,6 @@ export default function AdminDashboardPage() {
     }
   };
 
-  const handleAiValidateAll = async () => {
-    if (professeursNouveaux.length === 0) return "Il n'y a aucune nouvelle demande en attente !";
-    try {
-      for (const reqItem of professeursNouveaux) {
-        await handleApproveRequest(reqItem);
-      }
-      return `✨ Mission accomplie ! J'ai validé ${professeursNouveaux.length} professeur(s).`;
-    } catch (err: any) {
-      return `Oups : ${err.message}`;
-    }
-  };
-
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!chatInput.trim()) return;
-
-    const userMsg = chatInput;
-    setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
-    setChatInput('');
-
-    let aiReply = "";
-    if (userMsg.toLowerCase().includes('valide') || userMsg.toLowerCase().includes('tout')) {
-      aiReply = await handleAiValidateAll();
-    } else {
-      aiReply = `J'ai bien reçu ta consigne ("${userMsg}").`;
-    }
-
-    setTimeout(() => {
-      setMessages(prev => [...prev, { role: 'assistant', text: aiReply }]);
-    }, 500);
-  };
-
   const renderAvailabilityGrid = (disponibilites: any) => {
     const days = [
       { key: 'lu', label: 'Lu' }, { key: 'ma', label: 'Ma' },
@@ -345,7 +308,7 @@ export default function AdminDashboardPage() {
 
         <div className="flex items-center gap-4">
           <button onClick={fetchDataFromSupabase} title="Actualiser les données" className="p-2 text-gray-600 hover:bg-gray-100 rounded-full relative transition cursor-pointer">
-            <RefreshCw className={`w-4 h-4 ${isLoadingDb ? 'animate-spin' : ''}`} />
+            <span className={`w-4 h-4 flex items-center justify-center ${isLoadingDb ? 'animate-spin' : ''}`}>🔄</span>
           </button>
           <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-full relative transition cursor-pointer">
             <Bell className="w-4 h-4" />
@@ -381,10 +344,9 @@ export default function AdminDashboardPage() {
           </div>
         </div>
 
-        {/* STATS PRINCIPALES (AVEC LE NOUVEAU BLOC VISITOR) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        {/* STATS PRINCIPALES (4 cartes) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           
-          {/* CARTE VISITOR AJOUTÉE */}
           <div className="bg-white border border-gray-200 p-6 rounded-3xl shadow-xs flex flex-col justify-between h-36 relative">
             <div className="flex justify-between items-start">
               <div className="w-10 h-10 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-700">
@@ -427,8 +389,13 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
-          <div className="bg-white border border-gray-200 p-6 rounded-3xl shadow-xs flex flex-col justify-between h-36">
-            <div className="flex justify-between items-start">
+          {/* Carte Demandes en attente interactive (cliquable) */}
+          {/* Carte Demandes en attente interactive (cliquable vers la nouvelle page) */}
+          <div 
+            onClick={() => router.push('/admin/dashboard/requests')}
+            className="bg-white border border-gray-200 p-6 rounded-3xl shadow-xs flex flex-col justify-between h-36 cursor-pointer hover:border-gray-400 transition"
+          >
+            <div className="flex justify-space items-start justify-between">
               <span className="text-xs font-medium text-gray-500">Demandes en attente</span>
               <span className="p-1.5 bg-gray-100 rounded-full"><ChevronRight className="w-4 h-4 text-gray-600" /></span>
             </div>
@@ -438,18 +405,6 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
-          <div className="bg-white border border-gray-200 p-6 rounded-3xl shadow-xs flex flex-col justify-between h-36">
-            <div className="flex justify-between items-start">
-              <span className="text-xs font-medium text-gray-500">Assistant IA</span>
-              <span className="p-1.5 bg-gray-100 rounded-full"><ChevronRight className="w-4 h-4 text-gray-600" /></span>
-            </div>
-            <div>
-              <h3 className="text-xl font-black text-purple-600 flex items-center gap-2 mt-1">
-                <Sparkles className="w-5 h-5 text-amber-500 animate-pulse" /> Actif
-              </h3>
-              <p className="text-[10px] text-gray-400 mt-1">Supabase synchronisé</p>
-            </div>
-          </div>
         </div>
 
         {/* GRAPHIQUES CA & RÉPARTITION */}
@@ -513,8 +468,8 @@ export default function AdminDashboardPage() {
           </div>
         </div>
 
-        {/* TABLEAU / ONGLET SUPABASE */}
-        <div className="bg-white rounded-3xl border border-gray-200 p-6 shadow-xs space-y-6">
+        {/* TABLEAU / ONGLET SUPABASE AVEC ID DE SECTION */}
+        <div id="validation-section" className="bg-white rounded-3xl border border-gray-200 p-6 shadow-xs space-y-6">
           <div className="flex flex-wrap gap-3 border-b border-gray-100 pb-4">
             <button onClick={() => setActiveTab('nouveaux')} className={`px-5 py-2.5 rounded-xl font-bold text-xs transition cursor-pointer flex items-center gap-2 ${activeTab === 'nouveaux' ? 'bg-[#103D3B] text-white shadow-xs' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
               <BookOpen className="w-3.5 h-3.5 text-[#FF5A5F]" /> <span>Demandes en attente ({professeursNouveaux.length})</span>
@@ -522,18 +477,12 @@ export default function AdminDashboardPage() {
             <button onClick={() => setActiveTab('existants')} className={`px-5 py-2.5 rounded-xl font-bold text-xs transition cursor-pointer flex items-center gap-2 ${activeTab === 'existants' ? 'bg-[#103D3B] text-white shadow-xs' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
               <Users className="w-3.5 h-3.5 text-blue-500" /> <span>Professeurs Actifs ({professeursExistants.length})</span>
             </button>
-            <button onClick={() => setActiveTab('ia_agent')} className={`px-5 py-2.5 rounded-xl font-bold text-xs transition cursor-pointer flex items-center gap-2 ${activeTab === 'ia_agent' ? 'bg-purple-600 text-white shadow-xs' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-              <Bot className="w-3.5 h-3.5" /> <span>Assistant IA Bot</span>
-            </button>
           </div>
 
           {activeTab === 'nouveaux' && (
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <h2 className="text-base font-black text-gray-900">Validation des profs & Preuves de paiement</h2>
-                <button onClick={async () => { const res = await handleAiValidateAll(); alert(res); }} className="px-4 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 font-bold text-xs rounded-xl transition cursor-pointer flex items-center gap-2">
-                  <Sparkles className="w-3.5 h-3.5" /> <span>Tout valider en 1 clic (IA)</span>
-                </button>
               </div>
 
               {professeursNouveaux.length === 0 ? (
@@ -625,36 +574,9 @@ export default function AdminDashboardPage() {
               </div>
             </div>
           )}
-
-          {activeTab === 'ia_agent' && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="bg-gradient-to-br from-purple-900 to-indigo-900 text-white p-6 rounded-2xl shadow-md flex flex-col justify-between">
-                <div>
-                  <h2 className="text-lg font-black mb-2">Commandes Rapides IA</h2>
-                  <p className="text-xs text-purple-200 mb-4">Utilisez l'intelligence artificielle pour automatiser vos tâches administratives.</p>
-                </div>
-                <button onClick={async () => { const res = await handleAiValidateAll(); setMessages(prev => [...prev, { role: 'assistant', text: res }]); }} className="w-full py-3 bg-white text-purple-900 font-black text-xs rounded-xl shadow transition cursor-pointer">
-                  Valider toutes les demandes
-                </button>
-              </div>
-              <div className="lg:col-span-2 bg-gray-50 rounded-2xl border border-gray-200 flex flex-col h-[400px]">
-                <div className="flex-1 p-4 overflow-y-auto space-y-3">
-                  {messages.map((msg, index) => (
-                    <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`max-w-md p-3 rounded-2xl text-xs leading-relaxed ${msg.role === 'user' ? 'bg-purple-600 text-white' : 'bg-white text-gray-800 border border-gray-200'}`}>{msg.text}</div>
-                    </div>
-                  ))}
-                </div>
-                <form onSubmit={handleSendMessage} className="p-3 border-t border-gray-200 flex gap-2 bg-white rounded-b-2xl">
-                  <input type="text" value={chatInput} onChange={(e) => setChatInput(e.target.value)} placeholder="Écrivez une consigne à l'IA..." className="flex-1 px-4 py-2 bg-gray-100 rounded-xl text-xs focus:outline-none" />
-                  <button type="submit" className="px-4 py-2 bg-purple-600 text-white rounded-xl cursor-pointer"><Send className="w-4 h-4" /></button>
-                </form>
-              </div>
-            </div>
-          )}
         </div>
 
-        {/* ================= NOUVEAU : GRAPHIQUE LINÉAIRE DÉGRADÉ EN BAS ================= */}
+        {/* GRAPHIQUE LINÉAIRE DÉGRADÉ EN BAS */}
         <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-xs space-y-4">
           <div className="flex items-center justify-between">
             <div>
@@ -673,10 +595,8 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
-          {/* Graphique SVG élégant avec courbe bleue et dégradé en arrière-plan */}
           <div className="relative w-full h-72 pt-6 pb-2 px-2 bg-white rounded-2xl border border-gray-100 flex flex-col justify-end">
             
-            {/* Lignes horizontales de repère (100%, 80%, 60%, 40%, 20%) */}
             <div className="absolute inset-0 flex flex-col justify-between p-6 pointer-events-none opacity-40">
               <div className="w-full border-b border-dashed border-gray-200 flex items-center"><span className="text-[10px] text-gray-400 font-medium">100%</span></div>
               <div className="w-full border-b border-dashed border-gray-200 flex items-center"><span className="text-[10px] text-gray-400 font-medium">80%</span></div>
@@ -685,7 +605,6 @@ export default function AdminDashboardPage() {
               <div className="w-full border-b border-dashed border-gray-200 flex items-center"><span className="text-[10px] text-gray-400 font-medium">20%</span></div>
             </div>
 
-            {/* SVG du Graphique Linéaire Courbé avec Dégradé */}
             <div className="relative w-full h-48 z-10">
               <svg viewBox="0 0 1000 300" className="w-full h-full overflow-visible" preserveAspectRatio="none">
                 <defs>
@@ -695,13 +614,11 @@ export default function AdminDashboardPage() {
                   </linearGradient>
                 </defs>
 
-                {/* Zone colorée sous la courbe (dégradé) */}
                 <path 
                   d="M 0,260 Q 80,240 160,230 T 320,170 T 480,200 T 640,110 T 800,190 T 960,120 L 960,300 L 0,300 Z" 
                   fill="url(#blueGradient)" 
                 />
 
-                {/* Ligne principale du graphique */}
                 <path 
                   d="M 0,260 Q 80,240 160,230 T 320,170 T 480,200 T 640,110 T 800,190 T 960,120" 
                   fill="none" 
@@ -710,14 +627,12 @@ export default function AdminDashboardPage() {
                   strokeLinecap="round"
                 />
 
-                {/* Point culminant avec son étiquette */}
                 <g transform="translate(640, 110)">
                   <circle cx="0" cy="0" r="6" fill="#ffffff" stroke="#3b82f6" strokeWidth="3" />
                   <rect x="-45" y="-38" width="90" height="26" rx="6" fill="#3b82f6" />
                   <text x="0" y="-21" fill="#ffffff" fontSize="11" fontWeight="bold" textAnchor="middle">64,3664.77</text>
                 </g>
 
-                {/* Autres points sur la courbe */}
                 <circle cx="160" cy="230" r="4" fill="#ffffff" stroke="#3b82f6" strokeWidth="2" />
                 <circle cx="320" cy="170" r="4" fill="#ffffff" stroke="#3b82f6" strokeWidth="2" />
                 <circle cx="480" cy="200" r="4" fill="#ffffff" stroke="#3b82f6" strokeWidth="2" />
@@ -725,7 +640,6 @@ export default function AdminDashboardPage() {
               </svg>
             </div>
 
-            {/* Légende de l'axe X (Valeurs en bas : 5k, 10k, 15k...) */}
             <div className="flex justify-between text-[11px] font-semibold text-gray-400 px-2 pt-2 border-t border-gray-100">
               <span>5k</span>
               <span>10k</span>
