@@ -89,7 +89,7 @@ export default function AdminDashboardPage() {
     }
   };
 
-  // --- CALCUL DES STATISTIQUES RÉGIONALES 100% VRAIES (BASÉ SUR PROFESSEURS & TRANSACTIONS) ---
+  // --- CALCUL DES STATISTIQUES RÉGIONALES (EN NOMBRE DE PROFESSEURS) ---
   const getRegionalStats = () => {
     // Filtrer pour exclure les administrateurs (ville === 'admin')
     const validProfs = professeursExistants.filter(p => {
@@ -97,8 +97,7 @@ export default function AdminDashboardPage() {
       return ville && ville !== 'admin';
     });
 
-    const totalValid = validProfs.length;
-    if (totalValid === 0) return [];
+    if (validProfs.length === 0) return [];
 
     // Créer une table de correspondances email/ID -> ville depuis professors
     const profCityMap: { [key: string]: string } = {};
@@ -108,70 +107,52 @@ export default function AdminDashboardPage() {
       if (emailKey) profCityMap[emailKey] = cityVal;
     });
 
-    const counts: { [key: string]: number } = {
-      'Grand Casablanca': 0,
-      'Marrakech-Safi': 0,
-      'Rabat-Salé-Kénitra': 0,
-      'Fès-Meknès': 0,
-      'Tanger-Tétouan': 0,
-    };
+    // Dictionnaires dynamiques
+    const counts: { [key: string]: number } = {};
+    const amounts: { [key: string]: number } = {};
 
-    const amounts: { [key: string]: number } = {
-      'Grand Casablanca': 0,
-      'Marrakech-Safi': 0,
-      'Rabat-Salé-Kénitra': 0,
-      'Fès-Meknès': 0,
-      'Tanger-Tétouan': 0,
-    };
-
-    // 1. Compter les profs par région réelle
+    // 1. Compter les profs par région
     validProfs.forEach(p => {
       const v = (p.ville || p.city || '').toLowerCase().trim();
+      let regionName = 'Grand Casablanca';
+
       if (v.includes('casa') || v.includes('casablanca')) {
-        counts['Grand Casablanca']++;
+        regionName = 'Grand Casablanca';
       } else if (v.includes('marakech') || v.includes('marrakech') || v.includes('safi')) {
-        counts['Marrakech-Safi']++;
+        regionName = 'Marrakech-Safi';
       } else if (v.includes('rabat') || v.includes('salé') || v.includes('kenitra') || v.includes('kénitra')) {
-        counts['Rabat-Salé-Kénitra']++;
+        regionName = 'Rabat-Salé-Kénitra';
       } else if (v.includes('fès') || v.includes('fes') || v.includes('meknès') || v.includes('meknes')) {
-        counts['Fès-Meknès']++;
+        regionName = 'Fès-Meknès';
       } else if (v.includes('tanger') || v.includes('tetouan') || v.includes('tétouan')) {
-        counts['Tanger-Tétouan']++;
+        regionName = 'Tanger-Tétouan';
       } else {
-        counts['Grand Casablanca']++;
+        regionName = v.charAt(0).toUpperCase() + v.slice(1);
       }
+
+      counts[regionName] = (counts[regionName] || 0) + 1;
+      amounts[regionName] = amounts[regionName] || 0;
     });
 
-    // 2. Assigner les montants des transactions réelles selon la ville du prof concerné (CORRIGÉ ICI)
+    // 2. Assigner les montants des transactions réelles selon la ville du prof concerné
     transactionsList.forEach(t => {
       const profId = (t.prof_id || t.email || '').toLowerCase().trim();
       const montantTrans = Number(t.amount || t.montant || 0);
       const city = profCityMap[profId] || '';
 
-      if (city.includes('casa') || city.includes('casablanca')) {
-        amounts['Grand Casablanca'] += montantTrans;
-      } else if (city.includes('marrakech') || city.includes('marakech') || city.includes('safi')) {
-        amounts['Marrakech-Safi'] += montantTrans;
+      let regionName = 'Grand Casablanca';
+      if (city.includes('marrakech') || city.includes('marakech') || city.includes('safi')) {
+        regionName = 'Marrakech-Safi';
       } else if (city.includes('rabat') || city.includes('salé')) {
-        amounts['Rabat-Salé-Kénitra'] += montantTrans;
+        regionName = 'Rabat-Salé-Kénitra';
+      }
+
+      if (amounts[regionName] !== undefined) {
+        amounts[regionName] += montantTrans;
       } else {
-        // Si aucune correspondance directe d'email, on répartit par défaut sur Casablanca si des profs y sont
-        if (amounts['Grand Casablanca'] === 0 && montantTrans > 0) {
-          amounts['Grand Casablanca'] += montantTrans;
-        }
+        amounts['Grand Casablanca'] = (amounts['Grand Casablanca'] || 0) + montantTrans;
       }
     });
-
-    // Si les transactions n'ont pas de lien d'email direct mais qu'il y a un CA global, on répartit proportionnellement aux vrais profs actifs
-    const totalAssignedCa = Object.values(amounts).reduce((a, b) => a + b, 0);
-    if (totalAssignedCa === 0 && realCa > 0) {
-      validProfs.forEach(p => {
-        const v = (p.ville || p.city || '').toLowerCase().trim();
-        const share = realCa / totalValid;
-        if (v.includes('casa') || v.includes('casablanca')) amounts['Grand Casablanca'] += share;
-        else if (v.includes('marrakech') || v.includes('marakech')) amounts['Marrakech-Safi'] += share;
-      });
-    }
 
     const colors = [
       'bg-purple-500',
@@ -182,15 +163,15 @@ export default function AdminDashboardPage() {
     ];
 
     let index = 0;
+    // Retourne le nombre exact de profs au lieu d'un pourcentage
     return Object.keys(counts).map(region => {
       const count = counts[region];
-      const percent = totalValid > 0 ? ((count / totalValid) * 100).toFixed(1).replace('.', ',') : '0,0';
-      const regionalAmount = Math.round(amounts[region]);
+      const regionalAmount = Math.round(amounts[region] || 0);
       const color = colors[index++ % colors.length];
 
       return {
         region,
-        percent: `${percent}%`,
+        countText: `${count} prof${count > 1 ? 's' : ''}`,
         amount: `${regionalAmount.toLocaleString()} MAD`,
         color,
         count
@@ -485,11 +466,11 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
-          {/* RÉPARTITION RÉGIONALE 100% VRAIE */}
+          {/* RÉPARTITION RÉGIONALE EN NOMBRE DE PROFS */}
           <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-xs flex flex-col justify-between">
             <div>
               <h2 className="text-base font-black text-gray-900">Professeurs par région</h2>
-              <p className="text-xs text-gray-400">Répartition géographique réelle (Casa & Marrakech)</p>
+              <p className="text-xs text-gray-400">Nombre réel de professeurs par zone</p>
             </div>
 
             <div className="space-y-3 my-4">
@@ -503,7 +484,7 @@ export default function AdminDashboardPage() {
                       <span className="font-bold text-gray-700">{reg.region}</span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="font-semibold text-gray-500">{reg.percent}</span>
+                      <span className="font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-md">{reg.countText}</span>
                       <span className="font-bold text-gray-900">{reg.amount}</span>
                     </div>
                   </div>
