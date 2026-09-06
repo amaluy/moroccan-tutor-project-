@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { 
   BookOpen, Users, CheckCircle, Trash2, Image as ImageIcon, Eye, X, Clock, 
   BarChart3, Upload, Settings, HelpCircle, Plus, Bell, ChevronRight, TrendingUp, Menu,
-  LayoutDashboard, CheckSquare, Calendar as CalendarIcon, Users2, LogOut
+  LayoutDashboard, CheckSquare, Calendar as CalendarIcon, Users2, LogOut, Download, Calendar
 } from 'lucide-react';
 
 import { createClient } from '@supabase/supabase-js';
@@ -25,12 +25,16 @@ export default function AdminDashboardPage() {
   const [professeursNouveaux, setProfesseursNouveaux] = useState<any[]>([]);
   const [professeursExistants, setProfesseursExistants] = useState<any[]>([]);
   const [transactionsList, setTransactionsList] = useState<any[]>([]);
+  const [allRequestsHistory, setAllRequestsHistory] = useState<any[]>([]);
   const [realCa, setRealCa] = useState<number>(0);
   const [isLoadingDb, setIsLoadingDb] = useState(true);
   const [dbError, setDbError] = useState<string | null>(null);
 
-  const [selectedRequest, setSelectedRequest] = useState<any | null>(null);
-  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  // --- ÉTATS POUR LE GRAPHIQUE (Années 2026, 2027 + Clic dynamique) ---
+  const currentYearStr = new Date().getFullYear().toString();
+  const [selectedYear, setSelectedYear] = useState<string>(currentYearStr);
+  const [availableYears, setAvailableYears] = useState<string[]>(['2026', '2027', currentYearStr]);
+  const [activePointIndex, setActivePointIndex] = useState<number | null>(null);
 
   useEffect(() => {
     localStorage.setItem('user_email', 'berrada0amal@gmail.com');
@@ -45,12 +49,10 @@ export default function AdminDashboardPage() {
     setDbError(null);
 
     try {
-      // 1. Récupérer les professeurs existants
       const { data: profsData, error: profsError } = await supabase.from('professors').select('*');
       if (profsError) setDbError(profsError.message);
       else if (profsData) setProfesseursExistants(profsData);
 
-      // 2. Récupérer les nouvelles demandes
       const { data: reqsData, error: reqsError } = await supabase.from('requests').select('*');
       if (reqsError) {
         setDbError(reqsError.message);
@@ -58,7 +60,26 @@ export default function AdminDashboardPage() {
         setProfesseursNouveaux(reqsData);
       }
 
-      // 3. Récupérer les transactions réelles et calculer le Chiffre d'Affaires
+      let combinedHistory: any[] = [];
+      if (reqsData) combinedHistory = [...reqsData];
+      if (profsData) {
+        combinedHistory = [...combinedHistory, ...profsData];
+      }
+      setAllRequestsHistory(combinedHistory);
+
+      const yearsSet = new Set<string>(['2026', '2027', currentYearStr]);
+      combinedHistory.forEach(item => {
+        const dateVal = item.created_at || item.date || item.inserted_at;
+        if (dateVal) {
+          const d = new Date(dateVal);
+          if (!isNaN(d.getTime())) {
+            yearsSet.add(d.getFullYear().toString());
+          }
+        }
+      });
+      const sortedYears = Array.from(yearsSet).sort((a, b) => Number(b) - Number(a));
+      setAvailableYears(sortedYears);
+
       let totalCa = 0;
       const { data: transData, error: transError } = await supabase.from('transactions').select('*');
       if (!transError && transData) {
@@ -83,7 +104,52 @@ export default function AdminDashboardPage() {
     }
   };
 
-  // --- CALCUL DES STATISTIQUES RÉGIONALES (EN NOMBRE DE PROFESSEURS) ---
+  // --- CALCUL DES DEMANDES PAR MOIS FILTRÉES PAR ANNÉE ---
+  const getMonthlyRequestsData = () => {
+    const monthsCounts = Array(12).fill(0);
+
+    allRequestsHistory.forEach(item => {
+      const dateVal = item.created_at || item.date || item.inserted_at;
+      if (dateVal) {
+        const d = new Date(dateVal);
+        if (!isNaN(d.getTime())) {
+          if (d.getFullYear().toString() === selectedYear) {
+            const monthIndex = d.getMonth(); 
+            monthsCounts[monthIndex]++;
+          }
+        }
+      }
+    });
+
+    const monthNames = ['Janv.', 'Fév.', 'Mars', 'Avr.', 'Mai', 'Juin', 'Juil.', 'Août', 'Sept.', 'Oct.', 'Nov.', 'Déc.'];
+    return monthNames.map((name, index) => ({
+      month: name,
+      count: monthsCounts[index]
+    }));
+  };
+
+  const monthlyData = getMonthlyRequestsData();
+  
+  // Échelle fixe demandée : 0, 50, 100, 150, 200 (ou plus si dépassement)
+  const maxDataVal = Math.max(...monthlyData.map(d => d.count), 0);
+  const maxMonthlyCount = maxDataVal > 200 ? Math.ceil(maxDataVal / 50) * 50 : 200;
+
+  // --- FONCTION D'EXPORT EXCEL (CSV) ---
+  const exportToExcel = () => {
+    let csvContent = "data:text/csv;charset=utf-8,Mois;Annee;Nombre de Demandes\n";
+    monthlyData.forEach(item => {
+      csvContent += `${item.month};${selectedYear};${item.count}\n`;
+    });
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `demandes_profmaroc_${selectedYear}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const getRegionalStats = () => {
     const validProfs = professeursExistants.filter(p => {
       const ville = (p.ville || p.city || '').toLowerCase().trim();
@@ -143,13 +209,7 @@ export default function AdminDashboardPage() {
       }
     });
 
-    const colors = [
-      'bg-purple-500',
-      'bg-amber-500',
-      'bg-red-400',
-      'bg-sky-400',
-      'bg-orange-400'
-    ];
+    const colors = ['bg-purple-500', 'bg-amber-500', 'bg-red-400', 'bg-sky-400', 'bg-orange-400'];
 
     let index = 0;
     return Object.keys(counts).map(region => {
@@ -169,69 +229,12 @@ export default function AdminDashboardPage() {
 
   const regionalStatsData = getRegionalStats();
 
-  const handleApproveRequest = async (reqItem: any) => {
-    try {
-      const pName = reqItem['Prénom'] || reqItem.prenom || '';
-      const nName = reqItem['Nom'] || reqItem.nom || '';
-      const fullName = (`${pName} ${nName}`).trim() || 'Nouveau Professeur';
-      const profEmail = reqItem.email || '';
-
-      let newProf: any = {};
-      const fieldsToMap = [
-        'Prénom', 'Nom', 'age', 'ville', 'profession', 'dernier diplome', 
-        'tarif', 'email', 'telephone', 'numero de recu', 'photo_URL', 
-        'numero de transaction', 'disponibilities', 'type_cours', 
-        'distance_max', 'frais_deplacement', 'statut', 'experience', 
-        'niveau', 'bio', 'matiere'
-      ];
-
-      fieldsToMap.forEach(field => {
-        if (reqItem[field] !== undefined) {
-          newProf[field] = reqItem[field];
-        }
-      });
-
-      newProf.is_approved = true;
-
-      const { error: insertError } = await supabase.from('professors').insert([newProf]);
-      if (insertError) throw insertError;
-
-      if (profEmail) {
-        await supabase.from('leads').insert([{ email: profEmail, created_at: new Date().toISOString() }]);
-      }
-
-      if (reqItem.id) {
-        await supabase.from('requests').delete().eq('id', reqItem.id);
-      }
-
-      setSelectedRequest(null);
-      await fetchDataFromSupabase();
-      alert(`Le profil de ${fullName} a été accepté et publié avec succès !`);
-    } catch (err: any) {
-      alert(`Erreur lors de la validation : ${err.message}`);
-    }
-  };
-
-  const handleRejectRequest = async (id: string) => {
-    if (!confirm("Voulez-vous vraiment rejeter cette demande ? Elle sera supprimée.")) return;
-    try {
-      const { error } = await supabase.from('requests').delete().eq('id', id);
-      if (error) throw error;
-
-      setSelectedRequest(null);
-      await fetchDataFromSupabase();
-      alert("La demande a été rejetée.");
-    } catch (err: any) {
-      alert(`Erreur : ${err.message}`);
-    }
-  };
-
   if (!authorized) return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500 font-medium">Chargement...</div>;
 
   return (
     <div className="min-h-screen bg-[#F4F5F7] text-gray-900 font-sans flex flex-col w-full">
       
-      {/* ================= UNIQUE EN-TÊTE ADMIN ================= */}
+      {/* ================= EN-TÊTE ADMIN ================= */}
       <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between sticky top-0 z-20 w-full shadow-2xs">
         <div className="flex items-center gap-4">
           <button 
@@ -267,41 +270,37 @@ export default function AdminDashboardPage() {
         </div>
       </header>
 
-      {/* ================= CONTENU PRINCIPAL PLEINE LARGEUR ================= */}
+      {/* ================= CONTENU PRINCIPAL ================= */}
       <main className="flex-1 p-8 space-y-8 max-w-[95rem] w-full mx-auto overflow-y-auto">
         
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-black text-gray-900 tracking-tight">Dashboard & Analyses</h1>
-            <p className="text-xs text-gray-500 mt-0.5">Suivi financier, répartition géographique et performance des matières au Maroc.</p>
+            <p className="text-xs text-gray-500 mt-0.5">Suivi financier, répartition géographique et performance des demandes au Maroc.</p>
           </div>
           <div className="flex items-center gap-3">
             <button onClick={() => router.push('/admin/dashboard/requests')} className="px-4 py-2.5 bg-[#103D3B] hover:bg-[#0d312f] text-white font-bold text-xs rounded-xl shadow transition flex items-center gap-2 cursor-pointer">
               <Plus className="w-4 h-4" /> <span>Gérer les Demandes ({professeursNouveaux.length})</span>
             </button>
-            <button onClick={fetchDataFromSupabase} className="px-4 py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-bold text-xs rounded-xl transition flex items-center gap-2 cursor-pointer">
-              <Upload className="w-4 h-4" /> <span>Import Data</span>
+            <button onClick={exportToExcel} className="px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs rounded-xl shadow transition flex items-center gap-2 cursor-pointer">
+              <Download className="w-4 h-4" /> <span>Exporter Excel (.csv)</span>
             </button>
           </div>
         </div>
 
-        {/* STATS PRINCIPALES (4 cartes) */}
+        {/* STATS PRINCIPALES */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          
           <div className="bg-white border border-gray-200 p-6 rounded-3xl shadow-xs flex flex-col justify-between h-36 relative">
             <div className="flex justify-between items-start">
-              <div className="w-10 h-10 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-700">
+              <div className="w-10 h-10 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-750">
                 <Users className="w-5 h-5" />
               </div>
-              <span className="px-2.5 py-1 bg-[#FF4747] text-white text-[11px] font-black rounded-full shadow-2xs">
-                -2,08%
-              </span>
+              <span className="px-2.5 py-1 bg-[#FF4747] text-white text-[11px] font-black rounded-full shadow-2xs">-2,08%</span>
             </div>
             <div>
               <span className="text-xs font-medium text-gray-500 block mb-0.5">Visitor</span>
               <div className="flex items-baseline gap-2">
                 <h3 className="text-2xl font-black text-gray-900 tracking-tight">14.987</h3>
-                <span className="text-[10px] text-gray-400 font-medium leading-tight">Users vs last month</span>
               </div>
             </div>
           </div>
@@ -313,9 +312,7 @@ export default function AdminDashboardPage() {
             </div>
             <div>
               <h3 className="text-2xl font-black">{realCa.toLocaleString()} MAD</h3>
-              <p className="text-[10px] text-emerald-300 font-bold mt-1 flex items-center gap-1">
-                <span className="text-emerald-400">Transactions Réelles</span> Supabase
-              </p>
+              <p className="text-[10px] text-emerald-300 font-bold mt-1">Transactions Réelles Supabase</p>
             </div>
           </div>
 
@@ -330,11 +327,7 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
-          {/* Carte Demandes en attente redirigeant vers la page dédiée */}
-          <div 
-            onClick={() => router.push('/admin/dashboard/requests')}
-            className="bg-white border border-gray-200 p-6 rounded-3xl shadow-xs flex flex-col justify-between h-36 cursor-pointer hover:border-gray-400 transition"
-          >
+          <div onClick={() => router.push('/admin/dashboard/requests')} className="bg-white border border-gray-200 p-6 rounded-3xl shadow-xs flex flex-col justify-between h-36 cursor-pointer hover:border-gray-400 transition">
             <div className="flex justify-between items-start">
               <span className="text-xs font-medium text-gray-500">Demandes en attente</span>
               <span className="p-1.5 bg-gray-100 rounded-full"><ChevronRight className="w-4 h-4 text-gray-600" /></span>
@@ -344,10 +337,9 @@ export default function AdminDashboardPage() {
               <p className="text-[10px] text-gray-400 mt-1">Nécessite validation</p>
             </div>
           </div>
-
         </div>
 
-        {/* GRAPHIQUES CA & RÉPARTITION */}
+        {/* ================= GRAPHIQUES CA & RÉPARTITION RÉGIONALE (RESTAURÉS) ================= */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 bg-white p-6 rounded-3xl border border-gray-200 shadow-xs space-y-4">
             <div className="flex justify-between items-center">
@@ -375,7 +367,6 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
-          {/* RÉPARTITION RÉGIONALE EN NOMBRE DE PROFS */}
           <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-xs flex flex-col justify-between">
             <div>
               <h2 className="text-base font-black text-gray-900">Professeurs par région</h2>
@@ -408,183 +399,167 @@ export default function AdminDashboardPage() {
           </div>
         </div>
 
-        {/* GRAPHIQUE LINÉAIRE DÉGRADÉ EN BAS */}
+        {/* ================= GRAPHIQUE LINÉAIRE INTERACTIF (ANNÉES & ÉCHELLE 0-200) ================= */}
         <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-xs space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h2 className="text-base font-black text-gray-900">Sales Details</h2>
-              <p className="text-xs text-gray-400">Suivi détaillé des performances et flux d'activité mensuels</p>
+              <h2 className="text-base font-black text-gray-900">Nombre de demandes reçues par mois</h2>
+              <p className="text-xs text-gray-400">Cliquez sur un point du graphique pour afficher le chiffre exact de ce mois.</p>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold bg-blue-50 text-blue-600 px-3 py-1.5 rounded-xl border border-blue-100">
-                64,3664.77
+
+            <div className="flex items-center gap-3">
+              {/* Sélecteur d'Année (2026, 2027...) */}
+              <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-xl">
+                <Calendar className="w-4 h-4 text-gray-500" />
+                <span className="text-xs font-bold text-gray-600">Année :</span>
+                <select 
+                  value={selectedYear} 
+                  onChange={(e) => { setSelectedYear(e.target.value); setActivePointIndex(null); }}
+                  className="bg-transparent text-xs font-black text-gray-900 outline-none cursor-pointer"
+                >
+                  {availableYears.map(yr => (
+                    <option key={yr} value={yr}>{yr}</option>
+                  ))}
+                </select>
+              </div>
+
+              <span className="text-xs font-bold bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-xl border border-emerald-100">
+                Total {selectedYear} : {monthlyData.reduce((sum, item) => sum + item.count, 0)} demandes
               </span>
-              <select className="bg-gray-50 border border-gray-200 text-xs text-gray-700 font-semibold px-3 py-1.5 rounded-xl outline-none cursor-pointer">
-                <option>October</option>
-                <option>September</option>
-                <option>August</option>
-              </select>
             </div>
           </div>
 
-          <div className="relative w-full h-72 pt-6 pb-2 px-2 bg-white rounded-2xl border border-gray-100 flex flex-col justify-end">
+          <div className="relative w-full h-80 pt-10 pb-4 px-6 bg-white rounded-2xl border border-gray-100 flex flex-col justify-end">
             
-            <div className="absolute inset-0 flex flex-col justify-between p-6 pointer-events-none opacity-40">
-              <div className="w-full border-b border-dashed border-gray-200 flex items-center"><span className="text-[10px] text-gray-400 font-medium">100%</span></div>
-              <div className="w-full border-b border-dashed border-gray-200 flex items-center"><span className="text-[10px] text-gray-400 font-medium">80%</span></div>
-              <div className="w-full border-b border-dashed border-gray-200 flex items-center"><span className="text-[10px] text-gray-400 font-medium">60%</span></div>
-              <div className="w-full border-b border-dashed border-gray-200 flex items-center"><span className="text-[10px] text-gray-400 font-medium">40%</span></div>
-              <div className="w-full border-b border-dashed border-gray-200 flex items-center"><span className="text-[10px] text-gray-400 font-medium">20%</span></div>
+            {/* Échelle verticale personnalisée (0, 50, 100, 150, 200) */}
+            <div className="absolute inset-0 flex flex-col justify-between p-6 pointer-events-none opacity-50">
+              <div className="w-full border-b border-dashed border-gray-200 flex items-center justify-end"><span className="text-[10px] text-gray-400 font-bold pr-2">{maxMonthlyCount}</span></div>
+              <div className="w-full border-b border-dashed border-gray-200 flex items-center justify-end"><span className="text-[10px] text-gray-400 font-bold pr-2">{Math.round(maxMonthlyCount * 0.75)}</span></div>
+              <div className="w-full border-b border-dashed border-gray-200 flex items-center justify-end"><span className="text-[10px] text-gray-400 font-bold pr-2">{Math.round(maxMonthlyCount * 0.5)}</span></div>
+              <div className="w-full border-b border-dashed border-gray-200 flex items-center justify-end"><span className="text-[10px] text-gray-400 font-bold pr-2">{Math.round(maxMonthlyCount * 0.25)}</span></div>
+              <div className="w-full border-b border-dashed border-gray-200 flex items-center justify-end"><span className="text-[10px] text-gray-400 font-bold pr-2">0</span></div>
             </div>
 
-            <div className="relative w-full h-48 z-10">
-              <svg viewBox="0 0 1000 300" className="w-full h-full overflow-visible" preserveAspectRatio="none">
+            {/* Tracé SVG interactif */}
+            <div className="relative w-full h-48 z-10 ml-4">
+              <svg viewBox="0 0 1100 300" className="w-full h-full overflow-visible" preserveAspectRatio="none">
                 <defs>
-                  <linearGradient id="blueGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.35" />
-                    <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.0" />
+                  <linearGradient id="requestGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor="#103D3B" stopOpacity="0.3" />
+                    <stop offset="100%" stopColor="#103D3B" stopOpacity="0.0" />
                   </linearGradient>
                 </defs>
 
-                <path 
-                  d="M 0,260 Q 80,240 160,230 T 320,170 T 480,200 T 640,110 T 800,190 T 960,120 L 960,300 L 0,300 Z" 
-                  fill="url(#blueGradient)" 
-                />
+                {(() => {
+                  const points = monthlyData.map((d, index) => {
+                    const x = (index / (monthlyData.length - 1)) * 1050 + 25;
+                    const y = 270 - (d.count / maxMonthlyCount) * 240;
+                    return { x, y, count: d.count, month: d.month, index };
+                  });
 
-                <path 
-                  d="M 0,260 Q 80,240 160,230 T 320,170 T 480,200 T 640,110 T 800,190 T 960,120" 
-                  fill="none" 
-                  stroke="#3b82f6" 
-                  strokeWidth="3" 
-                  strokeLinecap="round"
-                />
+                  const pathD = points.reduce((acc, p, idx) => idx === 0 ? `M ${p.x},${p.y}` : `${acc} L ${p.x},${p.y}`, '');
+                  const areaD = `${pathD} L ${points[points.length - 1].x},300 L ${points[0].x},300 Z`;
 
-                <g transform="translate(640, 110)">
-                  <circle cx="0" cy="0" r="6" fill="#ffffff" stroke="#3b82f6" strokeWidth="3" />
-                  <rect x="-45" y="-38" width="90" height="26" rx="6" fill="#3b82f6" />
-                  <text x="0" y="-21" fill="#ffffff" fontSize="11" fontWeight="bold" textAnchor="middle">64,3664.77</text>
-                </g>
+                  return (
+                    <>
+                      <path d={areaD} fill="url(#requestGradient)" />
+                      <path d={pathD} fill="none" stroke="#103D3B" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                      
+                      {points.map((p) => {
+                        const isSelected = activePointIndex === p.index;
+                        return (
+                          <g key={p.index} transform={`translate(${p.x}, ${p.y})`} onClick={() => setActivePointIndex(p.index)} className="cursor-pointer group">
+                            {/* Zone de clic élargie */}
+                            <circle cx="0" cy="0" r="18" fill="transparent" />
+                            
+                            {/* Point sur la courbe (masqué par défaut, apparaît au clic/survol) */}
+                            <circle 
+                              cx="0" 
+                              cy="0" 
+                              r={isSelected ? "8" : "5"} 
+                              fill={isSelected ? "#FF5733" : "#ffffff"} 
+                              stroke="#103D3B" 
+                              strokeWidth="3" 
+                              className="transition-all duration-200 group-hover:scale-125"
+                            />
 
-                <circle cx="160" cy="230" r="4" fill="#ffffff" stroke="#3b82f6" strokeWidth="2" />
-                <circle cx="320" cy="170" r="4" fill="#ffffff" stroke="#3b82f6" strokeWidth="2" />
-                <circle cx="480" cy="200" r="4" fill="#ffffff" stroke="#3b82f6" strokeWidth="2" />
-                <circle cx="800" cy="190" r="4" fill="#ffffff" stroke="#3b82f6" strokeWidth="2" />
+                            {/* Infobulle affichée UNIQUEMENT au clic sur le point */}
+                            {isSelected && (
+                              <g transform="translate(0, -42)">
+                                <rect x="-35" y="-22" width="70" height="26" rx="6" fill="#103D3B" filter="drop-shadow(0px 4px 6px rgba(0,0,0,0.2))" />
+                                <text x="0" y="-7" fill="#ffffff" fontSize="11" fontWeight="bold" textAnchor="middle">
+                                  {p.count} dem.
+                                </text>
+                              </g>
+                            )}
+                          </g>
+                        );
+                      })}
+                    </>
+                  );
+                })()}
               </svg>
             </div>
 
-            <div className="flex justify-between text-[11px] font-semibold text-gray-400 px-2 pt-2 border-t border-gray-100">
-              <span>5k</span>
-              <span>10k</span>
-              <span>15k</span>
-              <span>20k</span>
-              <span>25k</span>
-              <span>30k</span>
-              <span>35k</span>
-              <span>40k</span>
-              <span>45k</span>
-              <span>50k</span>
-              <span>55k</span>
-              <span>60k</span>
+            {/* Légende des mois en bas */}
+            <div className="flex justify-between text-[11px] font-bold text-gray-500 pl-4 pr-2 pt-3 border-t border-gray-100">
+              {monthlyData.map((item, idx) => (
+                <span 
+                  key={idx} 
+                  onClick={() => setActivePointIndex(idx)}
+                  className={`text-center flex-1 cursor-pointer transition ${activePointIndex === idx ? 'text-[#FF5733] font-black underline' : 'hover:text-gray-900'}`}
+                >
+                  {item.month}
+                </span>
+              ))}
             </div>
           </div>
+
+          {activePointIndex !== null && (
+            <div className="flex items-center justify-between p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs">
+              <span className="font-bold text-amber-900">
+                📅 Mois sélectionné : <strong className="text-[#103D3B]">{monthlyData[activePointIndex].month} {selectedYear}</strong> — <strong>{monthlyData[activePointIndex].count}</strong> demande(s) enregistrée(s).
+              </span>
+              <button onClick={() => setActivePointIndex(null)} className="text-gray-500 hover:text-gray-900 font-bold cursor-pointer">Fermer ×</button>
+            </div>
+          )}
         </div>
 
       </main>
 
-      {/* ================= PANNEAU LATÉRAL COULISSANT ================= */}
+      {/* ================= MENU LATÉRAL ================= */}
       {isMobileMenuOpen && (
         <div className="fixed inset-0 z-50 flex">
           <div className="fixed inset-0 bg-black/40 backdrop-blur-xs transition-opacity" onClick={() => setIsMobileMenuOpen(false)}></div>
-
-          <div className="relative w-80 bg-white text-gray-800 flex flex-col justify-between shadow-2xl z-10 h-full border-r border-gray-100 animate-in slide-in-from-left duration-300">
+          <div className="relative w-80 bg-white text-gray-800 flex flex-col justify-between shadow-2xl z-10 h-full border-r border-gray-100">
             <div>
               <div className="p-6 flex items-center justify-between border-b border-gray-100">
                 <div className="flex items-center gap-2.5">
-                  <div className="bg-orange-50 p-1.5 rounded-xl border border-orange-100">
-                    <BookOpen className="w-5 h-5 text-[#FF5733]" />
-                  </div>
+                  <div className="bg-orange-50 p-1.5 rounded-xl border border-orange-100"><BookOpen className="w-5 h-5 text-[#FF5733]" /></div>
                   <div>
                     <span className="text-base font-black tracking-tight text-gray-900">prof<span className="text-[#FF5733]">maroc</span></span>
                     <p className="text-[9px] font-extrabold text-red-500 uppercase tracking-widest leading-none mt-0.5">ADMIN PANEL</p>
                   </div>
                 </div>
-                <button 
-                  onClick={() => setIsMobileMenuOpen(false)} 
-                  className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+                <button onClick={() => setIsMobileMenuOpen(false)} className="p-1.5 text-gray-400 hover:text-gray-700 rounded-lg cursor-pointer"><X className="w-5 h-5" /></button>
               </div>
 
               <div className="p-4 space-y-6">
-                <div>
-                  <p className="text-[10px] font-extrabold uppercase tracking-widest text-gray-400 px-3 mb-2">MENU</p>
-                  <nav className="space-y-1">
-                    <button 
-                      onClick={() => { setActiveMenu('dashboard'); setIsMobileMenuOpen(false); }} 
-                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold bg-[#0f2922] text-white transition shadow-xs cursor-pointer text-left"
-                    >
-                      <LayoutDashboard className="w-4 h-4 text-emerald-400" /> <span>Dashboard</span>
-                    </button>
-                    <button 
-                      onClick={() => { setActiveMenu('tasks'); setIsMobileMenuOpen(false); }} 
-                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition cursor-pointer text-left"
-                    >
-                      <div className="flex items-center gap-3">
-                        <CheckSquare className="w-4 h-4 text-gray-400" />
-                        <span>Tasks</span>
-                      </div>
-                      <span className="text-[10px] font-bold bg-red-100 text-red-600 px-2 py-0.5 rounded-full">4</span>
-                    </button>
-                    <button 
-                      onClick={() => { setActiveMenu('calendar'); setIsMobileMenuOpen(false); }} 
-                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition cursor-pointer text-left"
-                    >
-                      <CalendarIcon className="w-4 h-4 text-gray-400" /> <span>Calendar</span>
-                    </button>
-                    <button 
-                      onClick={() => { setActiveMenu('analytics'); setIsMobileMenuOpen(false); }} 
-                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition cursor-pointer text-left"
-                    >
-                      <BarChart3 className="w-4 h-4 text-gray-400" /> <span>Analytics</span>
-                    </button>
-                    <button 
-                      onClick={() => { setActiveMenu('team'); setIsMobileMenuOpen(false); }} 
-                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition cursor-pointer text-left"
-                    >
-                      <Users2 className="w-4 h-4 text-gray-400" /> <span>Team</span>
-                    </button>
-                  </nav>
-                </div>
-
-                <div>
-                  <p className="text-[10px] font-extrabold uppercase tracking-widest text-gray-400 px-3 mb-2">GENERAL</p>
-                  <nav className="space-y-1">
-                    <button 
-                      onClick={() => { setActiveMenu('settings'); setIsMobileMenuOpen(false); }} 
-                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition cursor-pointer text-left"
-                    >
-                      <Settings className="w-4 h-4 text-gray-400" /> <span>Settings</span>
-                    </button>
-                    <button 
-                      onClick={() => { setActiveMenu('help'); setIsMobileMenuOpen(false); }} 
-                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition cursor-pointer text-left"
-                    >
-                      <HelpCircle className="w-4 h-4 text-gray-400" /> <span>Help</span>
-                    </button>
-                  </nav>
-                </div>
+                <nav className="space-y-1">
+                  <button onClick={() => { setActiveMenu('dashboard'); setIsMobileMenuOpen(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold bg-[#0f2922] text-white">
+                    <LayoutDashboard className="w-4 h-4 text-emerald-400" /> <span>Dashboard</span>
+                  </button>
+                  <button onClick={() => { router.push('/admin/dashboard/requests'); setIsMobileMenuOpen(false); }} className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50">
+                    <div className="flex items-center gap-3"><CheckSquare className="w-4 h-4 text-gray-400" /><span>Gérer les demandes</span></div>
+                    <span className="text-[10px] font-bold bg-red-100 text-red-600 px-2 py-0.5 rounded-full">{professeursNouveaux.length}</span>
+                  </button>
+                </nav>
               </div>
             </div>
 
             <div className="p-4 border-t border-gray-100 bg-gray-50/50">
-              <Link 
-                href="/" 
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="w-full py-2.5 px-3 hover:bg-red-50 text-red-600 text-sm font-semibold rounded-xl transition flex items-center gap-3 cursor-pointer"
-              >
-                <LogOut className="w-4 h-4" />
-                <span>Logout</span>
+              <Link href="/" className="w-full py-2.5 px-3 hover:bg-red-50 text-red-600 text-sm font-semibold rounded-xl transition flex items-center gap-3 cursor-pointer">
+                <LogOut className="w-4 h-4" /><span>Logout</span>
               </Link>
             </div>
           </div>
