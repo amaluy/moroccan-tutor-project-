@@ -91,7 +91,6 @@ export default function AdminDashboardPage() {
 
   // --- CALCUL DES STATISTIQUES RÉGIONALES (EN NOMBRE DE PROFESSEURS) ---
   const getRegionalStats = () => {
-    // Filtrer pour exclure les administrateurs (ville === 'admin')
     const validProfs = professeursExistants.filter(p => {
       const ville = (p.ville || p.city || '').toLowerCase().trim();
       return ville && ville !== 'admin';
@@ -99,7 +98,6 @@ export default function AdminDashboardPage() {
 
     if (validProfs.length === 0) return [];
 
-    // Créer une table de correspondances email/ID -> ville depuis professors
     const profCityMap: { [key: string]: string } = {};
     professeursExistants.forEach(p => {
       const emailKey = (p.email || '').toLowerCase().trim();
@@ -107,11 +105,9 @@ export default function AdminDashboardPage() {
       if (emailKey) profCityMap[emailKey] = cityVal;
     });
 
-    // Dictionnaires dynamiques
     const counts: { [key: string]: number } = {};
     const amounts: { [key: string]: number } = {};
 
-    // 1. Compter les profs par région
     validProfs.forEach(p => {
       const v = (p.ville || p.city || '').toLowerCase().trim();
       let regionName = 'Grand Casablanca';
@@ -134,7 +130,6 @@ export default function AdminDashboardPage() {
       amounts[regionName] = amounts[regionName] || 0;
     });
 
-    // 2. Assigner les montants des transactions réelles selon la ville du prof concerné
     transactionsList.forEach(t => {
       const profId = (t.prof_id || t.email || '').toLowerCase().trim();
       const montantTrans = Number(t.amount || t.montant || 0);
@@ -163,7 +158,6 @@ export default function AdminDashboardPage() {
     ];
 
     let index = 0;
-    // Retourne le nombre exact de profs au lieu d'un pourcentage
     return Object.keys(counts).map(region => {
       const count = counts[region];
       const regionalAmount = Math.round(amounts[region] || 0);
@@ -387,8 +381,28 @@ export default function AdminDashboardPage() {
           </div>
         </div>
 
-        {/* STATS PRINCIPALES */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* STATS PRINCIPALES (AVEC LE NOUVEAU BLOC VISITOR) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          
+          {/* CARTE VISITOR AJOUTÉE */}
+          <div className="bg-white border border-gray-200 p-6 rounded-3xl shadow-xs flex flex-col justify-between h-36 relative">
+            <div className="flex justify-between items-start">
+              <div className="w-10 h-10 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-700">
+                <Users className="w-5 h-5" />
+              </div>
+              <span className="px-2.5 py-1 bg-[#FF4747] text-white text-[11px] font-black rounded-full shadow-2xs">
+                -2,08%
+              </span>
+            </div>
+            <div>
+              <span className="text-xs font-medium text-gray-500 block mb-0.5">Visitor</span>
+              <div className="flex items-baseline gap-2">
+                <h3 className="text-2xl font-black text-gray-900 tracking-tight">14.987</h3>
+                <span className="text-[10px] text-gray-400 font-medium leading-tight">Users vs last month</span>
+              </div>
+            </div>
+          </div>
+
           <div className="bg-[#103D3B] text-white p-6 rounded-3xl shadow-sm relative overflow-hidden flex flex-col justify-between h-36">
             <div className="flex justify-between items-start">
               <span className="text-xs font-medium text-emerald-100 flex items-center gap-1.5"><TrendingUp className="w-4 h-4" /> Chiffre d'affaires</span>
@@ -639,6 +653,96 @@ export default function AdminDashboardPage() {
             </div>
           )}
         </div>
+
+        {/* ================= NOUVEAU : GRAPHIQUE LINÉAIRE DÉGRADÉ EN BAS ================= */}
+        <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-xs space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-black text-gray-900">Sales Details</h2>
+              <p className="text-xs text-gray-400">Suivi détaillé des performances et flux d'activité mensuels</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold bg-blue-50 text-blue-600 px-3 py-1.5 rounded-xl border border-blue-100">
+                64,3664.77
+              </span>
+              <select className="bg-gray-50 border border-gray-200 text-xs text-gray-700 font-semibold px-3 py-1.5 rounded-xl outline-none cursor-pointer">
+                <option>October</option>
+                <option>September</option>
+                <option>August</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Graphique SVG élégant avec courbe bleue et dégradé en arrière-plan */}
+          <div className="relative w-full h-72 pt-6 pb-2 px-2 bg-white rounded-2xl border border-gray-100 flex flex-col justify-end">
+            
+            {/* Lignes horizontales de repère (100%, 80%, 60%, 40%, 20%) */}
+            <div className="absolute inset-0 flex flex-col justify-between p-6 pointer-events-none opacity-40">
+              <div className="w-full border-b border-dashed border-gray-200 flex items-center"><span className="text-[10px] text-gray-400 font-medium">100%</span></div>
+              <div className="w-full border-b border-dashed border-gray-200 flex items-center"><span className="text-[10px] text-gray-400 font-medium">80%</span></div>
+              <div className="w-full border-b border-dashed border-gray-200 flex items-center"><span className="text-[10px] text-gray-400 font-medium">60%</span></div>
+              <div className="w-full border-b border-dashed border-gray-200 flex items-center"><span className="text-[10px] text-gray-400 font-medium">40%</span></div>
+              <div className="w-full border-b border-dashed border-gray-200 flex items-center"><span className="text-[10px] text-gray-400 font-medium">20%</span></div>
+            </div>
+
+            {/* SVG du Graphique Linéaire Courbé avec Dégradé */}
+            <div className="relative w-full h-48 z-10">
+              <svg viewBox="0 0 1000 300" className="w-full h-full overflow-visible" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="blueGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.35" />
+                    <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.0" />
+                  </linearGradient>
+                </defs>
+
+                {/* Zone colorée sous la courbe (dégradé) */}
+                <path 
+                  d="M 0,260 Q 80,240 160,230 T 320,170 T 480,200 T 640,110 T 800,190 T 960,120 L 960,300 L 0,300 Z" 
+                  fill="url(#blueGradient)" 
+                />
+
+                {/* Ligne principale du graphique */}
+                <path 
+                  d="M 0,260 Q 80,240 160,230 T 320,170 T 480,200 T 640,110 T 800,190 T 960,120" 
+                  fill="none" 
+                  stroke="#3b82f6" 
+                  strokeWidth="3" 
+                  strokeLinecap="round"
+                />
+
+                {/* Point culminant avec son étiquette */}
+                <g transform="translate(640, 110)">
+                  <circle cx="0" cy="0" r="6" fill="#ffffff" stroke="#3b82f6" strokeWidth="3" />
+                  <rect x="-45" y="-38" width="90" height="26" rx="6" fill="#3b82f6" />
+                  <text x="0" y="-21" fill="#ffffff" fontSize="11" fontWeight="bold" textAnchor="middle">64,3664.77</text>
+                </g>
+
+                {/* Autres points sur la courbe */}
+                <circle cx="160" cy="230" r="4" fill="#ffffff" stroke="#3b82f6" strokeWidth="2" />
+                <circle cx="320" cy="170" r="4" fill="#ffffff" stroke="#3b82f6" strokeWidth="2" />
+                <circle cx="480" cy="200" r="4" fill="#ffffff" stroke="#3b82f6" strokeWidth="2" />
+                <circle cx="800" cy="190" r="4" fill="#ffffff" stroke="#3b82f6" strokeWidth="2" />
+              </svg>
+            </div>
+
+            {/* Légende de l'axe X (Valeurs en bas : 5k, 10k, 15k...) */}
+            <div className="flex justify-between text-[11px] font-semibold text-gray-400 px-2 pt-2 border-t border-gray-100">
+              <span>5k</span>
+              <span>10k</span>
+              <span>15k</span>
+              <span>20k</span>
+              <span>25k</span>
+              <span>30k</span>
+              <span>35k</span>
+              <span>40k</span>
+              <span>45k</span>
+              <span>50k</span>
+              <span>55k</span>
+              <span>60k</span>
+            </div>
+          </div>
+        </div>
+
       </main>
 
       {/* ================= PANNEAU LATÉRAL COULISSANT ================= */}
@@ -648,7 +752,6 @@ export default function AdminDashboardPage() {
 
           <div className="relative w-80 bg-white text-gray-800 flex flex-col justify-between shadow-2xl z-10 h-full border-r border-gray-100 animate-in slide-in-from-left duration-300">
             <div>
-              {/* En-tête du menu */}
               <div className="p-6 flex items-center justify-between border-b border-gray-100">
                 <div className="flex items-center gap-2.5">
                   <div className="bg-orange-50 p-1.5 rounded-xl border border-orange-100">
@@ -667,7 +770,6 @@ export default function AdminDashboardPage() {
                 </button>
               </div>
 
-              {/* Liens de navigation du Dashboard */}
               <div className="p-4 space-y-6">
                 <div>
                   <p className="text-[10px] font-extrabold uppercase tracking-widest text-gray-400 px-3 mb-2">MENU</p>
@@ -729,7 +831,6 @@ export default function AdminDashboardPage() {
               </div>
             </div>
 
-            {/* Pied du menu : Bouton Quitter vers le site public */}
             <div className="p-4 border-t border-gray-100 bg-gray-50/50">
               <Link 
                 href="/" 
