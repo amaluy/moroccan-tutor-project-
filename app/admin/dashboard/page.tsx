@@ -30,7 +30,7 @@ export default function AdminDashboardPage() {
   const [isLoadingDb, setIsLoadingDb] = useState(true);
   const [dbError, setDbError] = useState<string | null>(null);
 
-  // --- ÉTATS POUR LE GRAPHIQUE (Années 2026, 2027 + Clic dynamique) ---
+  // --- ÉTATS POUR LE GRAPHIQUE ---
   const currentYearStr = new Date().getFullYear().toString();
   const [selectedYear, setSelectedYear] = useState<string>(currentYearStr);
   const [availableYears, setAvailableYears] = useState<string[]>(['2026', '2027', currentYearStr]);
@@ -67,6 +67,7 @@ export default function AdminDashboardPage() {
       }
       setAllRequestsHistory(combinedHistory);
 
+      // --- CORRECTION DES DOUBLONS ICI ---
       const yearsSet = new Set<string>(['2026', '2027', currentYearStr]);
       combinedHistory.forEach(item => {
         const dateVal = item.created_at || item.date || item.inserted_at;
@@ -77,6 +78,7 @@ export default function AdminDashboardPage() {
           }
         }
       });
+      // On s'assure d'avoir des valeurs uniques triées par ordre décroissant
       const sortedYears = Array.from(yearsSet).sort((a, b) => Number(b) - Number(a));
       setAvailableYears(sortedYears);
 
@@ -130,7 +132,6 @@ export default function AdminDashboardPage() {
 
   const monthlyData = getMonthlyRequestsData();
   
-  // Échelle fixe demandée : 0, 50, 100, 150, 200 (ou plus si dépassement)
   const maxDataVal = Math.max(...monthlyData.map(d => d.count), 0);
   const maxMonthlyCount = maxDataVal > 200 ? Math.ceil(maxDataVal / 50) * 50 : 200;
 
@@ -339,7 +340,7 @@ export default function AdminDashboardPage() {
           </div>
         </div>
 
-        {/* ================= GRAPHIQUES CA & RÉPARTITION RÉGIONALE (RESTAURÉS) ================= */}
+        {/* ================= GRAPHIQUES CA & RÉPARTITION RÉGIONALE ================= */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 bg-white p-6 rounded-3xl border border-gray-200 shadow-xs space-y-4">
             <div className="flex justify-between items-center">
@@ -399,7 +400,7 @@ export default function AdminDashboardPage() {
           </div>
         </div>
 
-        {/* ================= GRAPHIQUE LINÉAIRE INTERACTIF (ANNÉES & ÉCHELLE 0-200) ================= */}
+        {/* ================= GRAPHIQUE LINÉAIRE INTERACTIF ================= */}
         <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-xs space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
@@ -408,7 +409,6 @@ export default function AdminDashboardPage() {
             </div>
 
             <div className="flex items-center gap-3">
-              {/* Sélecteur d'Année (2026, 2027...) */}
               <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-xl">
                 <Calendar className="w-4 h-4 text-gray-500" />
                 <span className="text-xs font-bold text-gray-600">Année :</span>
@@ -431,7 +431,6 @@ export default function AdminDashboardPage() {
 
           <div className="relative w-full h-80 pt-10 pb-4 px-6 bg-white rounded-2xl border border-gray-100 flex flex-col justify-end">
             
-            {/* Échelle verticale personnalisée (0, 50, 100, 150, 200) */}
             <div className="absolute inset-0 flex flex-col justify-between p-6 pointer-events-none opacity-50">
               <div className="w-full border-b border-dashed border-gray-200 flex items-center justify-end"><span className="text-[10px] text-gray-400 font-bold pr-2">{maxMonthlyCount}</span></div>
               <div className="w-full border-b border-dashed border-gray-200 flex items-center justify-end"><span className="text-[10px] text-gray-400 font-bold pr-2">{Math.round(maxMonthlyCount * 0.75)}</span></div>
@@ -440,7 +439,6 @@ export default function AdminDashboardPage() {
               <div className="w-full border-b border-dashed border-gray-200 flex items-center justify-end"><span className="text-[10px] text-gray-400 font-bold pr-2">0</span></div>
             </div>
 
-            {/* Tracé SVG interactif */}
             <div className="relative w-full h-48 z-10 ml-4">
               <svg viewBox="0 0 1100 300" className="w-full h-full overflow-visible" preserveAspectRatio="none">
                 <defs>
@@ -469,10 +467,8 @@ export default function AdminDashboardPage() {
                         const isSelected = activePointIndex === p.index;
                         return (
                           <g key={p.index} transform={`translate(${p.x}, ${p.y})`} onClick={() => setActivePointIndex(p.index)} className="cursor-pointer group">
-                            {/* Zone de clic élargie */}
                             <circle cx="0" cy="0" r="18" fill="transparent" />
                             
-                            {/* Point sur la courbe (masqué par défaut, apparaît au clic/survol) */}
                             <circle 
                               cx="0" 
                               cy="0" 
@@ -483,7 +479,6 @@ export default function AdminDashboardPage() {
                               className="transition-all duration-200 group-hover:scale-125"
                             />
 
-                            {/* Infobulle affichée UNIQUEMENT au clic sur le point */}
                             {isSelected && (
                               <g transform="translate(0, -42)">
                                 <rect x="-35" y="-22" width="70" height="26" rx="6" fill="#103D3B" filter="drop-shadow(0px 4px 6px rgba(0,0,0,0.2))" />
@@ -501,7 +496,6 @@ export default function AdminDashboardPage() {
               </svg>
             </div>
 
-            {/* Légende des mois en bas */}
             <div className="flex justify-between text-[11px] font-bold text-gray-500 pl-4 pr-2 pt-3 border-t border-gray-100">
               {monthlyData.map((item, idx) => (
                 <span 
