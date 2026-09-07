@@ -48,7 +48,6 @@ export default function AdminDashboardPage() {
   const currentYearStr = new Date().getFullYear().toString();
   const [selectedYear, setSelectedYear] = useState<string>(currentYearStr);
   const [availableYears, setAvailableYears] = useState<string[]>(['2026', '2027', '2028']);
-  const [hoveredPoint, setHoveredPoint] = useState<{ month: string; count: number } | null>(null);
 
   useEffect(() => {
     localStorage.setItem('user_email', 'berrada0amal@gmail.com');
@@ -130,8 +129,7 @@ export default function AdminDashboardPage() {
 
   const monthlyData = getMonthlyRequestsData();
   const maxDataVal = Math.max(...monthlyData.map(d => d.count), 0);
-  const chartMax = maxDataVal <= 10 ? 50 : Math.ceil(maxDataVal / 50) * 50;
-  const stepVal = chartMax / 5;
+  const chartRequestsMax = maxDataVal <= 5 ? 10 : Math.ceil(maxDataVal / 5) * 5;
 
   const exportToExcel = () => {
     let csvContent = "data:text/csv;charset=utf-8,Mois;Annee;Nombre de Demandes\n";
@@ -320,12 +318,12 @@ export default function AdminDashboardPage() {
               </div>
             </div>
 
-            {/* Graphique Demandes */}
+            {/* Nouveau Graphique Demandes en Barres (Style moderne et élégant) */}
             <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-xs space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <h2 className="text-base font-black text-gray-900">Nombre de demandes reçues par mois</h2>
-                  <p className="text-xs text-gray-400">Survolez les points pour afficher le nombre exact de demandes.</p>
+                  <p className="text-xs text-gray-400">Aperçu mensuel des demandes enregistrées sur la plateforme.</p>
                 </div>
 
                 <div className="flex items-center gap-3">
@@ -334,7 +332,7 @@ export default function AdminDashboardPage() {
                     <span className="text-xs font-bold text-gray-600">Année :</span>
                     <select 
                       value={selectedYear} 
-                      onChange={(e) => { setSelectedYear(e.target.value); setHoveredPoint(null); }}
+                      onChange={(e) => setSelectedYear(e.target.value)}
                       className="bg-transparent text-xs font-black text-gray-900 outline-none cursor-pointer"
                     >
                       {availableYears.map(yr => (
@@ -349,96 +347,47 @@ export default function AdminDashboardPage() {
                 </div>
               </div>
 
-              {/* Graphique linéaire */}
-              <div className="relative w-full h-56 pt-6 pb-2 px-6 bg-white rounded-2xl border border-gray-100 flex flex-col justify-end">
-                <div className="absolute inset-0 flex flex-col justify-between p-6 pointer-events-none opacity-60">
-                  <div className="w-full border-b border-dashed border-gray-200 flex items-center justify-end"><span className="text-[10px] text-gray-500 font-bold pr-2">{chartMax}</span></div>
-                  <div className="w-full border-b border-dashed border-gray-200 flex items-center justify-end"><span className="text-[10px] text-gray-500 font-bold pr-2">{chartMax - stepVal}</span></div>
-                  <div className="w-full border-b border-dashed border-gray-200 flex items-center justify-end"><span className="text-[10px] text-gray-500 font-bold pr-2">{chartMax - stepVal * 2}</span></div>
-                  <div className="w-full border-b border-dashed border-gray-200 flex items-center justify-end"><span className="text-[10px] text-gray-500 font-bold pr-2">{chartMax - stepVal * 3}</span></div>
-                  <div className="w-full border-b border-dashed border-gray-200 flex items-center justify-end"><span className="text-[10px] text-gray-500 font-bold pr-2">{chartMax - stepVal * 4}</span></div>
-                  <div className="w-full border-b border-dashed border-gray-200 flex items-center justify-end"><span className="text-[10px] text-gray-500 font-bold pr-2">0</span></div>
-                </div>
+              {/* Histogramme à barres verticales modernes */}
+              <div className="h-56 w-full flex items-end justify-between gap-3 pt-8 px-2 relative bg-gradient-to-b from-emerald-50/40 to-transparent rounded-2xl border border-dashed border-gray-100">
+                {monthlyData.map((item, idx) => {
+                  const heightPercent = chartRequestsMax > 0 ? (item.count / chartRequestsMax) * 100 : 0;
+                  const finalHeight = item.count > 0 ? Math.max(heightPercent, 12) : 5;
 
-                <div className="relative w-full h-32 z-10 ml-2">
-                  <svg viewBox="0 0 1100 260" className="w-full h-full overflow-visible" preserveAspectRatio="none">
-                    <defs>
-                      <linearGradient id="lineGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" stopColor="#103D3B" stopOpacity="0.25" />
-                        <stop offset="100%" stopColor="#103D3B" stopOpacity="0.0" />
-                      </linearGradient>
-                    </defs>
+                  return (
+                    <div key={idx} className="flex-1 flex flex-col items-center h-full justify-end group relative">
+                      {/* Tooltip au survol */}
+                      <div className="absolute -top-10 bg-gray-900 text-white text-[10px] font-bold py-1 px-2.5 rounded-lg opacity-0 group-hover:opacity-100 transition pointer-events-none z-25 whitespace-nowrap shadow-lg flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                        {item.count} demande(s) en {item.month}
+                      </div>
 
-                    {(() => {
-                      const points = monthlyData.map((d, index) => {
-                        const x = (index / (monthlyData.length - 1)) * 1040 + 30;
-                        const y = chartMax > 0 ? 240 - (d.count / chartMax) * 220 : 240;
-                        return { x, y, count: d.count, month: d.month };
-                      });
+                      {/* Valeur affichée au-dessus de la barre si supérieure à 0 */}
+                      {item.count > 0 && (
+                        <span className="text-[10px] font-black text-[#103D3B] mb-1.5 opacity-90 group-hover:scale-110 transition-transform">
+                          {item.count}
+                        </span>
+                      )}
 
-                      const pathD = points.reduce((acc, p, idx) => idx === 0 ? `M ${p.x},${p.y}` : `${acc} L ${p.x},${p.y}`, '');
-                      const areaD = `${pathD} L ${points[points.length - 1].x},260 L ${points[0].x},260 Z`;
+                      {/* Barre verticale */}
+                      <div 
+                        className={`w-full rounded-t-xl transition-all duration-300 shadow-xs ${
+                          item.count > 0 
+                            ? 'bg-gradient-to-t from-[#103D3B] to-emerald-600 opacity-90 group-hover:opacity-100 group-hover:brightness-110' 
+                            : 'bg-gray-200 opacity-60'
+                        }`} 
+                        style={{ height: `${finalHeight}%` }}
+                      ></div>
 
-                      return (
-                        <>
-                          <path d={areaD} fill="url(#lineGradient)" />
-                          <path d={pathD} fill="none" stroke="#103D3B" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-                          
-                          {points.map((p, idx) => {
-                            const isHovered = hoveredPoint?.month === p.month;
-                            return (
-                              <g key={idx} transform={`translate(${p.x}, ${p.y})`} className="cursor-pointer group">
-                                <circle 
-                                  cx="0" cy="0" r="16" fill="transparent" 
-                                  onMouseEnter={() => setHoveredPoint({ month: p.month, count: p.count })}
-                                  onMouseLeave={() => setHoveredPoint(null)}
-                                />
-                                <circle 
-                                  cx="0" cy="0" r={isHovered ? "7" : "5"} 
-                                  fill={isHovered ? "#FF5733" : "#ffffff"} 
-                                  stroke="#103D3B" strokeWidth="3" 
-                                  className="transition-all duration-200 pointer-events-none"
-                                />
-                                {isHovered && (
-                                  <g transform="translate(0, -32)" className="pointer-events-none">
-                                    <rect x="-30" y="-20" width="60" height="24" rx="6" fill="#103D3B" />
-                                    <text x="0" y="-5" fill="#ffffff" fontSize="11" fontWeight="bold" textAnchor="middle">
-                                      {p.count} dem.
-                                    </text>
-                                  </g>
-                                )}
-                              </g>
-                            );
-                          })}
-                        </>
-                      );
-                    })()}
-                  </svg>
-                </div>
-
-                <div className="flex justify-between text-[11px] font-bold text-gray-500 px-4 pt-2 border-t border-gray-100">
-                  {monthlyData.map((item, idx) => (
-                    <span key={idx} className="text-center flex-1">{item.month}</span>
-                  ))}
-                </div>
+                      <span className="text-[10px] font-bold text-gray-500 mt-2.5">{item.month}</span>
+                    </div>
+                  );
+                })}
               </div>
-
-              {hoveredPoint ? (
-                <div className="flex items-center justify-between p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs">
-                  <span className="font-bold text-amber-900">
-                    📌 Mois survolé : <strong className="text-[#103D3B]">{hoveredPoint.month} {selectedYear}</strong> — <strong>{hoveredPoint.count}</strong> demande(s).
-                  </span>
-                </div>
-              ) : (
-                <div className="flex items-center justify-between p-3 bg-gray-50 border border-gray-100 rounded-xl text-xs text-gray-500">
-                  <span>💡 Passez simplement votre curseur sur les points de la courbe pour inspecter chaque mois.</span>
-                </div>
-              )}
             </div>
 
           </div>
 
-          {/* COLONNE DROITE (1 part) : Professeurs par région (Sans l'encadré "Total actifs", avec police agrandie) */}
+          {/* COLONNE DROITE (1 part) : Professeurs par région */}
           <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-xs space-y-4">
             <div>
               <h2 className="text-lg font-black text-gray-900">Professeurs par région</h2>
