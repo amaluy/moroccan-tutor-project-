@@ -30,7 +30,7 @@ export default function AdminDashboardPage() {
   const [isLoadingDb, setIsLoadingDb] = useState(true);
   const [dbError, setDbError] = useState<string | null>(null);
 
-  // --- ÉTATS POUR LE GRAPHIQUE (Initialisé avec 2026, 2027, 2028 par défaut) ---
+  // --- ÉTATS POUR LE FILTRE DES ANNÉES ---
   const currentYearStr = new Date().getFullYear().toString();
   const [selectedYear, setSelectedYear] = useState<string>(currentYearStr);
   const [availableYears, setAvailableYears] = useState<string[]>(['2026', '2027', '2028']);
@@ -77,9 +77,18 @@ export default function AdminDashboardPage() {
       let combinedHistory: any[] = [...reqsData, ...profsData];
       setAllRequestsHistory(combinedHistory);
 
-      // Gestion des années pour le filtre (garantit 2026, 2027, 2028 + années dynamiques des données)
+      // Gestion des années pour le filtre
       const yearsSet = new Set<string>(['2026', '2027', '2028']);
       combinedHistory.forEach(item => {
+        const dateVal = item.created_at || item.date || item.inserted_at;
+        if (dateVal) {
+          const d = new Date(dateVal);
+          if (!isNaN(d.getTime())) {
+            yearsSet.add(d.getFullYear().toString());
+          }
+        }
+      });
+      transData.forEach(item => {
         const dateVal = item.created_at || item.date || item.inserted_at;
         if (dateVal) {
           const d = new Date(dateVal);
@@ -91,7 +100,7 @@ export default function AdminDashboardPage() {
       const sortedYears = Array.from(yearsSet).sort((a, b) => Number(b) - Number(a));
       setAvailableYears(sortedYears);
 
-      // --- CALCUL ROBUSTE DU CHIFFRE D'AFFAIRES ---
+      // --- CALCUL ROBUSTE DU CHIFFRE D'AFFAIRES TOTAL ---
       let totalCa = 0;
 
       if (transData.length > 0) {
@@ -117,7 +126,37 @@ export default function AdminDashboardPage() {
     }
   };
 
-  // --- CALCUL DES DEMANDES PAR MOIS FILTRÉES PAR ANNÉE ---
+  // --- CALCUL DU CHIFFRE D'AFFAIRES MENSUEL (POUR LE GRAPHIQUE CA) ---
+  const getMonthlyRevenueData = () => {
+    const monthsAmounts = Array(12).fill(0);
+    const sourceData = transactionsList.length > 0 ? transactionsList : allRequestsHistory;
+
+    sourceData.forEach(item => {
+      const dateVal = item.created_at || item.date || item.inserted_at;
+      if (dateVal) {
+        const d = new Date(dateVal);
+        if (!isNaN(d.getTime())) {
+          if (d.getFullYear().toString() === selectedYear) {
+            const monthIndex = d.getMonth();
+            const montant = Number(item.montant || item.amount || item.tarif || item.price || item.fee || 0);
+            monthsAmounts[monthIndex] += montant;
+          }
+        }
+      }
+    });
+
+    const monthNames = ['Janv.', 'Fév.', 'Mars', 'Avr.', 'Mai', 'Juin', 'Juil.', 'Août', 'Sept.', 'Oct.', 'Nov.', 'Déc.'];
+    return monthNames.map((name, index) => ({
+      month: name,
+      amount: monthsAmounts[index]
+    }));
+  };
+
+  const monthlyRevenueData = getMonthlyRevenueData();
+  const maxRevenueVal = Math.max(...monthlyRevenueData.map(d => d.amount), 0);
+  const chartRevenueMax = maxRevenueVal <= 100 ? 1000 : Math.ceil(maxRevenueVal / 500) * 500;
+
+  // --- CALCUL DES DEMANDES PAR MOIS (POUR LE GRAPHIQUE LINÉAIRE) ---
   const getMonthlyRequestsData = () => {
     const monthsCounts = Array(12).fill(0);
 
@@ -142,7 +181,6 @@ export default function AdminDashboardPage() {
   };
 
   const monthlyData = getMonthlyRequestsData();
-  
   const maxDataVal = Math.max(...monthlyData.map(d => d.count), 0);
   const chartMax = maxDataVal <= 10 ? 50 : Math.ceil(maxDataVal / 50) * 50;
   const stepVal = chartMax / 5;
@@ -196,7 +234,6 @@ export default function AdminDashboardPage() {
     });
 
     const colors = ['bg-purple-500', 'bg-amber-500', 'bg-red-400', 'bg-sky-400', 'bg-orange-400'];
-
     let index = 0;
     return Object.keys(counts).map(region => {
       const count = counts[region];
@@ -325,31 +362,37 @@ export default function AdminDashboardPage() {
           </div>
         </div>
 
-        {/* ================= GRAPHIQUES CA & RÉPARTITION RÉGIONALE ================= */}
+        {/* ================= GRAPHIQUE CA DYNAMIQUE (MIS À JOUR) ================= */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 bg-white p-6 rounded-3xl border border-gray-200 shadow-xs space-y-4">
             <div className="flex justify-between items-center">
               <div>
                 <h2 className="text-base font-black text-gray-900">Évolution du chiffre d'affaires (MAD)</h2>
-                <p className="text-xs text-gray-400">Total calculé en temps réel depuis les transactions</p>
+                <p className="text-xs text-gray-400">Total calculé en temps réel depuis les transactions ({selectedYear})</p>
               </div>
-              <span className="px-3 py-1 bg-amber-100 text-amber-800 font-black text-xs rounded-full">{realCa.toLocaleString()} MAD</span>
+              <span className="px-3 py-1 bg-amber-100 text-amber-800 font-black text-xs rounded-full">
+                {monthlyRevenueData.reduce((acc, curr) => acc + curr.amount, 0).toLocaleString()} MAD
+              </span>
             </div>
 
             <div className="h-52 w-full flex items-end justify-between gap-2 pt-6 px-2 relative bg-gradient-to-b from-amber-50/50 to-transparent rounded-2xl border border-dashed border-gray-100">
-              {[
-                { month: 'Janv.', height: '35%' }, { month: 'Fév.', height: '48%' },
-                { month: 'Mars', height: '42%' }, { month: 'Avr.', height: '58%' },
-                { month: 'Mai', height: '50%' }, { month: 'Juin', height: '65%' },
-                { month: 'Juil.', height: '75%' }, { month: 'Août', height: '85%' },
-                { month: 'Sept.', height: '80%' }, { month: 'Oct.', height: '76%' },
-                { month: 'Nov.', height: '90%' }, { month: 'Déc.', height: '100%' },
-              ].map((item, idx) => (
-                <div key={idx} className="flex-1 flex flex-col items-center h-full justify-end group">
-                  <div className="w-full bg-gradient-to-t from-amber-500 to-red-400 rounded-t-lg transition-all duration-300 opacity-80" style={{ height: item.height }}></div>
-                  <span className="text-[10px] font-bold text-gray-500 mt-2">{item.month}</span>
-                </div>
-              ))}
+              {monthlyRevenueData.map((item, idx) => {
+                const heightPercent = chartRevenueMax > 0 ? (item.amount / chartRevenueMax) * 100 : 0;
+                const finalHeight = item.amount > 0 ? Math.max(heightPercent, 8) : 4;
+
+                return (
+                  <div key={idx} className="flex-1 flex flex-col items-center h-full justify-end group relative">
+                    <div className="absolute -top-8 bg-gray-900 text-white text-[10px] font-bold py-1 px-2 rounded-md opacity-0 group-hover:opacity-100 transition pointer-events-none z-20 whitespace-nowrap shadow-md">
+                      {item.amount.toLocaleString()} MAD
+                    </div>
+                    <div 
+                      className="w-full bg-gradient-to-t from-amber-500 to-red-400 rounded-t-lg transition-all duration-300 hover:opacity-100 opacity-85" 
+                      style={{ height: `${finalHeight}%` }}
+                    ></div>
+                    <span className="text-[10px] font-bold text-gray-500 mt-2">{item.month}</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
@@ -385,7 +428,7 @@ export default function AdminDashboardPage() {
           </div>
         </div>
 
-        {/* ================= GRAPHIQUE LINÉAIRE AVEC GRADUATIONS ET SURVOL ================= */}
+        {/* ================= GRAPHIQUE LINÉAIRE DES DEMANDES ================= */}
         <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-xs space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
