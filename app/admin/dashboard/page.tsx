@@ -30,10 +30,10 @@ export default function AdminDashboardPage() {
   const [isLoadingDb, setIsLoadingDb] = useState(true);
   const [dbError, setDbError] = useState<string | null>(null);
 
-  // --- ÉTATS POUR LE GRAPHIQUE ---
+  // --- ÉTATS POUR LE GRAPHIQUE (Initialisé avec 2026, 2027, 2028 par défaut) ---
   const currentYearStr = new Date().getFullYear().toString();
   const [selectedYear, setSelectedYear] = useState<string>(currentYearStr);
-  const [availableYears, setAvailableYears] = useState<string[]>(['2026', '2027', currentYearStr]);
+  const [availableYears, setAvailableYears] = useState<string[]>(['2026', '2027', '2028']);
   const [hoveredPoint, setHoveredPoint] = useState<{ month: string; count: number } | null>(null);
 
   useEffect(() => {
@@ -67,7 +67,7 @@ export default function AdminDashboardPage() {
         setProfesseursNouveaux(rData);
       }
 
-      // 3. Récupération des transactions (si la table existe)
+      // 3. Récupération des transactions
       const { data: tData, error: transError } = await supabase.from('transactions').select('*');
       if (!transError && tData) {
         transData = tData;
@@ -77,8 +77,8 @@ export default function AdminDashboardPage() {
       let combinedHistory: any[] = [...reqsData, ...profsData];
       setAllRequestsHistory(combinedHistory);
 
-      // Gestion des années pour le filtre
-      const yearsSet = new Set<string>(['2026', '2027', currentYearStr]);
+      // Gestion des années pour le filtre (garantit 2026, 2027, 2028 + années dynamiques des données)
+      const yearsSet = new Set<string>(['2026', '2027', '2028']);
       combinedHistory.forEach(item => {
         const dateVal = item.created_at || item.date || item.inserted_at;
         if (dateVal) {
@@ -94,7 +94,6 @@ export default function AdminDashboardPage() {
       // --- CALCUL ROBUSTE DU CHIFFRE D'AFFAIRES ---
       let totalCa = 0;
 
-      // Si on a des transactions, on les somme en priorité
       if (transData.length > 0) {
         totalCa = transData.reduce((sum, item) => {
           const montant = Number(item.montant || item.amount || item.tarif || item.price || 0);
@@ -102,7 +101,6 @@ export default function AdminDashboardPage() {
         }, 0);
       }
 
-      // Si le total est à 0, on regarde dans les demandes ou les profs s'il y a un champ de prix/tarif/montant
       if (totalCa === 0 && combinedHistory.length > 0) {
         totalCa = combinedHistory.reduce((sum, item) => {
           const montant = Number(item.montant || item.amount || item.tarif || item.price || item.fee || 0);
@@ -110,8 +108,6 @@ export default function AdminDashboardPage() {
         }, 0);
       }
 
-      // S'il n'y a toujours pas de montant numérique explicite mais que tu veux baser ton CA sur quelque chose de concret (ex: nombre de profs validés * un montant fixe ou les données de ta base initiale), ajuste ici. 
-      // Si tes données contiennent des montants, ils s'afficheront automatiquement maintenant.
       setRealCa(totalCa);
 
     } catch (err: any) {
@@ -173,13 +169,6 @@ export default function AdminDashboardPage() {
     });
 
     if (validProfs.length === 0) return [];
-
-    const profCityMap: { [key: string]: string } = {};
-    professeursExistants.forEach(p => {
-      const emailKey = (p.email || '').toLowerCase().trim();
-      const cityVal = (p.ville || p.city || '').toLowerCase().trim();
-      if (emailKey) profCityMap[emailKey] = cityVal;
-    });
 
     const counts: { [key: string]: number } = {};
     const amounts: { [key: string]: number } = {};
