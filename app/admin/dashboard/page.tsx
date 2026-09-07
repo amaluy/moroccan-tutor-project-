@@ -424,27 +424,26 @@ export default function AdminDashboardPage() {
 
       </main>
 
-      {/* MENU LATÉRAL - AFFICHAGE DE ADMINPANEL */}
-      {isMobileMenuOpen && (
-        <div className="fixed inset-0 z-50 flex">
-          <div className="fixed inset-0 bg-black/40 backdrop-blur-xs transition-opacity" onClick={() => setIsMobileMenuOpen(false)}></div>
-          <div className="relative w-80 bg-white text-gray-800 flex flex-col shadow-2xl z-10 h-full border-r border-gray-100">
-            
-            {/* Bouton de fermeture */}
-            <div className="absolute top-4 right-4 z-20">
-              <button onClick={() => setIsMobileMenuOpen(false)} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg cursor-pointer transition">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Intégration du composant AdminPanel */}
-            <div className="flex-1 overflow-y-auto">
-              <AdminPanel />
-            </div>
-
+      {/* MENU LATÉRAL - CORRIGÉ AVEC UNE CLASSE DE TRANSITION/VISIBILITÉ FLUIDE */}
+      <div className={`fixed inset-0 z-50 flex transition-all duration-300 ${isMobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs transition-opacity" onClick={() => setIsMobileMenuOpen(false)}></div>
+        
+        <div className={`relative w-80 bg-white text-gray-800 flex flex-col shadow-2xl z-10 h-full border-r border-gray-100 transform transition-transform duration-300 ease-out ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+          
+          {/* Bouton de fermeture */}
+          <div className="absolute top-4 right-4 z-20">
+            <button onClick={() => setIsMobileMenuOpen(false)} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg cursor-pointer transition">
+              <X className="w-5 h-5" />
+            </button>
           </div>
+
+          {/* Intégration directe du composant AdminPanel */}
+          <div className="flex-1 overflow-y-auto">
+            <AdminPanel />
+          </div>
+
         </div>
-      )}
+      </div>
 
     </div>
   );

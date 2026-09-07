@@ -1,222 +1,148 @@
 'use client';
 
-import { useState } from 'react';
 import { 
-  RefreshCw, Bell, Menu, X, LayoutDashboard, CheckSquare, 
-  Calendar as CalendarIcon, BarChart3, Users, Settings, HelpCircle, 
-  LogOut, GraduationCap, Coins, TrendingUp, UserCheck 
+  LayoutDashboard, CheckSquare, Coins, TrendingUp, UserCheck, 
+  Calendar as CalendarIcon, BarChart3, Settings, HelpCircle, LogOut, GraduationCap 
 } from 'lucide-react';
 import Link from 'next/link';
 
 interface AdminPanelProps {
-  onRefreshData?: () => void;
-  isLoading?: boolean;
-  unreadCount?: number;
+  onClose?: () => void;
 }
 
-export default function AdminPanel({ 
-  onRefreshData, 
-  isLoading = false,
-  unreadCount = 0 
-}: AdminPanelProps) {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
+export default function AdminPanel({ onClose }: AdminPanelProps) {
   return (
-    <>
-      {/* Barre supérieure du Dashboard */}
-      <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between sticky top-0 z-20 w-full shadow-2xs">
-        <div className="flex items-center gap-4">
-          <button 
-            onClick={() => setIsMobileMenuOpen(true)} 
-            className="p-2.5 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-800 transition cursor-pointer flex items-center justify-center shadow-2xs"
-            title="Ouvrir le menu"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
-          <div className="flex items-center gap-2">
-            <span className="font-black text-base tracking-tight text-gray-900">profmaroc</span>
-            <span className="text-[10px] font-extrabold text-[#FF5733] uppercase tracking-widest bg-orange-50 px-2 py-0.5 rounded-md">ADMIN</span>
+    <div className="flex flex-col h-full bg-white text-gray-800 w-80">
+      
+      {/* En-tête du menu */}
+      <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
+        <div className="flex items-center gap-2.5">
+          <div className="bg-orange-50 p-1.5 rounded-xl border border-orange-100">
+            <GraduationCap className="w-5 h-5 text-[#FF5733]" />
+          </div>
+          <div>
+            <span className="text-base font-black tracking-tight text-gray-900">prof<span className="text-[#FF5733]">maroc</span></span>
+            <p className="text-[9px] font-extrabold text-[#FF5733] uppercase tracking-widest leading-none mt-0.5">ADMIN PANEL</p>
           </div>
         </div>
+      </div>
 
-        <div className="flex items-center gap-4">
-          {onRefreshData && (
-            <button 
-              onClick={onRefreshData} 
-              title="Actualiser les données" 
-              className="p-2 text-gray-600 hover:bg-gray-100 rounded-full relative transition cursor-pointer"
+      {/* Liens du menu */}
+      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
+        
+        <div>
+          <div className="text-[10px] font-extrabold uppercase tracking-widest text-gray-400 px-3 mb-2">PILOTAGE MARKETPLACE</div>
+          <div className="space-y-1">
+            <Link 
+              href="/admin/dashboard"
+              onClick={onClose}
+              className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold bg-[#0f2922] text-white transition shadow-xs cursor-pointer"
             >
-              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-            </button>
-          )}
+              <div className="flex items-center gap-3">
+                <LayoutDashboard className="w-4 h-4 text-emerald-400" />
+                <span>Dashboard Exécutif</span>
+              </div>
+            </Link>
 
-          <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-full relative transition cursor-pointer">
-            <Bell className="w-4 h-4" />
-            {unreadCount > 0 && (
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
-            )}
-          </button>
+            <Link 
+              href="/admin/dashboard/requests"
+              onClick={onClose}
+              className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition cursor-pointer"
+            >
+              <div className="flex items-center gap-3">
+                <CheckSquare className="w-4 h-4 text-gray-400" />
+                <span>Gérer les Demandes (Profs)</span>
+              </div>
+              <span className="text-[10px] font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">Actif</span>
+            </Link>
 
-          <div className="flex items-center gap-3 pl-4 border-l border-gray-200">
-            <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-600 text-white font-bold text-xs flex items-center justify-center shadow-xs">
-              ÉM
-            </div>
-            <div>
-              <p className="font-bold text-xs text-gray-900 leading-none">Émil</p>
-              <p className="text-[10px] text-gray-400 mt-0.5">berrada0amal@gmail.com</p>
-            </div>
+            <Link 
+              href="/admin/leads"
+              onClick={onClose}
+              className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition cursor-pointer"
+            >
+              <div className="flex items-center gap-3">
+                <Coins className="w-4 h-4 text-amber-500" />
+                <span>Suivi des Leads & Soldes</span>
+              </div>
+              <span className="text-[9px] font-extrabold bg-orange-100 text-[#FF5733] px-2 py-0.5 rounded-md">10 MAD</span>
+            </Link>
+
+            <Link 
+              href="/admin/performance"
+              onClick={onClose}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition cursor-pointer"
+            >
+              <TrendingUp className="w-4 h-4 text-emerald-500" />
+              <span>Taux d'Acceptation Profs</span>
+            </Link>
+
+            <Link 
+              href="/admin/professors"
+              onClick={onClose}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition cursor-pointer"
+            >
+              <UserCheck className="w-4 h-4 text-blue-500" />
+              <span>Annuaire Professeurs (100 MAD)</span>
+            </Link>
           </div>
         </div>
-      </header>
 
-      {/* --- MENU LATÉRAL DU DASHBOARD --- */}
-      {isMobileMenuOpen && (
-        <div className="fixed inset-0 z-50 flex">
-          <div 
-            className="fixed inset-0 bg-black/40 backdrop-blur-xs transition-opacity" 
-            onClick={() => setIsMobileMenuOpen(false)}
-          />
+        <div>
+          <div className="text-[10px] font-extrabold uppercase tracking-widest text-gray-400 px-3 mb-2">OUTILS & SUIVI</div>
+          <div className="space-y-1">
+            <Link 
+              href="/admin/calendar"
+              onClick={onClose}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition cursor-pointer"
+            >
+              <CalendarIcon className="w-4 h-4 text-gray-400" />
+              <span>Calendrier</span>
+            </Link>
 
-          <div className="relative w-80 bg-white text-gray-800 h-full shadow-2xl flex flex-col z-10 animate-in slide-in-from-left duration-200 border-r border-gray-100">
-            
-            {/* En-tête du menu */}
-            <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
-              <div className="flex items-center gap-2.5">
-                <div className="bg-orange-50 p-1.5 rounded-xl border border-orange-100">
-                  <GraduationCap className="w-5 h-5 text-[#FF5733]" />
-                </div>
-                <div>
-                  <span className="text-base font-black tracking-tight text-gray-900">prof<span className="text-[#FF5733]">maroc</span></span>
-                  <p className="text-[9px] font-extrabold text-[#FF5733] uppercase tracking-widest leading-none mt-0.5">ADMIN PANEL</p>
-                </div>
-              </div>
-              <button 
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+            <Link 
+              href="/admin/analytics"
+              onClick={onClose}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition cursor-pointer"
+            >
+              <BarChart3 className="w-4 h-4 text-gray-400" />
+              <span>Analytics Avancés</span>
+            </Link>
 
-            {/* Liens du menu */}
-            <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
-              
-              <div>
-                <div className="text-[10px] font-extrabold uppercase tracking-widest text-gray-400 px-3 mb-2">PILOTAGE MARKETPLACE</div>
-                <div className="space-y-1">
-                  <Link 
-                    href="/admin/dashboard"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold bg-[#0f2922] text-white transition shadow-xs cursor-pointer"
-                  >
-                    <div className="flex items-center gap-3">
-                      <LayoutDashboard className="w-4 h-4 text-emerald-400" />
-                      <span>Dashboard Exécutif</span>
-                    </div>
-                  </Link>
+            <Link 
+              href="/admin/settings"
+              onClick={onClose}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition cursor-pointer"
+            >
+              <Settings className="w-4 h-4 text-gray-400" />
+              <span>Paramètres</span>
+            </Link>
 
-                  <Link 
-                    href="/admin/dashboard/requests"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition cursor-pointer"
-                  >
-                    <div className="flex items-center gap-3">
-                      <CheckSquare className="w-4 h-4 text-gray-400" />
-                      <span>Gérer les Demandes (Profs)</span>
-                    </div>
-                    <span className="text-[10px] font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">Actif</span>
-                  </Link>
-
-                  <Link 
-                    href="/admin/leads"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition cursor-pointer"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Coins className="w-4 h-4 text-amber-500" />
-                      <span>Suivi des Leads & Soldes</span>
-                    </div>
-                    <span className="text-[9px] font-extrabold bg-orange-100 text-[#FF5733] px-2 py-0.5 rounded-md">10 MAD</span>
-                  </Link>
-
-                  <Link 
-                    href="/admin/performance"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition cursor-pointer"
-                  >
-                    <TrendingUp className="w-4 h-4 text-emerald-500" />
-                    <span>Taux d'Acceptation Profs</span>
-                  </Link>
-
-                  <Link 
-                    href="/admin/professors"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition cursor-pointer"
-                  >
-                    <UserCheck className="w-4 h-4 text-blue-500" />
-                    <span>Annuaire Professeurs (100 MAD)</span>
-                  </Link>
-                </div>
-              </div>
-
-              <div>
-                <div className="text-[10px] font-extrabold uppercase tracking-widest text-gray-400 px-3 mb-2">OUTILS & SUIVI</div>
-                <div className="space-y-1">
-                  <Link 
-                    href="/admin/calendar"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition cursor-pointer"
-                  >
-                    <CalendarIcon className="w-4 h-4 text-gray-400" />
-                    <span>Calendrier</span>
-                  </Link>
-
-                  <Link 
-                    href="/admin/analytics"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition cursor-pointer"
-                  >
-                    <BarChart3 className="w-4 h-4 text-gray-400" />
-                    <span>Analytics Avancés</span>
-                  </Link>
-
-                  <Link 
-                    href="/admin/settings"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition cursor-pointer"
-                  >
-                    <Settings className="w-4 h-4 text-gray-400" />
-                    <span>Paramètres</span>
-                  </Link>
-
-                  <Link 
-                    href="/admin/help"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition cursor-pointer"
-                  >
-                    <HelpCircle className="w-4 h-4 text-gray-400" />
-                    <span>Aide & Support</span>
-                  </Link>
-                </div>
-              </div>
-
-            </div>
-
-            {/* Pied du menu */}
-            <div className="p-4 border-t border-gray-100 bg-gray-50/50">
-              <Link
-                href="/"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="w-full py-2.5 px-3 hover:bg-red-50 text-red-600 text-sm font-semibold rounded-xl transition flex items-center gap-3 cursor-pointer"
-              >
-                <LogOut className="w-4 h-4" />
-                <span>Logout</span>
-              </Link>
-            </div>
-
+            <Link 
+              href="/admin/help"
+              onClick={onClose}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition cursor-pointer"
+            >
+              <HelpCircle className="w-4 h-4 text-gray-400" />
+              <span>Aide & Support</span>
+            </Link>
           </div>
         </div>
-      )}
-    </>
+
+      </div>
+
+      {/* Pied du menu */}
+      <div className="p-4 border-t border-gray-100 bg-gray-50/50">
+        <Link
+          href="/"
+          onClick={onClose}
+          className="w-full py-2.5 px-3 hover:bg-red-50 text-red-600 text-sm font-semibold rounded-xl transition flex items-center gap-3 cursor-pointer"
+        >
+          <LogOut className="w-4 h-4" />
+          <span>Logout</span>
+        </Link>
+      </div>
+
+    </div>
   );
 }
