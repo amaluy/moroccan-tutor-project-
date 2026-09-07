@@ -1,5 +1,5 @@
 'use client';
-
+import AdminPanel from './adminPanel'; 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -34,7 +34,6 @@ export default function AdminDashboardPage() {
   const router = useRouter();
   const [authorized, setAuthorized] = useState(false);
   
-  const [activeMenu, setActiveMenu] = useState<'dashboard' | 'tasks' | 'calendar' | 'analytics' | 'team' | 'settings' | 'help'>('dashboard');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const [professeursNouveaux, setProfesseursNouveaux] = useState<any[]>([]);
@@ -318,7 +317,7 @@ export default function AdminDashboardPage() {
               </div>
             </div>
 
-            {/* Nouveau Graphique Demandes en Barres (Style moderne et élégant) */}
+            {/* Nouveau Graphique Demandes en Barres */}
             <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-xs space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
@@ -347,7 +346,6 @@ export default function AdminDashboardPage() {
                 </div>
               </div>
 
-              {/* Histogramme à barres verticales modernes */}
               <div className="h-56 w-full flex items-end justify-between gap-3 pt-8 px-2 relative bg-gradient-to-b from-emerald-50/40 to-transparent rounded-2xl border border-dashed border-gray-100">
                 {monthlyData.map((item, idx) => {
                   const heightPercent = chartRequestsMax > 0 ? (item.count / chartRequestsMax) * 100 : 0;
@@ -355,20 +353,17 @@ export default function AdminDashboardPage() {
 
                   return (
                     <div key={idx} className="flex-1 flex flex-col items-center h-full justify-end group relative">
-                      {/* Tooltip au survol */}
                       <div className="absolute -top-10 bg-gray-900 text-white text-[10px] font-bold py-1 px-2.5 rounded-lg opacity-0 group-hover:opacity-100 transition pointer-events-none z-25 whitespace-nowrap shadow-lg flex items-center gap-1.5">
                         <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
                         {item.count} demande(s) en {item.month}
                       </div>
 
-                      {/* Valeur affichée au-dessus de la barre si supérieure à 0 */}
                       {item.count > 0 && (
                         <span className="text-[10px] font-black text-[#103D3B] mb-1.5 opacity-90 group-hover:scale-110 transition-transform">
                           {item.count}
                         </span>
                       )}
 
-                      {/* Barre verticale */}
                       <div 
                         className={`w-full rounded-t-xl transition-all duration-300 shadow-xs ${
                           item.count > 0 
@@ -429,41 +424,24 @@ export default function AdminDashboardPage() {
 
       </main>
 
-      {/* MENU LATÉRAL */}
+      {/* MENU LATÉRAL - AFFICHAGE DE ADMINPANEL */}
       {isMobileMenuOpen && (
         <div className="fixed inset-0 z-50 flex">
           <div className="fixed inset-0 bg-black/40 backdrop-blur-xs transition-opacity" onClick={() => setIsMobileMenuOpen(false)}></div>
-          <div className="relative w-80 bg-white text-gray-800 flex flex-col justify-between shadow-2xl z-10 h-full border-r border-gray-100">
-            <div>
-              <div className="p-6 flex items-center justify-between border-b border-gray-100">
-                <div className="flex items-center gap-2.5">
-                  <div className="bg-orange-50 p-1.5 rounded-xl border border-orange-100"><BookOpen className="w-5 h-5 text-[#FF5733]" /></div>
-                  <div>
-                    <span className="text-base font-black tracking-tight text-gray-900">prof<span className="text-[#FF5733]">maroc</span></span>
-                    <p className="text-[9px] font-extrabold text-red-500 uppercase tracking-widest leading-none mt-0.5">ADMIN PANEL</p>
-                  </div>
-                </div>
-                <button onClick={() => setIsMobileMenuOpen(false)} className="p-1.5 text-gray-400 hover:text-gray-700 rounded-lg cursor-pointer"><X className="w-5 h-5" /></button>
-              </div>
-
-              <div className="p-4 space-y-6">
-                <nav className="space-y-1">
-                  <button onClick={() => { setActiveMenu('dashboard'); setIsMobileMenuOpen(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold bg-[#0f2922] text-white">
-                    <LayoutDashboard className="w-4 h-4 text-emerald-400" /> <span>Dashboard</span>
-                  </button>
-                  <button onClick={() => { router.push('/admin/dashboard/requests'); setIsMobileMenuOpen(false); }} className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50">
-                    <div className="flex items-center gap-3"><CheckSquare className="w-4 h-4 text-gray-400" /><span>Gérer les demandes</span></div>
-                    <span className="text-[10px] font-bold bg-red-100 text-red-600 px-2 py-0.5 rounded-full">{professeursNouveaux.length}</span>
-                  </button>
-                </nav>
-              </div>
+          <div className="relative w-80 bg-white text-gray-800 flex flex-col shadow-2xl z-10 h-full border-r border-gray-100">
+            
+            {/* Bouton de fermeture */}
+            <div className="absolute top-4 right-4 z-20">
+              <button onClick={() => setIsMobileMenuOpen(false)} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg cursor-pointer transition">
+                <X className="w-5 h-5" />
+              </button>
             </div>
 
-            <div className="p-4 border-t border-gray-100 bg-gray-50/50">
-              <Link href="/" className="w-full py-2.5 px-3 hover:bg-red-50 text-red-600 text-sm font-semibold rounded-xl transition flex items-center gap-3 cursor-pointer">
-                <LogOut className="w-4 h-4" /><span>Logout</span>
-              </Link>
+            {/* Intégration du composant AdminPanel */}
+            <div className="flex-1 overflow-y-auto">
+              <AdminPanel />
             </div>
+
           </div>
         </div>
       )}
