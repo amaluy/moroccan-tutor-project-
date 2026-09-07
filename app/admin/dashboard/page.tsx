@@ -34,7 +34,7 @@ export default function AdminDashboardPage() {
   const currentYearStr = new Date().getFullYear().toString();
   const [selectedYear, setSelectedYear] = useState<string>(currentYearStr);
   const [availableYears, setAvailableYears] = useState<string[]>(['2026', '2027', currentYearStr]);
-  const [activePointIndex, setActivePointIndex] = useState<number | null>(null);
+  const [hoveredPoint, setHoveredPoint] = useState<{ month: string; count: number } | null>(null);
 
   useEffect(() => {
     localStorage.setItem('user_email', 'berrada0amal@gmail.com');
@@ -49,25 +49,35 @@ export default function AdminDashboardPage() {
     setDbError(null);
 
     try {
-      const { data: profsData, error: profsError } = await supabase.from('professors').select('*');
-      if (profsError) setDbError(profsError.message);
-      else if (profsData) setProfesseursExistants(profsData);
+      let profsData: any[] = [];
+      let reqsData: any[] = [];
+      let transData: any[] = [];
 
-      const { data: reqsData, error: reqsError } = await supabase.from('requests').select('*');
-      if (reqsError) {
-        setDbError(reqsError.message);
-      } else if (reqsData) {
-        setProfesseursNouveaux(reqsData);
+      // 1. Récupération des professeurs
+      const { data: pData, error: profsError } = await supabase.from('professors').select('*');
+      if (!profsError && pData) {
+        profsData = pData;
+        setProfesseursExistants(pData);
       }
 
-      let combinedHistory: any[] = [];
-      if (reqsData) combinedHistory = [...reqsData];
-      if (profsData) {
-        combinedHistory = [...combinedHistory, ...profsData];
+      // 2. Récupération des demandes
+      const { data: rData, error: reqsError } = await supabase.from('requests').select('*');
+      if (!reqsError && rData) {
+        reqsData = rData;
+        setProfesseursNouveaux(rData);
       }
+
+      // 3. Récupération des transactions (si la table existe)
+      const { data: tData, error: transError } = await supabase.from('transactions').select('*');
+      if (!transError && tData) {
+        transData = tData;
+        setTransactionsList(tData);
+      }
+
+      let combinedHistory: any[] = [...reqsData, ...profsData];
       setAllRequestsHistory(combinedHistory);
 
-      // --- CORRECTION DES DOUBLONS ICI ---
+      // Gestion des années pour le filtre
       const yearsSet = new Set<string>(['2026', '2027', currentYearStr]);
       combinedHistory.forEach(item => {
         const dateVal = item.created_at || item.date || item.inserted_at;
@@ -78,25 +88,30 @@ export default function AdminDashboardPage() {
           }
         }
       });
-      // On s'assure d'avoir des valeurs uniques triées par ordre décroissant
       const sortedYears = Array.from(yearsSet).sort((a, b) => Number(b) - Number(a));
       setAvailableYears(sortedYears);
 
+      // --- CALCUL ROBUSTE DU CHIFFRE D'AFFAIRES ---
       let totalCa = 0;
-      const { data: transData, error: transError } = await supabase.from('transactions').select('*');
-      if (!transError && transData) {
-        setTransactionsList(transData);
+
+      // Si on a des transactions, on les somme en priorité
+      if (transData.length > 0) {
         totalCa = transData.reduce((sum, item) => {
-          const montant = Number(item.montant || item.amount || item.tarif || 0);
-          return sum + montant;
-        }, 0);
-      } else if (reqsData && reqsData.length > 0) {
-        totalCa = reqsData.reduce((sum, item) => {
-          const montant = Number(item.montant || item.amount || item.tarif || 0);
+          const montant = Number(item.montant || item.amount || item.tarif || item.price || 0);
           return sum + montant;
         }, 0);
       }
 
+      // Si le total est à 0, on regarde dans les demandes ou les profs s'il y a un champ de prix/tarif/montant
+      if (totalCa === 0 && combinedHistory.length > 0) {
+        totalCa = combinedHistory.reduce((sum, item) => {
+          const montant = Number(item.montant || item.amount || item.tarif || item.price || item.fee || 0);
+          return sum + montant;
+        }, 0);
+      }
+
+      // S'il n'y a toujours pas de montant numérique explicite mais que tu veux baser ton CA sur quelque chose de concret (ex: nombre de profs validés * un montant fixe ou les données de ta base initiale), ajuste ici. 
+      // Si tes données contiennent des montants, ils s'afficheront automatiquement maintenant.
       setRealCa(totalCa);
 
     } catch (err: any) {
@@ -133,9 +148,9 @@ export default function AdminDashboardPage() {
   const monthlyData = getMonthlyRequestsData();
   
   const maxDataVal = Math.max(...monthlyData.map(d => d.count), 0);
-  const maxMonthlyCount = maxDataVal > 200 ? Math.ceil(maxDataVal / 50) * 50 : 200;
+  const chartMax = maxDataVal <= 10 ? 50 : Math.ceil(maxDataVal / 50) * 50;
+  const stepVal = chartMax / 5;
 
-  // --- FONCTION D'EXPORT EXCEL (CSV) ---
   const exportToExcel = () => {
     let csvContent = "data:text/csv;charset=utf-8,Mois;Annee;Nombre de Demandes\n";
     monthlyData.forEach(item => {
@@ -189,25 +204,6 @@ export default function AdminDashboardPage() {
 
       counts[regionName] = (counts[regionName] || 0) + 1;
       amounts[regionName] = amounts[regionName] || 0;
-    });
-
-    transactionsList.forEach(t => {
-      const profId = (t.prof_id || t.email || '').toLowerCase().trim();
-      const montantTrans = Number(t.amount || t.montant || 0);
-      const city = profCityMap[profId] || '';
-
-      let regionName = 'Grand Casablanca';
-      if (city.includes('marrakech') || city.includes('marakech') || city.includes('safi')) {
-        regionName = 'Marrakech-Safi';
-      } else if (city.includes('rabat') || city.includes('salé')) {
-        regionName = 'Rabat-Salé-Kénitra';
-      }
-
-      if (amounts[regionName] !== undefined) {
-        amounts[regionName] += montantTrans;
-      } else {
-        amounts['Grand Casablanca'] = (amounts['Grand Casablanca'] || 0) + montantTrans;
-      }
     });
 
     const colors = ['bg-purple-500', 'bg-amber-500', 'bg-red-400', 'bg-sky-400', 'bg-orange-400'];
@@ -400,12 +396,12 @@ export default function AdminDashboardPage() {
           </div>
         </div>
 
-        {/* ================= GRAPHIQUE LINÉAIRE INTERACTIF ================= */}
+        {/* ================= GRAPHIQUE LINÉAIRE AVEC GRADUATIONS ET SURVOL ================= */}
         <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-xs space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h2 className="text-base font-black text-gray-900">Nombre de demandes reçues par mois</h2>
-              <p className="text-xs text-gray-400">Cliquez sur un point du graphique pour afficher le chiffre exact de ce mois.</p>
+              <p className="text-xs text-gray-400">Survolez les points pour afficher le nombre exact de demandes par mois.</p>
             </div>
 
             <div className="flex items-center gap-3">
@@ -414,7 +410,7 @@ export default function AdminDashboardPage() {
                 <span className="text-xs font-bold text-gray-600">Année :</span>
                 <select 
                   value={selectedYear} 
-                  onChange={(e) => { setSelectedYear(e.target.value); setActivePointIndex(null); }}
+                  onChange={(e) => { setSelectedYear(e.target.value); setHoveredPoint(null); }}
                   className="bg-transparent text-xs font-black text-gray-900 outline-none cursor-pointer"
                 >
                   {availableYears.map(yr => (
@@ -429,60 +425,68 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
-          <div className="relative w-full h-80 pt-10 pb-4 px-6 bg-white rounded-2xl border border-gray-100 flex flex-col justify-end">
+          <div className="relative w-full h-80 pt-8 pb-4 px-6 bg-white rounded-2xl border border-gray-100 flex flex-col justify-end">
             
-            <div className="absolute inset-0 flex flex-col justify-between p-6 pointer-events-none opacity-50">
-              <div className="w-full border-b border-dashed border-gray-200 flex items-center justify-end"><span className="text-[10px] text-gray-400 font-bold pr-2">{maxMonthlyCount}</span></div>
-              <div className="w-full border-b border-dashed border-gray-200 flex items-center justify-end"><span className="text-[10px] text-gray-400 font-bold pr-2">{Math.round(maxMonthlyCount * 0.75)}</span></div>
-              <div className="w-full border-b border-dashed border-gray-200 flex items-center justify-end"><span className="text-[10px] text-gray-400 font-bold pr-2">{Math.round(maxMonthlyCount * 0.5)}</span></div>
-              <div className="w-full border-b border-dashed border-gray-200 flex items-center justify-end"><span className="text-[10px] text-gray-400 font-bold pr-2">{Math.round(maxMonthlyCount * 0.25)}</span></div>
-              <div className="w-full border-b border-dashed border-gray-200 flex items-center justify-end"><span className="text-[10px] text-gray-400 font-bold pr-2">0</span></div>
+            <div className="absolute inset-0 flex flex-col justify-between p-6 pointer-events-none opacity-60">
+              <div className="w-full border-b border-dashed border-gray-200 flex items-center justify-end"><span className="text-[10px] text-gray-500 font-bold pr-2">{chartMax}</span></div>
+              <div className="w-full border-b border-dashed border-gray-200 flex items-center justify-end"><span className="text-[10px] text-gray-500 font-bold pr-2">{chartMax - stepVal}</span></div>
+              <div className="w-full border-b border-dashed border-gray-200 flex items-center justify-end"><span className="text-[10px] text-gray-500 font-bold pr-2">{chartMax - stepVal * 2}</span></div>
+              <div className="w-full border-b border-dashed border-gray-200 flex items-center justify-end"><span className="text-[10px] text-gray-500 font-bold pr-2">{chartMax - stepVal * 3}</span></div>
+              <div className="w-full border-b border-dashed border-gray-200 flex items-center justify-end"><span className="text-[10px] text-gray-500 font-bold pr-2">{chartMax - stepVal * 4}</span></div>
+              <div className="w-full border-b border-dashed border-gray-200 flex items-center justify-end"><span className="text-[10px] text-gray-500 font-bold pr-2">0</span></div>
             </div>
 
-            <div className="relative w-full h-48 z-10 ml-4">
-              <svg viewBox="0 0 1100 300" className="w-full h-full overflow-visible" preserveAspectRatio="none">
+            <div className="relative w-full h-48 z-10 ml-2">
+              <svg viewBox="0 0 1100 260" className="w-full h-full overflow-visible" preserveAspectRatio="none">
                 <defs>
-                  <linearGradient id="requestGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stopColor="#103D3B" stopOpacity="0.3" />
+                  <linearGradient id="lineGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor="#103D3B" stopOpacity="0.25" />
                     <stop offset="100%" stopColor="#103D3B" stopOpacity="0.0" />
                   </linearGradient>
                 </defs>
 
                 {(() => {
                   const points = monthlyData.map((d, index) => {
-                    const x = (index / (monthlyData.length - 1)) * 1050 + 25;
-                    const y = 270 - (d.count / maxMonthlyCount) * 240;
-                    return { x, y, count: d.count, month: d.month, index };
+                    const x = (index / (monthlyData.length - 1)) * 1040 + 30;
+                    const y = chartMax > 0 ? 240 - (d.count / chartMax) * 220 : 240;
+                    return { x, y, count: d.count, month: d.month };
                   });
 
                   const pathD = points.reduce((acc, p, idx) => idx === 0 ? `M ${p.x},${p.y}` : `${acc} L ${p.x},${p.y}`, '');
-                  const areaD = `${pathD} L ${points[points.length - 1].x},300 L ${points[0].x},300 Z`;
+                  const areaD = `${pathD} L ${points[points.length - 1].x},260 L ${points[0].x},260 Z`;
 
                   return (
                     <>
-                      <path d={areaD} fill="url(#requestGradient)" />
+                      <path d={areaD} fill="url(#lineGradient)" />
                       <path d={pathD} fill="none" stroke="#103D3B" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
                       
-                      {points.map((p) => {
-                        const isSelected = activePointIndex === p.index;
+                      {points.map((p, idx) => {
+                        const isHovered = hoveredPoint?.month === p.month;
                         return (
-                          <g key={p.index} transform={`translate(${p.x}, ${p.y})`} onClick={() => setActivePointIndex(p.index)} className="cursor-pointer group">
-                            <circle cx="0" cy="0" r="18" fill="transparent" />
+                          <g key={idx} transform={`translate(${p.x}, ${p.y})`} className="cursor-pointer group">
+                            <circle 
+                              cx="0" 
+                              cy="0" 
+                              r="16" 
+                              fill="transparent" 
+                              onMouseEnter={() => setHoveredPoint({ month: p.month, count: p.count })}
+                              onMouseLeave={() => setHoveredPoint(null)}
+                            />
                             
                             <circle 
                               cx="0" 
                               cy="0" 
-                              r={isSelected ? "8" : "5"} 
-                              fill={isSelected ? "#FF5733" : "#ffffff"} 
+                              r={isHovered ? "7" : "5"} 
+                              fill={isHovered ? "#FF5733" : "#ffffff"} 
                               stroke="#103D3B" 
                               strokeWidth="3" 
-                              className="transition-all duration-200 group-hover:scale-125"
+                              className="transition-all duration-200 pointer-events-none"
                             />
 
-                            {isSelected && (
-                              <g transform="translate(0, -42)">
-                                <rect x="-35" y="-22" width="70" height="26" rx="6" fill="#103D3B" filter="drop-shadow(0px 4px 6px rgba(0,0,0,0.2))" />
-                                <text x="0" y="-7" fill="#ffffff" fontSize="11" fontWeight="bold" textAnchor="middle">
+                            {isHovered && (
+                              <g transform="translate(0, -32)" className="pointer-events-none">
+                                <rect x="-30" y="-20" width="60" height="24" rx="6" fill="#103D3B" />
+                                <text x="0" y="-5" fill="#ffffff" fontSize="11" fontWeight="bold" textAnchor="middle">
                                   {p.count} dem.
                                 </text>
                               </g>
@@ -496,25 +500,24 @@ export default function AdminDashboardPage() {
               </svg>
             </div>
 
-            <div className="flex justify-between text-[11px] font-bold text-gray-500 pl-4 pr-2 pt-3 border-t border-gray-100">
+            <div className="flex justify-between text-[11px] font-bold text-gray-500 px-4 pt-3 border-t border-gray-100">
               {monthlyData.map((item, idx) => (
-                <span 
-                  key={idx} 
-                  onClick={() => setActivePointIndex(idx)}
-                  className={`text-center flex-1 cursor-pointer transition ${activePointIndex === idx ? 'text-[#FF5733] font-black underline' : 'hover:text-gray-900'}`}
-                >
+                <span key={idx} className="text-center flex-1">
                   {item.month}
                 </span>
               ))}
             </div>
           </div>
 
-          {activePointIndex !== null && (
+          {hoveredPoint ? (
             <div className="flex items-center justify-between p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs">
               <span className="font-bold text-amber-900">
-                📅 Mois sélectionné : <strong className="text-[#103D3B]">{monthlyData[activePointIndex].month} {selectedYear}</strong> — <strong>{monthlyData[activePointIndex].count}</strong> demande(s) enregistrée(s).
+                📌 Mois survolé : <strong className="text-[#103D3B]">{hoveredPoint.month} {selectedYear}</strong> — <strong>{hoveredPoint.count}</strong> demande(s).
               </span>
-              <button onClick={() => setActivePointIndex(null)} className="text-gray-500 hover:text-gray-900 font-bold cursor-pointer">Fermer ×</button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between p-3 bg-gray-50 border border-gray-100 rounded-xl text-xs text-gray-500">
+              <span>💡 Passez simplement votre curseur sur les points de la courbe pour inspecter chaque mois.</span>
             </div>
           )}
         </div>
