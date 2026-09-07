@@ -33,9 +33,11 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
         <div>
           <div className="text-[10px] font-extrabold uppercase tracking-widest text-gray-400 px-3 mb-2">PILOTAGE MARKETPLACE</div>
           <div className="space-y-1">
+            
             <Link 
               href="/admin/dashboard"
               onClick={onClose}
+              title="Vue d'ensemble globale des KPIs et performances de la marketplace"
               className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold bg-[#0f2922] text-white transition shadow-xs cursor-pointer"
             >
               <div className="flex items-center gap-3">
@@ -47,6 +49,7 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
             <Link 
               href="/admin/dashboard/requests"
               onClick={onClose}
+              title="Valider, refuser ou examiner les profils des professeurs en attente d'inscription"
               className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition cursor-pointer"
             >
               <div className="flex items-center gap-3">
@@ -59,6 +62,7 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
             <Link 
               href="/admin/leads"
               onClick={onClose}
+              title="Suivi en direct des leads étudiants mis en relation et impact sur les soldes (10 MAD/lead)"
               className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition cursor-pointer"
             >
               <div className="flex items-center gap-3">
@@ -71,6 +75,7 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
             <Link 
               href="/admin/performance"
               onClick={onClose}
+              title="Analyser le taux de réactivité et d'acceptation des demandes par les professeurs"
               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition cursor-pointer"
             >
               <TrendingUp className="w-4 h-4 text-emerald-500" />
@@ -80,20 +85,24 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
             <Link 
               href="/admin/professors"
               onClick={onClose}
+              title="Répertoire complet des professeurs inscrits et gestion de leur abonnement (100 MAD)"
               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition cursor-pointer"
             >
               <UserCheck className="w-4 h-4 text-blue-500" />
               <span>Annuaire Professeurs (100 MAD)</span>
             </Link>
+
           </div>
         </div>
 
         <div>
           <div className="text-[10px] font-extrabold uppercase tracking-widest text-gray-400 px-3 mb-2">OUTILS & SUIVI</div>
           <div className="space-y-1">
+            
             <Link 
               href="/admin/calendar"
               onClick={onClose}
+              title="Calendrier global des cours, réservations et échéances importantes"
               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition cursor-pointer"
             >
               <CalendarIcon className="w-4 h-4 text-gray-400" />
@@ -103,6 +112,7 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
             <Link 
               href="/admin/analytics"
               onClick={onClose}
+              title="Rapports statistiques avancés sur le trafic et les conversions de la plateforme"
               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition cursor-pointer"
             >
               <BarChart3 className="w-4 h-4 text-gray-400" />
@@ -112,6 +122,7 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
             <Link 
               href="/admin/settings"
               onClick={onClose}
+              title="Configuration générale du site, des commissions et des tarifs"
               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition cursor-pointer"
             >
               <Settings className="w-4 h-4 text-gray-400" />
@@ -121,11 +132,13 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
             <Link 
               href="/admin/help"
               onClick={onClose}
+              title="Documentation et assistance technique pour l'administration"
               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition cursor-pointer"
             >
               <HelpCircle className="w-4 h-4 text-gray-400" />
               <span>Aide & Support</span>
             </Link>
+
           </div>
         </div>
 
@@ -136,6 +149,7 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
         <Link
           href="/"
           onClick={onClose}
+          title="Se déconnecter de la session administrateur"
           className="w-full py-2.5 px-3 hover:bg-red-50 text-red-600 text-sm font-semibold rounded-xl transition flex items-center gap-3 cursor-pointer"
         >
           <LogOut className="w-4 h-4" />
