@@ -281,52 +281,173 @@ export default function AdminDashboardPage() {
           </div>
         </div>
 
-        {/* SECTION LIGNE 1 : CA (2 colonnes) & RÉGIONS (1 colonne, toute la hauteur naturelle sans scroll) */}
+        {/* SECTION PRINCIPALE : 2 COLONNES */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
           
-          {/* Graphique CA */}
-          <div className="lg:col-span-2 bg-white p-6 rounded-3xl border border-gray-200 shadow-xs flex flex-col justify-between">
-            <div className="flex justify-between items-center mb-4">
-              <div>
-                <h2 className="text-base font-black text-gray-900">Évolution du chiffre d'affaires (MAD)</h2>
-                <p className="text-xs text-gray-400">Total calculé en temps réel depuis les transactions ({selectedYear})</p>
+          {/* COLONNE GAUCHE (2 parts) : Chiffre d'affaires & Demandes */}
+          <div className="lg:col-span-2 space-y-6">
+            
+            {/* Graphique CA */}
+            <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-xs flex flex-col justify-between">
+              <div className="flex justify-between items-center mb-4">
+                <div>
+                  <h2 className="text-base font-black text-gray-900">Évolution du chiffre d'affaires (MAD)</h2>
+                  <p className="text-xs text-gray-400">Total calculé en temps réel depuis les transactions ({selectedYear})</p>
+                </div>
+                <span className="px-3 py-1 bg-amber-100 text-amber-800 font-black text-xs rounded-full">
+                  {monthlyRevenueData.reduce((acc, curr) => acc + curr.amount, 0).toLocaleString()} MAD
+                </span>
               </div>
-              <span className="px-3 py-1 bg-amber-100 text-amber-800 font-black text-xs rounded-full">
-                {monthlyRevenueData.reduce((acc, curr) => acc + curr.amount, 0).toLocaleString()} MAD
-              </span>
-            </div>
 
-            <div className="h-56 w-full flex items-end justify-between gap-2 pt-6 px-2 relative bg-gradient-to-b from-amber-50/50 to-transparent rounded-2xl border border-dashed border-gray-100">
-              {monthlyRevenueData.map((item, idx) => {
-                const heightPercent = chartRevenueMax > 0 ? (item.amount / chartRevenueMax) * 100 : 0;
-                const finalHeight = item.amount > 0 ? Math.max(heightPercent, 8) : 4;
+              <div className="h-56 w-full flex items-end justify-between gap-2 pt-6 px-2 relative bg-gradient-to-b from-amber-50/50 to-transparent rounded-2xl border border-dashed border-gray-100">
+                {monthlyRevenueData.map((item, idx) => {
+                  const heightPercent = chartRevenueMax > 0 ? (item.amount / chartRevenueMax) * 100 : 0;
+                  const finalHeight = item.amount > 0 ? Math.max(heightPercent, 8) : 4;
 
-                return (
-                  <div key={idx} className="flex-1 flex flex-col items-center h-full justify-end group relative">
-                    <div className="absolute -top-8 bg-gray-900 text-white text-[10px] font-bold py-1 px-2 rounded-md opacity-0 group-hover:opacity-100 transition pointer-events-none z-20 whitespace-nowrap shadow-md">
-                      {item.amount.toLocaleString()} MAD
+                  return (
+                    <div key={idx} className="flex-1 flex flex-col items-center h-full justify-end group relative">
+                      <div className="absolute -top-8 bg-gray-900 text-white text-[10px] font-bold py-1 px-2 rounded-md opacity-0 group-hover:opacity-100 transition pointer-events-none z-20 whitespace-nowrap shadow-md">
+                        {item.amount.toLocaleString()} MAD
+                      </div>
+                      <div 
+                        className="w-full bg-gradient-to-t from-amber-500 to-red-400 rounded-t-lg transition-all duration-300 opacity-85" 
+                        style={{ height: `${finalHeight}%` }}
+                      ></div>
+                      <span className="text-[10px] font-bold text-gray-500 mt-2">{item.month}</span>
                     </div>
-                    <div 
-                      className="w-full bg-gradient-to-t from-amber-500 to-red-400 rounded-t-lg transition-all duration-300 opacity-85" 
-                      style={{ height: `${finalHeight}%` }}
-                    ></div>
-                    <span className="text-[10px] font-bold text-gray-500 mt-2">{item.month}</span>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
+
+            {/* Graphique Demandes */}
+            <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-xs space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-base font-black text-gray-900">Nombre de demandes reçues par mois</h2>
+                  <p className="text-xs text-gray-400">Survolez les points pour afficher le nombre exact de demandes.</p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-xl">
+                    <Calendar className="w-4 h-4 text-gray-500" />
+                    <span className="text-xs font-bold text-gray-600">Année :</span>
+                    <select 
+                      value={selectedYear} 
+                      onChange={(e) => { setSelectedYear(e.target.value); setHoveredPoint(null); }}
+                      className="bg-transparent text-xs font-black text-gray-900 outline-none cursor-pointer"
+                    >
+                      {availableYears.map(yr => (
+                        <option key={yr} value={yr}>{yr}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <span className="text-xs font-bold bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-xl border border-emerald-100">
+                    Total {selectedYear} : {monthlyData.reduce((sum, item) => sum + item.count, 0)} demandes
+                  </span>
+                </div>
+              </div>
+
+              {/* Graphique linéaire */}
+              <div className="relative w-full h-56 pt-6 pb-2 px-6 bg-white rounded-2xl border border-gray-100 flex flex-col justify-end">
+                <div className="absolute inset-0 flex flex-col justify-between p-6 pointer-events-none opacity-60">
+                  <div className="w-full border-b border-dashed border-gray-200 flex items-center justify-end"><span className="text-[10px] text-gray-500 font-bold pr-2">{chartMax}</span></div>
+                  <div className="w-full border-b border-dashed border-gray-200 flex items-center justify-end"><span className="text-[10px] text-gray-500 font-bold pr-2">{chartMax - stepVal}</span></div>
+                  <div className="w-full border-b border-dashed border-gray-200 flex items-center justify-end"><span className="text-[10px] text-gray-500 font-bold pr-2">{chartMax - stepVal * 2}</span></div>
+                  <div className="w-full border-b border-dashed border-gray-200 flex items-center justify-end"><span className="text-[10px] text-gray-500 font-bold pr-2">{chartMax - stepVal * 3}</span></div>
+                  <div className="w-full border-b border-dashed border-gray-200 flex items-center justify-end"><span className="text-[10px] text-gray-500 font-bold pr-2">{chartMax - stepVal * 4}</span></div>
+                  <div className="w-full border-b border-dashed border-gray-200 flex items-center justify-end"><span className="text-[10px] text-gray-500 font-bold pr-2">0</span></div>
+                </div>
+
+                <div className="relative w-full h-32 z-10 ml-2">
+                  <svg viewBox="0 0 1100 260" className="w-full h-full overflow-visible" preserveAspectRatio="none">
+                    <defs>
+                      <linearGradient id="lineGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stopColor="#103D3B" stopOpacity="0.25" />
+                        <stop offset="100%" stopColor="#103D3B" stopOpacity="0.0" />
+                      </linearGradient>
+                    </defs>
+
+                    {(() => {
+                      const points = monthlyData.map((d, index) => {
+                        const x = (index / (monthlyData.length - 1)) * 1040 + 30;
+                        const y = chartMax > 0 ? 240 - (d.count / chartMax) * 220 : 240;
+                        return { x, y, count: d.count, month: d.month };
+                      });
+
+                      const pathD = points.reduce((acc, p, idx) => idx === 0 ? `M ${p.x},${p.y}` : `${acc} L ${p.x},${p.y}`, '');
+                      const areaD = `${pathD} L ${points[points.length - 1].x},260 L ${points[0].x},260 Z`;
+
+                      return (
+                        <>
+                          <path d={areaD} fill="url(#lineGradient)" />
+                          <path d={pathD} fill="none" stroke="#103D3B" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                          
+                          {points.map((p, idx) => {
+                            const isHovered = hoveredPoint?.month === p.month;
+                            return (
+                              <g key={idx} transform={`translate(${p.x}, ${p.y})`} className="cursor-pointer group">
+                                <circle 
+                                  cx="0" cy="0" r="16" fill="transparent" 
+                                  onMouseEnter={() => setHoveredPoint({ month: p.month, count: p.count })}
+                                  onMouseLeave={() => setHoveredPoint(null)}
+                                />
+                                <circle 
+                                  cx="0" cy="0" r={isHovered ? "7" : "5"} 
+                                  fill={isHovered ? "#FF5733" : "#ffffff"} 
+                                  stroke="#103D3B" strokeWidth="3" 
+                                  className="transition-all duration-200 pointer-events-none"
+                                />
+                                {isHovered && (
+                                  <g transform="translate(0, -32)" className="pointer-events-none">
+                                    <rect x="-30" y="-20" width="60" height="24" rx="6" fill="#103D3B" />
+                                    <text x="0" y="-5" fill="#ffffff" fontSize="11" fontWeight="bold" textAnchor="middle">
+                                      {p.count} dem.
+                                    </text>
+                                  </g>
+                                )}
+                              </g>
+                            );
+                          })}
+                        </>
+                      );
+                    })()}
+                  </svg>
+                </div>
+
+                <div className="flex justify-between text-[11px] font-bold text-gray-500 px-4 pt-2 border-t border-gray-100">
+                  {monthlyData.map((item, idx) => (
+                    <span key={idx} className="text-center flex-1">{item.month}</span>
+                  ))}
+                </div>
+              </div>
+
+              {hoveredPoint ? (
+                <div className="flex items-center justify-between p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs">
+                  <span className="font-bold text-amber-900">
+                    📌 Mois survolé : <strong className="text-[#103D3B]">{hoveredPoint.month} {selectedYear}</strong> — <strong>{hoveredPoint.count}</strong> demande(s).
+                  </span>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between p-3 bg-gray-50 border border-gray-100 rounded-xl text-xs text-gray-500">
+                  <span>💡 Passez simplement votre curseur sur les points de la courbe pour inspecter chaque mois.</span>
+                </div>
+              )}
+            </div>
+
           </div>
 
-          {/* Tableau des régions : s'étend verticalement pour correspondre à la hauteur naturelle, sans barre de défilement (overflow retiré) */}
+          {/* COLONNE DROITE (1 part) : Professeurs par région (Police agrandie & chiffres mis en valeur) */}
           <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-xs space-y-4">
             <div>
-              <h2 className="text-base font-black text-gray-900">Professeurs par région</h2>
+              <h2 className="text-lg font-black text-gray-900">Professeurs par région</h2>
               <p className="text-xs text-gray-400">Liste complète des 12 régions du Maroc</p>
             </div>
 
-            <div className="bg-amber-50 border border-amber-200 p-2.5 rounded-xl text-xs text-amber-900 flex items-center justify-between">
+            <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl text-sm text-amber-900 flex items-center justify-between font-bold">
               <span>Total actifs :</span>
-              <span className="font-black text-[#103D3B] bg-white px-2 py-0.5 rounded-md border border-amber-200">
+              <span className="text-base font-black text-[#103D3B] bg-white px-3 py-1 rounded-lg border border-amber-200 shadow-2xs">
                 {professeursExistants.filter(p => (p.ville || p.city || '').toLowerCase().trim() !== 'admin').length} profs
               </span>
             </div>
@@ -334,20 +455,24 @@ export default function AdminDashboardPage() {
             <div className="border border-gray-200 rounded-2xl overflow-hidden">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-gray-50 border-b border-gray-200 text-[11px] font-black text-gray-700">
-                    <th className="p-2.5">Région</th>
-                    <th className="p-2.5 text-right">Profs</th>
+                  <tr className="bg-gray-50 border-b border-gray-200 text-xs font-black text-gray-700">
+                    <th className="py-3 px-4">Région</th>
+                    <th className="py-3 px-4 text-right">Profs</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100 text-xs font-medium text-gray-800">
+                <tbody className="divide-y divide-gray-100 text-sm font-semibold text-gray-900">
                   {getAllMoroccoRegionsStats().map((row, index) => (
                     <tr key={index} className="hover:bg-gray-50/80 transition">
-                      <td className="p-2.5 flex items-center gap-2">
-                        <span className={`w-2 h-2 rounded-full ${row.count > 0 ? 'bg-emerald-500' : 'bg-gray-300'}`}></span>
-                        <span className="font-bold text-gray-900 truncate max-w-[150px]" title={row.region}>{row.region}</span>
+                      <td className="py-3.5 px-4 flex items-center gap-2.5">
+                        <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${row.count > 0 ? 'bg-emerald-500 shadow-xs' : 'bg-gray-300'}`}></span>
+                        <span className="font-bold text-gray-900">{row.region}</span>
                       </td>
-                      <td className="p-2.5 text-right">
-                        <span className={`px-2 py-0.5 rounded-md font-bold text-[11px] ${row.count > 0 ? 'bg-purple-50 text-purple-700' : 'bg-gray-100 text-gray-400'}`}>
+                      <td className="py-3.5 px-4 text-right">
+                        <span className={`px-2.5 py-1 rounded-lg font-black text-xs inline-block min-w-[28px] text-center ${
+                          row.count > 0 
+                            ? 'bg-purple-100 text-purple-800 border border-purple-200 shadow-2xs' 
+                            : 'bg-gray-100 text-gray-400'
+                        }`}>
                           {row.count}
                         </span>
                       </td>
@@ -358,124 +483,6 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
-        </div>
-
-        {/* SECTION LIGNE 2 : GRAPHIQUE DES DEMANDES (Même largeur exacte que le graphique CA du dessus, en occupant les 2/3 de la grille) */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 bg-white p-6 rounded-3xl border border-gray-200 shadow-xs space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h2 className="text-base font-black text-gray-900">Nombre de demandes reçues par mois</h2>
-                <p className="text-xs text-gray-400">Survolez les points pour afficher le nombre exact de demandes.</p>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-xl">
-                  <Calendar className="w-4 h-4 text-gray-500" />
-                  <span className="text-xs font-bold text-gray-600">Année :</span>
-                  <select 
-                    value={selectedYear} 
-                    onChange={(e) => { setSelectedYear(e.target.value); setHoveredPoint(null); }}
-                    className="bg-transparent text-xs font-black text-gray-900 outline-none cursor-pointer"
-                  >
-                    {availableYears.map(yr => (
-                      <option key={yr} value={yr}>{yr}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <span className="text-xs font-bold bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-xl border border-emerald-100">
-                  Total {selectedYear} : {monthlyData.reduce((sum, item) => sum + item.count, 0)} demandes
-                </span>
-              </div>
-            </div>
-
-            {/* Graphique linéaire */}
-            <div className="relative w-full h-56 pt-6 pb-2 px-6 bg-white rounded-2xl border border-gray-100 flex flex-col justify-end">
-              <div className="absolute inset-0 flex flex-col justify-between p-6 pointer-events-none opacity-60">
-                <div className="w-full border-b border-dashed border-gray-200 flex items-center justify-end"><span className="text-[10px] text-gray-500 font-bold pr-2">{chartMax}</span></div>
-                <div className="w-full border-b border-dashed border-gray-200 flex items-center justify-end"><span className="text-[10px] text-gray-500 font-bold pr-2">{chartMax - stepVal}</span></div>
-                <div className="w-full border-b border-dashed border-gray-200 flex items-center justify-end"><span className="text-[10px] text-gray-500 font-bold pr-2">{chartMax - stepVal * 2}</span></div>
-                <div className="w-full border-b border-dashed border-gray-200 flex items-center justify-end"><span className="text-[10px] text-gray-500 font-bold pr-2">{chartMax - stepVal * 3}</span></div>
-                <div className="w-full border-b border-dashed border-gray-200 flex items-center justify-end"><span className="text-[10px] text-gray-500 font-bold pr-2">{chartMax - stepVal * 4}</span></div>
-                <div className="w-full border-b border-dashed border-gray-200 flex items-center justify-end"><span className="text-[10px] text-gray-500 font-bold pr-2">0</span></div>
-              </div>
-
-              <div className="relative w-full h-32 z-10 ml-2">
-                <svg viewBox="0 0 1100 260" className="w-full h-full overflow-visible" preserveAspectRatio="none">
-                  <defs>
-                    <linearGradient id="lineGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                      <stop offset="0%" stopColor="#103D3B" stopOpacity="0.25" />
-                      <stop offset="100%" stopColor="#103D3B" stopOpacity="0.0" />
-                    </linearGradient>
-                  </defs>
-
-                  {(() => {
-                    const points = monthlyData.map((d, index) => {
-                      const x = (index / (monthlyData.length - 1)) * 1040 + 30;
-                      const y = chartMax > 0 ? 240 - (d.count / chartMax) * 220 : 240;
-                      return { x, y, count: d.count, month: d.month };
-                    });
-
-                    const pathD = points.reduce((acc, p, idx) => idx === 0 ? `M ${p.x},${p.y}` : `${acc} L ${p.x},${p.y}`, '');
-                    const areaD = `${pathD} L ${points[points.length - 1].x},260 L ${points[0].x},260 Z`;
-
-                    return (
-                      <>
-                        <path d={areaD} fill="url(#lineGradient)" />
-                        <path d={pathD} fill="none" stroke="#103D3B" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-                        
-                        {points.map((p, idx) => {
-                          const isHovered = hoveredPoint?.month === p.month;
-                          return (
-                            <g key={idx} transform={`translate(${p.x}, ${p.y})`} className="cursor-pointer group">
-                              <circle 
-                                cx="0" cy="0" r="16" fill="transparent" 
-                                onMouseEnter={() => setHoveredPoint({ month: p.month, count: p.count })}
-                                onMouseLeave={() => setHoveredPoint(null)}
-                              />
-                              <circle 
-                                cx="0" cy="0" r={isHovered ? "7" : "5"} 
-                                fill={isHovered ? "#FF5733" : "#ffffff"} 
-                                stroke="#103D3B" strokeWidth="3" 
-                                className="transition-all duration-200 pointer-events-none"
-                              />
-                              {isHovered && (
-                                <g transform="translate(0, -32)" className="pointer-events-none">
-                                  <rect x="-30" y="-20" width="60" height="24" rx="6" fill="#103D3B" />
-                                  <text x="0" y="-5" fill="#ffffff" fontSize="11" fontWeight="bold" textAnchor="middle">
-                                    {p.count} dem.
-                                  </text>
-                                </g>
-                              )}
-                            </g>
-                          );
-                        })}
-                      </>
-                    );
-                  })()}
-                </svg>
-              </div>
-
-              <div className="flex justify-between text-[11px] font-bold text-gray-500 px-4 pt-2 border-t border-gray-100">
-                {monthlyData.map((item, idx) => (
-                  <span key={idx} className="text-center flex-1">{item.month}</span>
-                ))}
-              </div>
-            </div>
-
-            {hoveredPoint ? (
-              <div className="flex items-center justify-between p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs">
-                <span className="font-bold text-amber-900">
-                  📌 Mois survolé : <strong className="text-[#103D3B]">{hoveredPoint.month} {selectedYear}</strong> — <strong>{hoveredPoint.count}</strong> demande(s).
-                </span>
-              </div>
-            ) : (
-              <div className="flex items-center justify-between p-3 bg-gray-50 border border-gray-100 rounded-xl text-xs text-gray-500">
-                <span>💡 Passez simplement votre curseur sur les points de la courbe pour inspecter chaque mois.</span>
-              </div>
-            )}
-          </div>
         </div>
 
       </main>
