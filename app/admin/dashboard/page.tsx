@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { 
   BookOpen, Users, CheckCircle, Trash2, Image as ImageIcon, Eye, X, Clock, 
   BarChart3, Upload, Settings, HelpCircle, Plus, Bell, ChevronRight, TrendingUp, Menu,
-  LayoutDashboard, CheckSquare, Calendar as CalendarIcon, Users2, LogOut, Download, Calendar
+  LayoutDashboard, CheckSquare, Calendar as CalendarIcon, Users2, LogOut, Download, Calendar, ArrowLeft
 } from 'lucide-react';
 
 import { createClient } from '@supabase/supabase-js';
@@ -15,12 +15,31 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+// Liste officielle des 12 régions du Maroc pour le tableau complet
+const ALL_MOROCCO_REGIONS = [
+  "Tanger-Tétouan-Al Hoceïma",
+  "l'Oriental",
+  "Fès-Meknès",
+  "Rabat-Salé-Kénitra",
+  "Béni Mellal-Khénifra",
+  "Casablanca-Settat",
+  "Marrakech-Safi",
+  "Drâa-Tafilalet",
+  "Souss-Massa",
+  "Guelmim-Oued Noun",
+  "Laâyoune-Sakia El Hamra",
+  "Dakhla-Oued Ed-Dahab"
+];
+
 export default function AdminDashboardPage() {
   const router = useRouter();
   const [authorized, setAuthorized] = useState(false);
   
   const [activeMenu, setActiveMenu] = useState<'dashboard' | 'tasks' | 'calendar' | 'analytics' | 'team' | 'settings' | 'help'>('dashboard');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // État pour afficher ou masquer la modale du tableau complet des régions
+  const [isRegionsModalOpen, setIsRegionsModalOpen] = useState(false);
 
   const [professeursNouveaux, setProfesseursNouveaux] = useState<any[]>([]);
   const [professeursExistants, setProfesseursExistants] = useState<any[]>([]);
@@ -53,21 +72,18 @@ export default function AdminDashboardPage() {
       let reqsData: any[] = [];
       let transData: any[] = [];
 
-      // 1. Récupération des professeurs
       const { data: pData, error: profsError } = await supabase.from('professors').select('*');
       if (!profsError && pData) {
         profsData = pData;
         setProfesseursExistants(pData);
       }
 
-      // 2. Récupération des demandes
       const { data: rData, error: reqsError } = await supabase.from('requests').select('*');
       if (!reqsError && rData) {
         reqsData = rData;
         setProfesseursNouveaux(rData);
       }
 
-      // 3. Récupération des transactions
       const { data: tData, error: transError } = await supabase.from('transactions').select('*');
       if (!transError && tData) {
         transData = tData;
@@ -77,7 +93,6 @@ export default function AdminDashboardPage() {
       let combinedHistory: any[] = [...reqsData, ...profsData];
       setAllRequestsHistory(combinedHistory);
 
-      // Gestion des années pour le filtre
       const yearsSet = new Set<string>(['2026', '2027', '2028']);
       combinedHistory.forEach(item => {
         const dateVal = item.created_at || item.date || item.inserted_at;
@@ -100,9 +115,7 @@ export default function AdminDashboardPage() {
       const sortedYears = Array.from(yearsSet).sort((a, b) => Number(b) - Number(a));
       setAvailableYears(sortedYears);
 
-      // --- CALCUL ROBUSTE DU CHIFFRE D'AFFAIRES TOTAL ---
       let totalCa = 0;
-
       if (transData.length > 0) {
         totalCa = transData.reduce((sum, item) => {
           const montant = Number(item.montant || item.amount || item.tarif || item.price || 0);
@@ -126,7 +139,6 @@ export default function AdminDashboardPage() {
     }
   };
 
-  // --- CALCUL DU CHIFFRE D'AFFAIRES MENSUEL (POUR LE GRAPHIQUE CA) ---
   const getMonthlyRevenueData = () => {
     const monthsAmounts = Array(12).fill(0);
     const sourceData = transactionsList.length > 0 ? transactionsList : allRequestsHistory;
@@ -156,7 +168,6 @@ export default function AdminDashboardPage() {
   const maxRevenueVal = Math.max(...monthlyRevenueData.map(d => d.amount), 0);
   const chartRevenueMax = maxRevenueVal <= 100 ? 1000 : Math.ceil(maxRevenueVal / 500) * 500;
 
-  // --- CALCUL DES DEMANDES PAR MOIS (POUR LE GRAPHIQUE LINÉAIRE) ---
   const getMonthlyRequestsData = () => {
     const monthsCounts = Array(12).fill(0);
 
@@ -216,15 +227,15 @@ export default function AdminDashboardPage() {
       let regionName = 'Grand Casablanca';
 
       if (v.includes('casa') || v.includes('casablanca')) {
-        regionName = 'Grand Casablanca';
+        regionName = 'Casablanca-Settat';
       } else if (v.includes('marakech') || v.includes('marrakech') || v.includes('safi')) {
         regionName = 'Marrakech-Safi';
       } else if (v.includes('rabat') || v.includes('salé') || v.includes('kenitra') || v.includes('kénitra')) {
         regionName = 'Rabat-Salé-Kénitra';
       } else if (v.includes('fès') || v.includes('fes') || v.includes('meknès') || v.includes('meknes')) {
         regionName = 'Fès-Meknès';
-      } else if (v.includes('tanger') || v.includes('tetouan') || v.includes('tétouan')) {
-        regionName = 'Tanger-Tétouan';
+      } else if (v.includes('tanger') || v.includes('tetouan') || v.includes('tétouan') || v.includes('hoceima')) {
+        regionName = 'Tanger-Tétouan-Al Hoceïma';
       } else {
         regionName = v.charAt(0).toUpperCase() + v.slice(1);
       }
@@ -233,7 +244,7 @@ export default function AdminDashboardPage() {
       amounts[regionName] = amounts[regionName] || 0;
     });
 
-    const colors = ['bg-purple-500', 'bg-amber-500', 'bg-red-400', 'bg-sky-400', 'bg-orange-400'];
+    const colors = ['bg-purple-500', 'bg-amber-500', 'bg-red-400', 'bg-sky-400', 'bg-orange-400', 'bg-emerald-500'];
     let index = 0;
     return Object.keys(counts).map(region => {
       const count = counts[region];
@@ -251,6 +262,40 @@ export default function AdminDashboardPage() {
   };
 
   const regionalStatsData = getRegionalStats();
+
+  // --- CALCUL DES COMPTEURS POUR LES 12 RÉGIONS OFFICIELLES DU MAROC ---
+  const getAllMoroccoRegionsStats = () => {
+    const validProfs = professeursExistants.filter(p => {
+      const ville = (p.ville || p.city || '').toLowerCase().trim();
+      return ville && ville !== 'admin';
+    });
+
+    const countsMap: { [key: string]: number } = {};
+    validProfs.forEach(p => {
+      const v = (p.ville || p.city || '').toLowerCase().trim();
+      let matchedRegion = "Casablanca-Settat"; // valeur par défaut
+
+      if (v.includes('casa') || v.includes('casablanca')) matchedRegion = "Casablanca-Settat";
+      else if (v.includes('marakech') || v.includes('marrakech') || v.includes('safi')) matchedRegion = "Marrakech-Safi";
+      else if (v.includes('rabat') || v.includes('salé') || v.includes('kenitra') || v.includes('kénitra')) matchedRegion = "Rabat-Salé-Kénitra";
+      else if (v.includes('fès') || v.includes('fes') || v.includes('meknès') || v.includes('meknes')) matchedRegion = "Fès-Meknès";
+      else if (v.includes('tanger') || v.includes('tetouan') || v.includes('tétouan') || v.includes('hoceima')) matchedRegion = "Tanger-Tétouan-Al Hoceïma";
+      else if (v.includes('oujda') || v.includes('oriental') || v.includes('nador')) matchedRegion = "l'Oriental";
+      else if (v.includes('beni') || v.includes('khénifra') || v.includes('khouribga')) matchedRegion = "Béni Mellal-Khénifra";
+      else if (v.includes('errachidia') || v.includes('drâa') || v.includes('ouarzazate')) matchedRegion = "Drâa-Tafilalet";
+      else if (v.includes('agadir') || v.includes('souss') || v.includes('inzegane')) matchedRegion = "Souss-Massa";
+      else if (v.includes('guelmim') || v.includes('tan-tan')) matchedRegion = "Guelmim-Oued Noun";
+      else if (v.includes('laâyoune') || v.includes('layoune')) matchedRegion = "Laâyoune-Sakia El Hamra";
+      else if (v.includes('dakhla')) matchedRegion = "Dakhla-Oued Ed-Dahab";
+
+      countsMap[matchedRegion] = (countsMap[matchedRegion] || 0) + 1;
+    });
+
+    return ALL_MOROCCO_REGIONS.map(regionName => ({
+      region: regionName,
+      count: countsMap[regionName] || 0
+    }));
+  };
 
   if (!authorized) return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500 font-medium">Chargement...</div>;
 
@@ -362,7 +407,7 @@ export default function AdminDashboardPage() {
           </div>
         </div>
 
-        {/* ================= GRAPHIQUE CA DYNAMIQUE (MIS À JOUR) ================= */}
+        {/* ================= GRAPHIQUE CA DYNAMIQUE & RÉGIONS ================= */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 bg-white p-6 rounded-3xl border border-gray-200 shadow-xs space-y-4">
             <div className="flex justify-between items-center">
@@ -396,9 +441,20 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
+          {/* ================= CARTE RÉGIONS (TITRE CLIQUABLE EN HAUT) ================= */}
           <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-xs flex flex-col justify-between">
             <div>
-              <h2 className="text-base font-black text-gray-900">Professeurs par région</h2>
+              {/* Titre cliquable pour ouvrir la liste complète de toutes les régions du Maroc */}
+              <div 
+                onClick={() => setIsRegionsModalOpen(true)}
+                className="group cursor-pointer inline-block mb-1"
+                title="Cliquer pour afficher toutes les régions du Maroc"
+              >
+                <h2 className="text-base font-black text-gray-900 group-hover:text-[#103D3B] transition flex items-center gap-1.5">
+                  Professeurs par région
+                  <ChevronRight className="w-4 h-4 text-gray-400 group-hover:translate-x-1 transition" />
+                </h2>
+              </div>
               <p className="text-xs text-gray-400">Nombre réel de professeurs par zone</p>
             </div>
 
@@ -421,10 +477,12 @@ export default function AdminDashboardPage() {
               )}
             </div>
 
-            <div className="p-3 bg-gray-50 rounded-2xl border border-gray-100 text-center">
-              <span className="text-[10px] text-gray-400 block">Total National Réel</span>
-              <span className="text-sm font-black text-[#103D3B]">{realCa.toLocaleString()} MAD</span>
-            </div>
+            <button 
+              onClick={() => setIsRegionsModalOpen(true)}
+              className="w-full py-2 bg-gray-50 hover:bg-gray-100 text-[#103D3B] font-bold text-xs rounded-xl border border-gray-200 transition text-center cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              <span>Voir toutes les régions du Maroc ({ALL_MOROCCO_REGIONS.length})</span>
+            </button>
           </div>
         </div>
 
@@ -555,6 +613,73 @@ export default function AdminDashboardPage() {
         </div>
 
       </main>
+
+      {/* ================= MODALE : TABLEAU COMPLET DES 12 RÉGIONS DU MAROC ================= */}
+      {isRegionsModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-xs transition-opacity" onClick={() => setIsRegionsModalOpen(false)}></div>
+          <div className="relative bg-white rounded-3xl shadow-2xl max-w-2xl w-full overflow-hidden z-10 border border-gray-100 flex flex-col max-h-[85vh]">
+            
+            <div className="p-6 bg-[#103D3B] text-white flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-black tracking-tight">Répartition par Régions du Maroc</h3>
+                <p className="text-xs text-emerald-200 mt-0.5">Liste officielle des 12 régions et nombre de professeurs associés</p>
+              </div>
+              <button 
+                onClick={() => setIsRegionsModalOpen(false)}
+                className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition text-white cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto flex-1 space-y-3">
+              <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl text-xs text-amber-900 flex items-center justify-between">
+                <span>Total des professeurs actifs répertoriés :</span>
+                <span className="font-black text-[#103D3B] bg-white px-2.5 py-1 rounded-lg border border-amber-200">
+                  {professeursExistants.filter(p => (p.ville || p.city || '').toLowerCase().trim() !== 'admin').length} profs
+                </span>
+              </div>
+
+              <div className="border border-gray-200 rounded-2xl overflow-hidden">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-200 text-xs font-black text-gray-700">
+                      <th className="p-4">Région du Maroc</th>
+                      <th className="p-4 text-right">Nombre de Professeurs</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 text-xs font-medium text-gray-800">
+                    {getAllMoroccoRegionsStats().map((row, index) => (
+                      <tr key={index} className="hover:bg-gray-50/80 transition">
+                        <td className="p-4 flex items-center gap-2.5">
+                          <span className={`w-2.5 h-2.5 rounded-full ${row.count > 0 ? 'bg-emerald-500' : 'bg-gray-300'}`}></span>
+                          <span className="font-bold text-gray-900">{row.region}</span>
+                        </td>
+                        <td className="p-4 text-right">
+                          <span className={`px-2.5 py-1 rounded-full font-bold ${row.count > 0 ? 'bg-purple-50 text-purple-700' : 'bg-gray-100 text-gray-400'}`}>
+                            {row.count} {row.count > 1 ? 'professeurs' : 'professeur'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="p-4 bg-gray-50 border-t border-gray-200 flex justify-end">
+              <button 
+                onClick={() => setIsRegionsModalOpen(false)}
+                className="px-5 py-2.5 bg-[#103D3B] hover:bg-[#0d312f] text-white font-bold text-xs rounded-xl shadow transition cursor-pointer"
+              >
+                Fermer
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
 
       {/* ================= MENU LATÉRAL ================= */}
       {isMobileMenuOpen && (
