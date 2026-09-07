@@ -438,18 +438,11 @@ export default function AdminDashboardPage() {
 
           </div>
 
-          {/* COLONNE DROITE (1 part) : Professeurs par région (Police agrandie & chiffres mis en valeur) */}
+          {/* COLONNE DROITE (1 part) : Professeurs par région (Sans l'encadré "Total actifs", avec police agrandie) */}
           <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-xs space-y-4">
             <div>
               <h2 className="text-lg font-black text-gray-900">Professeurs par région</h2>
               <p className="text-xs text-gray-400">Liste complète des 12 régions du Maroc</p>
-            </div>
-
-            <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl text-sm text-amber-900 flex items-center justify-between font-bold">
-              <span>Total actifs :</span>
-              <span className="text-base font-black text-[#103D3B] bg-white px-3 py-1 rounded-lg border border-amber-200 shadow-2xs">
-                {professeursExistants.filter(p => (p.ville || p.city || '').toLowerCase().trim() !== 'admin').length} profs
-              </span>
             </div>
 
             <div className="border border-gray-200 rounded-2xl overflow-hidden">
