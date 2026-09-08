@@ -43,8 +43,8 @@ export default function ProfDashboard() {
 
   useEffect(() => {
     async function fetchProfData() {
-      // Récupération de l'email connecté depuis le localStorage (exactement comme profile/page.tsx)
-      const storedEmail = localStorage.getItem('profEmail') || "berrada0amal@gmail.com";
+      // Utilise l'email stocké, ou "sofia@gmail.com" par défaut pour que Sofia soit connectée
+      const storedEmail = localStorage.getItem('profEmail') || "sofia@gmail.com";
 
       // 1. Récupérer les données du professeur connecté
       const { data: profData } = await supabase
@@ -55,7 +55,7 @@ export default function ProfDashboard() {
 
       if (profData) {
         const fullName = `${profData['Prénom'] || ''} ${profData['Nom'] || ''}`.trim();
-        setProfName(fullName || 'Mon Espace');
+        setProfName(fullName || 'Sofia Sofiet');
         setProfImage(profData.image_url || profData.photo || '');
         setProfNiveau(profData.niveau || []);
         setIsAvailable(profData.available ?? true);
@@ -89,7 +89,7 @@ export default function ProfDashboard() {
   }, []);
 
   const toggleAvailability = async () => {
-    const storedEmail = localStorage.getItem('profEmail') || "berrada0amal@gmail.com";
+    const storedEmail = localStorage.getItem('profEmail') || "sofia@gmail.com";
     const newStatus = !isAvailable;
     setIsAvailable(newStatus);
     await supabase
@@ -137,7 +137,7 @@ export default function ProfDashboard() {
             />
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="perso-avatars flex items-center gap-2">
             <div className="flex -space-x-3 overflow-hidden">
               {otherProfs.map((p, index) => (
                 <div key={index} title={`${p['Prénom'] || ''} ${p['Nom'] || ''}`} className="inline-block relative">
