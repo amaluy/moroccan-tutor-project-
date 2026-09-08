@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
+import ProfPanel from './profPanel';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -94,60 +95,8 @@ export default function ProfDashboard() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row">
       
-      {/* MENU LATÉRAL DE NAVIGATION */}
-      <aside className="w-full md:w-64 bg-white border-r border-gray-200 p-6 flex flex-col justify-between">
-        <div>
-          <div className="mb-8">
-            <h2 className="text-xl font-extrabold text-orange-600">Espace Prof</h2>
-            <p className="text-xs text-gray-400 mt-1 capitalize">{profName}</p>
-          </div>
-
-          <nav className="space-y-2">
-            <button
-              onClick={() => setActiveTab('overview')}
-              className={`w-full text-left px-4 py-2.5 rounded-xl font-medium text-sm transition-all ${
-                activeTab === 'overview' ? 'bg-orange-50 text-orange-600 font-semibold' : 'text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              📊 Tableau de bord
-            </button>
-            <button
-              onClick={() => setActiveTab('leads')}
-              className={`w-full text-left px-4 py-2.5 rounded-xl font-medium text-sm transition-all flex justify-between items-center ${
-                activeTab === 'leads' ? 'bg-orange-50 text-orange-600 font-semibold' : 'text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              <span>📩 Demandes d'élèves</span>
-              {totalLeads > 0 && (
-                <span className="bg-orange-100 text-orange-600 text-xs px-2 py-0.5 rounded-full font-bold">
-                  {totalLeads}
-                </span>
-              )}
-            </button>
-            <button
-              onClick={() => setActiveTab('availability')}
-              className={`w-full text-left px-4 py-2.5 rounded-xl font-medium text-sm transition-all ${
-                activeTab === 'availability' ? 'bg-orange-50 text-orange-600 font-semibold' : 'text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              📅 Disponibilités
-            </button>
-            <button
-              onClick={() => setActiveTab('profile')}
-              className={`w-full text-left px-4 py-2.5 rounded-xl font-medium text-sm transition-all ${
-                activeTab === 'profile' ? 'bg-orange-50 text-orange-600 font-semibold' : 'text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              ⚙️ Modifier mon profil
-            </button>
-          </nav>
-        </div>
-
-        {/* Bouton de déconnexion ou retour */}
-        <div className="pt-6 border-t border-gray-100">
-          <a href="/" className="text-sm text-gray-500 hover:text-gray-800 font-medium">← Retour au site</a>
-        </div>
-      </aside>
+      {/* INTÉGRATION DU PANNEAU LATÉRAL ISOLÉ */}
+      <ProfPanel />
 
       {/* CONTENU PRINCIPAL SELON L'ONGLET ACTIF */}
       <main className="flex-1 p-6 md:p-10 max-w-5xl">
