@@ -1,50 +1,65 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
-import ProfPanel from './profPanel';
-import { Search } from 'lucide-react';
+import { 
+  Edit3, Calendar, Users, ArrowRight, 
+  X, GraduationCap
+} from 'lucide-react';
+
+const STEPS = [
+  {
+    targetId: "step-welcome",
+    title: "Bienvenue dans votre Espace !",
+    description: "Bonjour ! Je suis Profy 🦉. Je vais vous montrer comment piloter votre compte et trouver rapidement des élèves.",
+    placement: "bottom"
+  },
+  {
+    targetId: "step-status",
+    title: "1. Votre Statut de Visibilité",
+    description: "Activez votre profil 'En Ligne' pour apparaître immédiatement dans les résultats de recherche des élèves et parents.",
+    placement: "bottom"
+  },
+  {
+    targetId: "step-leads",
+    title: "2. Demandes d'Élèves",
+    description: "C'est ici que vous recevez toutes les demandes. Vous pouvez échanger directement avec les élèves et accepter leurs cours.",
+    placement: "bottom"
+  },
+  {
+    targetId: "step-calendar",
+    title: "3. Vos Disponibilités",
+    description: "Indiquez vos jours et créneaux horaires libres pour permettre aux parents de planifier les séances à l'avance.",
+    placement: "bottom"
+  },
+  {
+    targetId: "step-profile",
+    title: "4. Modification de Profil",
+    description: "Ajustez vos tarifs horaires, votre biographie, votre photo de profil et vos matières à tout moment.",
+    placement: "bottom"
+  }
+];
 
 export default function ProfDashboard() {
-  const [profName, setProfName] = useState('Chargement...');
+  const [profData, setProfData] = useState<any>(null);
+  const [profName, setProfName] = useState('');
   const [profImage, setProfImage] = useState('');
   const [profNiveau, setProfNiveau] = useState<any>([]);
   const [isAvailable, setIsAvailable] = useState(true);
-  const [leads, setLeads] = useState<any[]>([]);
-  const [otherProfs, setOtherProfs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [currentDate, setCurrentDate] = useState({ dayName: '', timeString: '' });
-
-  useEffect(() => {
-    const updateMoroccoTime = () => {
-      const now = new Date();
-      const optionsDate: Intl.DateTimeFormatOptions = { timeZone: 'Africa/Casablanca', weekday: 'long', day: 'numeric', month: 'short' };
-      const optionsTime: Intl.DateTimeFormatOptions = { timeZone: 'Africa/Casablanca', hour: '2-digit', minute: '2-digit', hour12: false };
-      
-      const dateFormatter = new Intl.DateTimeFormat('fr-FR', optionsDate);
-      const timeFormatter = new Intl.DateTimeFormat('fr-FR', optionsTime);
-
-      setCurrentDate({
-        dayName: dateFormatter.format(now),
-        timeString: timeFormatter.format(now),
-      });
-    };
-
-    updateMoroccoTime();
-    const timer = setInterval(updateMoroccoTime, 60000);
-    return () => clearInterval(timer);
-  }, []);
+  // ÉTATS DU GUIDE INTERACTIF
+  const [currentStep, setCurrentStep] = useState(0);
+  const [showTutorial, setShowTutorial] = useState(false);
+  const [owlPosition, setOwlPosition] = useState({ top: 200, left: 300 });
 
   useEffect(() => {
     async function fetchProfData() {
       try {
         setLoading(true);
-
-        // 1. Récupérer l'utilisateur connecté via Supabase Auth
         const { data: { user } } = await supabase.auth.getUser();
 
-        // 2. Chercher les clés d'email ou ID possibles
         const rawEmail = 
           user?.email || 
           localStorage.getItem('professor_email') || 
@@ -61,60 +76,38 @@ export default function ProfDashboard() {
           return;
         }
 
-        // 3. Charger la liste des professeurs
-        const { data: allProfs, error } = await supabase.from('professors').select('*');
+        const { data: allProfs } = await supabase.from('professors').select('*');
 
-        if (error) throw error;
-
-        if (allProfs && allProfs.length > 0) {
-          let profData = null;
-
-          // Recherche par ID d'abord
+        if (allProfs) {
+          let prof = null;
           if (storedId) {
-            profData = allProfs.find((p: any) => String(p.id) === String(storedId));
+            prof = allProfs.find((p: any) => String(p.id) === String(storedId));
           }
-
-          // Recherche par Email
-          if (!profData && rawEmail) {
+          if (!prof && rawEmail) {
             const cleanTarget = rawEmail.toLowerCase().trim();
-            profData = allProfs.find((p: any) => p.email && p.email.toLowerCase().trim() === cleanTarget);
+            prof = allProfs.find((p: any) => p.email && p.email.toLowerCase().trim() === cleanTarget);
           }
 
-          if (profData) {
-            // Extraire Prénom et Nom
-            const prenom = profData['Prénom'] || profData.prenom || '';
-            const nom = profData['Nom'] || profData.nom || '';
+          if (prof) {
+            setProfData(prof);
+            const prenom = prof['Prénom'] || prof.prenom || '';
+            const nom = prof['Nom'] || prof.nom || '';
             const fullName = `${prenom} ${nom}`.trim();
 
-            setProfName(fullName || profData.email || 'Professeur');
-            setProfImage(profData.photo_URL || profData.photo_url || profData.image_url || profData.photo || '');
-            setProfNiveau(profData.niveau || []);
-            setIsAvailable(profData.available ?? true);
-
-            const currentEmail = profData.email;
-
-            // 4. Charger les demandes (leads)
-            if (currentEmail) {
-              const { data: leadsData } = await supabase
-                .from('leads')
-                .select('*');
-
-              if (leadsData) {
-                setLeads(leadsData.filter((l: any) => 
-                  l.professor_email && l.professor_email.toLowerCase().trim() === currentEmail.toLowerCase().trim()
-                ));
-              }
-            }
-
-            // 5. Charger les autres profs pour les avatars
-            setOtherProfs(allProfs.filter((p: any) => String(p.id) !== String(profData.id)).slice(0, 4));
-          } else {
-            setProfName('Professeur');
+            setProfName(fullName || prof.email || 'Professeur');
+            setProfImage(prof.photo_URL || prof.photo_url || prof.image_url || prof.photo || '');
+            setProfNiveau(prof.niveau || []);
+            setIsAvailable(prof.available ?? true);
           }
         }
+
+        const hasSeenTour = localStorage.getItem('hasSeenFreeOwlTour');
+        if (!hasSeenTour) {
+          setShowTutorial(true);
+        }
+
       } catch (err) {
-        console.error("Erreur de chargement du dashboard:", err);
-        setProfName('Professeur');
+        console.error("Erreur dashboard:", err);
       } finally {
         setLoading(false);
       }
@@ -123,112 +116,295 @@ export default function ProfDashboard() {
     fetchProfData();
   }, []);
 
-  const toggleAvailability = async () => {
-    const newStatus = !isAvailable;
-    setIsAvailable(newStatus);
+  // CALCUL DE LA POSITION DU HIBOU
+  useEffect(() => {
+    if (!showTutorial) return;
+
+    const updatePosition = () => {
+      const targetElement = document.getElementById(STEPS[currentStep].targetId);
+      if (targetElement) {
+        const rect = targetElement.getBoundingClientRect();
+        
+        setOwlPosition({
+          top: rect.bottom + window.scrollY + 20,
+          left: Math.max(20, rect.left + rect.width / 2 - 160)
+        });
+      }
+    };
+
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    return () => window.removeEventListener('resize', updatePosition);
+  }, [currentStep, showTutorial]);
+
+  const handleNextStep = () => {
+    if (currentStep < STEPS.length - 1) {
+      setCurrentStep(currentStep + 1);
+    } else {
+      setShowTutorial(false);
+      localStorage.setItem('hasSeenFreeOwlTour', 'true');
+    }
   };
 
-  const totalLeads = leads.length;
-  const acceptedLeads = leads.filter(l => l.status === 'accepted').length;
+  const handlePrevStep = () => {
+    if (currentStep > 0) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const restartTutorial = () => {
+    setCurrentStep(0);
+    setShowTutorial(true);
+  };
 
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-600 font-medium">Chargement de votre espace...</div>;
+    return <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-500 font-bold text-sm">Chargement...</div>;
   }
 
+  const activeTarget = STEPS[currentStep].targetId;
+
   return (
-    <div className="min-h-screen bg-[#f8f9fc] flex">
+    <div className="min-h-screen bg-[#F8FAFC] flex relative overflow-x-hidden">
       
-      {/* Panneau latéral gauche */}
-      <ProfPanel profName={profName} profImage={profImage} niveau={profNiveau} />
+      {/* 1. FOND SOMBRE DE SURBRILLANCE */}
+      {showTutorial && (
+        <div className="fixed inset-0 bg-slate-950/75 backdrop-blur-[2px] z-30 transition-opacity duration-500 pointer-events-auto" />
+      )}
 
-      {/* Contenu principal */}
-      <main className="flex-1 p-6 md:p-8 overflow-y-auto">
+      {/* Zone centrale principale (Page Blanche) */}
+      <main className="flex-1 p-6 md:p-10 overflow-y-auto max-w-5xl mx-auto space-y-8 relative">
         
-        {/* BARRE DU HAUT */}
-        <header className="flex flex-col lg:flex-row justify-between items-start lg:items-center bg-white p-6 rounded-3xl shadow-xs border border-gray-100 mb-8 gap-4">
-          
-          <div className="flex items-center gap-4">
-            <div className="bg-orange-50 text-orange-600 px-4 py-2.5 rounded-2xl text-center font-bold">
-              <span className="block text-xs uppercase tracking-wider">Maroc</span>
-              <span className="text-lg">{currentDate.timeString}</span>
-            </div>
+        {/* EN-TÊTE BIENVENUE & STATUT */}
+        <div 
+          id="step-welcome"
+          className={`px-2 py-2 transition-all duration-500 rounded-3xl ${
+            showTutorial && activeTarget === 'step-welcome'
+              ? 'relative z-40 bg-white/90 p-6 ring-4 ring-orange-500 shadow-2xl'
+              : ''
+          }`}
+        >
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-              <h2 className="text-xl font-black text-gray-900 capitalize">{currentDate.dayName}</h2>
-              <p className="text-xs text-gray-400 font-medium">Heure locale de Casablanca</p>
+              <h1 className="text-3xl sm:text-4xl font-black text-slate-900 capitalize tracking-tight">
+                Bonjour, {profName}
+              </h1>
             </div>
-          </div>
 
-          <div className="relative w-full lg:w-72">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input 
-              type="text" 
-              placeholder="Rechercher..." 
-              className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition"
-            />
-          </div>
-
-          <div className="perso-avatars flex items-center gap-2">
-            <div className="flex -space-x-3 overflow-hidden">
-              {otherProfs.map((p, index) => (
-                <div key={index} title={`${p['Prénom'] || ''} ${p['Nom'] || ''}`} className="inline-block relative">
-                  {p.photo_URL || p.photo_url || p.image_url || p.photo ? (
-                    <img 
-                      src={p.photo_URL || p.photo_url || p.image_url || p.photo} 
-                      alt="Professeur" 
-                      className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-xs" 
-                    />
-                  ) : (
-                    <div className="w-10 h-10 rounded-full bg-gray-700 text-white flex items-center justify-center text-xs font-bold border-2 border-white shadow-xs">
-                      {(p['Prénom'] || 'P')[0]}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-            <span className="text-xs font-bold text-gray-500 ml-2">+{otherProfs.length} profs</span>
-          </div>
-
-        </header>
-
-        {/* SECTION BIENVENUE & STATUT */}
-        <div className="bg-white rounded-3xl shadow-xs border border-gray-100 p-8 mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-          <div>
-            <h1 className="text-3xl font-black text-gray-900 capitalize">
-              Bonjour, {profName} 👋
-            </h1>
-            <p className="text-gray-400 text-sm mt-1">
-              Voici le récapitulatif de votre activité sur Prof Maroc.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3 bg-gray-50 p-2.5 rounded-2xl border border-gray-200">
-            <span className="text-xs font-bold text-gray-600 pl-2">Mon Statut :</span>
-            <button
-              onClick={toggleAvailability}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer ${
-                isAvailable ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-red-100 text-red-700 hover:bg-red-200'
+            {/* Statut En ligne */}
+            <div 
+              id="step-status"
+              className={`flex items-center gap-3 p-2 rounded-2xl border transition-all duration-500 ${
+                showTutorial && activeTarget === 'step-status'
+                  ? 'relative z-40 bg-white border-orange-500 ring-4 ring-orange-500 shadow-2xl scale-110'
+                  : 'bg-white border-slate-200/80 shadow-xs'
               }`}
             >
-              {isAvailable ? '🟢 Disponible' : '🔴 Occupé'}
-            </button>
+              <span className="text-xs font-bold text-slate-500 pl-2">Statut :</span>
+              <button
+                onClick={() => setIsAvailable(!isAvailable)}
+                className={`px-4 py-2 rounded-xl text-xs font-extrabold transition cursor-pointer ${
+                  isAvailable ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                }`}
+              >
+                {isAvailable ? '🟢 En Ligne' : '🔴 Masqué'}
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* CARTES DE STATISTIQUES */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-white p-8 rounded-3xl shadow-xs border border-gray-100 hover:shadow-md transition">
-            <p className="text-sm font-bold text-gray-400 uppercase tracking-wider">Demandes reçues</p>
-            <p className="text-5xl font-black text-gray-900 mt-3">{totalLeads}</p>
-            <p className="text-xs text-gray-400 mt-2">Total des élèves intéressés par vos cours</p>
+        {/* TITRE DE SECTION CENTRÉ AVEC ÉCRITURE PLUS DOUCE ET GRISÉE */}
+        <div className="text-center py-2">
+          <h2 className="text-base font-medium text-slate-400 tracking-wide">Que souhaitez-vous faire ?</h2>
+        </div>
+
+        {/* CARTES DE RACCOURCIS */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          
+          {/* Carte Demandes */}
+          <div
+            id="step-leads"
+            className={`transition-all duration-500 rounded-3xl ${
+              showTutorial && activeTarget === 'step-leads'
+                ? 'relative z-40 ring-4 ring-orange-500 shadow-2xl scale-[1.04] bg-white'
+                : ''
+            }`}
+          >
+            <Link 
+              href="/prof/dashboard/demandes"
+              className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs hover:shadow-lg flex flex-col justify-between group h-full block"
+            >
+              <div className="space-y-3">
+                <div className="w-12 h-12 bg-orange-50 text-orange-600 rounded-2xl flex items-center justify-center font-bold group-hover:scale-110 transition-transform">
+                  <Users className="w-6 h-6" />
+                </div>
+                <h3 className="text-base font-bold text-slate-900">Demandes d'élèves</h3>
+                <p className="text-xs text-slate-400 font-medium leading-relaxed">
+                  Consultez et répondez aux élèves qui ont demandé un cours avec vous.
+                </p>
+              </div>
+              <div className="mt-6 flex items-center text-xs font-extrabold text-orange-500 gap-1 group-hover:translate-x-1 transition-transform">
+                <span>Voir les demandes</span>
+                <ArrowRight className="w-4 h-4" />
+              </div>
+            </Link>
           </div>
-          <div className="bg-white p-8 rounded-3xl shadow-xs border border-gray-100 hover:shadow-md transition">
-            <p className="text-sm font-bold text-gray-400 uppercase tracking-wider">Élèves acceptés</p>
-            <p className="text-5xl font-black text-orange-600 mt-3">{acceptedLeads}</p>
-            <p className="text-xs text-gray-400 mt-2">Mises en relation validées avec succès</p>
+
+          {/* Carte Disponibilités */}
+          <div
+            id="step-calendar"
+            className={`transition-all duration-500 rounded-3xl ${
+              showTutorial && activeTarget === 'step-calendar'
+                ? 'relative z-40 ring-4 ring-blue-500 shadow-2xl scale-[1.04] bg-white'
+                : ''
+            }`}
+          >
+            <Link 
+              href="/prof/dashboard/disponibilites"
+              className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs hover:shadow-lg flex flex-col justify-between group h-full block"
+            >
+              <div className="space-y-3">
+                <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center font-bold group-hover:scale-110 transition-transform">
+                  <Calendar className="w-6 h-6" />
+                </div>
+                <h3 className="text-base font-bold text-slate-900">Mes Disponibilités</h3>
+                <p className="text-xs text-slate-400 font-medium leading-relaxed">
+                  Ajustez vos jours et horaires de cours selon votre emploi du temps.
+                </p>
+              </div>
+              <div className="mt-6 flex items-center text-xs font-extrabold text-blue-600 gap-1 group-hover:translate-x-1 transition-transform">
+                <span>Gérer mon planning</span>
+                <ArrowRight className="w-4 h-4" />
+              </div>
+            </Link>
+          </div>
+
+          {/* Carte Profil */}
+          <div
+            id="step-profile"
+            className={`transition-all duration-500 rounded-3xl ${
+              showTutorial && activeTarget === 'step-profile'
+                ? 'relative z-40 ring-4 ring-emerald-500 shadow-2xl scale-[1.04] bg-white'
+                : ''
+            }`}
+          >
+            <Link 
+              href="/prof/profile"
+              className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs hover:shadow-lg flex flex-col justify-between group h-full block"
+            >
+              <div className="space-y-3">
+                <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center font-bold group-hover:scale-110 transition-transform">
+                  <Edit3 className="w-6 h-6" />
+                </div>
+                <h3 className="text-base font-bold text-slate-900">Modifier mon Profil</h3>
+                <p className="text-xs text-slate-400 font-medium leading-relaxed">
+                  Mettez à jour vos tarifs, votre bio, votre photo et vos matières.
+                </p>
+              </div>
+              <div className="mt-6 flex items-center text-xs font-extrabold text-emerald-600 gap-1 group-hover:translate-x-1 transition-transform">
+                <span>Éditer ma fiche</span>
+                <ArrowRight className="w-4 h-4" />
+              </div>
+            </Link>
+          </div>
+
+        </div>
+
+        {/* APERÇU SIMPLE DU PROFIL */}
+        <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-orange-500 bg-slate-100 shrink-0">
+              {profImage ? (
+                <img src={profImage} alt={profName} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center font-bold text-slate-600">
+                  {profName[0]}
+                </div>
+              )}
+            </div>
+            <div>
+              <h4 className="text-base font-bold text-slate-900">{profName}</h4>
+              <p className="text-xs text-slate-400 mt-0.5">{profData?.matiere || 'Professeur'} • {profData?.ville || 'Maroc'}</p>
+            </div>
+          </div>
+
+          <div className="text-right">
+            <span className="text-xs text-slate-400 font-medium">Tarif réglé</span>
+            <p className="text-xl font-black text-slate-900">{profData?.tarif || '200'} DH<span className="text-xs text-slate-400 font-normal">/h</span></p>
           </div>
         </div>
 
       </main>
+
+      {/* --- HIBOU VOLANT SANS LE BADGE PROFY --- */}
+      {showTutorial && (
+        <div 
+          className="absolute z-50 transition-all duration-700 ease-in-out pointer-events-auto flex items-start gap-4 max-w-md"
+          style={{ 
+            top: `${owlPosition.top}px`, 
+            left: `${owlPosition.left}px` 
+          }}
+        >
+          {/* HIBOU VOLANT AVEC LE CHAPEAU BIEN CENTRÉ SUR LA TÊTE */}
+          <div className="relative animate-bounce duration-1000 shrink-0 select-none">
+            <span className="text-6xl drop-shadow-2xl leading-none block filter">
+              🦉
+            </span>
+            <div className="absolute -top-3.5 left-[42%] -translate-x-1/2 -rotate-6 text-orange-400 drop-shadow-md pointer-events-none">
+              <GraduationCap className="w-7 h-7 fill-slate-900 stroke-orange-500 stroke-[2.5]" />
+            </div>
+          </div>
+
+          {/* TEXTE LIBRE SANS BADGE */}
+          <div className="space-y-2 text-white drop-shadow-md pt-1">
+            <div className="flex items-center justify-end">
+              <button 
+                onClick={() => setShowTutorial(false)}
+                className="text-slate-400 hover:text-white p-1 transition cursor-pointer"
+                title="Fermer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <h4 className="text-base font-black text-white -mt-2">{STEPS[currentStep].title}</h4>
+            <p className="text-xs text-slate-200 font-medium leading-relaxed max-w-xs">
+              {STEPS[currentStep].description}
+            </p>
+
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                onClick={handlePrevStep}
+                disabled={currentStep === 0}
+                className="text-xs font-bold text-slate-400 hover:text-white disabled:opacity-30 disabled:hover:text-slate-400 transition cursor-pointer"
+              >
+                ← Précédent
+              </button>
+
+              <button
+                onClick={handleNextStep}
+                className="bg-orange-500 hover:bg-orange-600 text-white text-xs font-black px-4 py-2 rounded-xl transition shadow-lg shadow-orange-500/30 cursor-pointer flex items-center gap-1"
+              >
+                <span>{currentStep === STEPS.length - 1 ? "J'ai tout compris !" : "Suivant"}</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* BOUTON FLOTTANT EN BAS À DROITE */}
+      {!showTutorial && (
+        <button
+          onClick={restartTutorial}
+          className="fixed bottom-6 right-6 bg-slate-900 text-white p-3.5 rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all z-40 flex items-center gap-2.5 border-2 border-orange-500 cursor-pointer group"
+          title="Relancer le guide interactif"
+        >
+          <span className="text-2xl group-hover:rotate-12 transition-transform">🦉</span>
+          <span className="text-xs font-extrabold pr-1 hidden sm:inline text-orange-400">Besoin d'aide ?</span>
+        </button>
+      )}
+
     </div>
   );
 }
