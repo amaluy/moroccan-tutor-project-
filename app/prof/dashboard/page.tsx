@@ -1,14 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabase';
 import ProfPanel from './profPanel';
 import { Search } from 'lucide-react';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 export default function ProfDashboard() {
   const [profName, setProfName] = useState('Chargement...');
@@ -43,59 +38,94 @@ export default function ProfDashboard() {
 
   useEffect(() => {
     async function fetchProfData() {
-      // Utilise l'email stocké, ou "sofia@gmail.com" par défaut pour que Sofia soit connectée
-      const storedEmail = localStorage.getItem('profEmail') || "sofia@gmail.com";
+      try {
+        setLoading(true);
 
-      // 1. Récupérer les données du professeur connecté
-      const { data: profData } = await supabase
-        .from('professors')
-        .select('*')
-        .eq('email', storedEmail)
-        .single();
+        // 1. Récupérer l'utilisateur connecté via Supabase Auth
+        const { data: { user } } = await supabase.auth.getUser();
 
-      if (profData) {
-        const fullName = `${profData['Prénom'] || ''} ${profData['Nom'] || ''}`.trim();
-        setProfName(fullName || 'Sofia Sofiet');
-        setProfImage(profData.image_url || profData.photo || '');
-        setProfNiveau(profData.niveau || []);
-        setIsAvailable(profData.available ?? true);
+        // 2. Chercher les clés d'email ou ID possibles
+        const rawEmail = 
+          user?.email || 
+          localStorage.getItem('professor_email') || 
+          localStorage.getItem('profEmail') || 
+          localStorage.getItem('user_email') || 
+          localStorage.getItem('email');
+
+        const storedId = 
+          localStorage.getItem('professor_id') || 
+          localStorage.getItem('user_id');
+
+        if (!rawEmail && !storedId) {
+          window.location.href = '/connexion';
+          return;
+        }
+
+        // 3. Charger la liste des professeurs
+        const { data: allProfs, error } = await supabase.from('professors').select('*');
+
+        if (error) throw error;
+
+        if (allProfs && allProfs.length > 0) {
+          let profData = null;
+
+          // Recherche par ID d'abord
+          if (storedId) {
+            profData = allProfs.find((p: any) => String(p.id) === String(storedId));
+          }
+
+          // Recherche par Email
+          if (!profData && rawEmail) {
+            const cleanTarget = rawEmail.toLowerCase().trim();
+            profData = allProfs.find((p: any) => p.email && p.email.toLowerCase().trim() === cleanTarget);
+          }
+
+          if (profData) {
+            // Extraire Prénom et Nom
+            const prenom = profData['Prénom'] || profData.prenom || '';
+            const nom = profData['Nom'] || profData.nom || '';
+            const fullName = `${prenom} ${nom}`.trim();
+
+            setProfName(fullName || profData.email || 'Professeur');
+            setProfImage(profData.photo_URL || profData.photo_url || profData.image_url || profData.photo || '');
+            setProfNiveau(profData.niveau || []);
+            setIsAvailable(profData.available ?? true);
+
+            const currentEmail = profData.email;
+
+            // 4. Charger les demandes (leads)
+            if (currentEmail) {
+              const { data: leadsData } = await supabase
+                .from('leads')
+                .select('*');
+
+              if (leadsData) {
+                setLeads(leadsData.filter((l: any) => 
+                  l.professor_email && l.professor_email.toLowerCase().trim() === currentEmail.toLowerCase().trim()
+                ));
+              }
+            }
+
+            // 5. Charger les autres profs pour les avatars
+            setOtherProfs(allProfs.filter((p: any) => String(p.id) !== String(profData.id)).slice(0, 4));
+          } else {
+            setProfName('Professeur');
+          }
+        }
+      } catch (err) {
+        console.error("Erreur de chargement du dashboard:", err);
+        setProfName('Professeur');
+      } finally {
+        setLoading(false);
       }
-
-      // 2. Récupérer les demandes (leads) de ce prof
-      const { data: leadsData } = await supabase
-        .from('leads')
-        .select('*')
-        .eq('professor_email', storedEmail);
-
-      if (leadsData) {
-        setLeads(leadsData);
-      }
-
-      // 3. Récupérer les autres professeurs pour les avatars en haut à droite
-      const { data: allProfs } = await supabase
-        .from('professors')
-        .select('*')
-        .neq('email', storedEmail)
-        .limit(4);
-
-      if (allProfs) {
-        setOtherProfs(allProfs);
-      }
-
-      setLoading(false);
     }
 
     fetchProfData();
   }, []);
 
   const toggleAvailability = async () => {
-    const storedEmail = localStorage.getItem('profEmail') || "sofia@gmail.com";
     const newStatus = !isAvailable;
     setIsAvailable(newStatus);
-    await supabase
-      .from('professors')
-      .update({ available: newStatus })
-      .eq('email', storedEmail);
   };
 
   const totalLeads = leads.length;
@@ -141,9 +171,9 @@ export default function ProfDashboard() {
             <div className="flex -space-x-3 overflow-hidden">
               {otherProfs.map((p, index) => (
                 <div key={index} title={`${p['Prénom'] || ''} ${p['Nom'] || ''}`} className="inline-block relative">
-                  {p.image_url || p.photo ? (
+                  {p.photo_URL || p.photo_url || p.image_url || p.photo ? (
                     <img 
-                      src={p.image_url || p.photo} 
+                      src={p.photo_URL || p.photo_url || p.image_url || p.photo} 
                       alt="Professeur" 
                       className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-xs" 
                     />

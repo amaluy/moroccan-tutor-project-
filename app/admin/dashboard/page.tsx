@@ -1,19 +1,14 @@
 'use client';
+
 import AdminPanel from './adminPanel'; 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { 
-  BookOpen, Users, CheckSquare, Trash2, Image as ImageIcon, Eye, X, Clock, 
-  BarChart3, Upload, Settings, HelpCircle, Plus, Bell, ChevronRight, TrendingUp, Menu,
-  LayoutDashboard, LogOut, Download, Calendar
+  Users, ChevronRight, TrendingUp, Menu, X, Plus, Bell, Download, Calendar
 } from 'lucide-react';
 
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Utilisation du client centralisé Supabase corrigé
+import { supabase } from '@/lib/supabase';
 
 const ALL_MOROCCO_REGIONS = [
   "Casablanca-Settat",
@@ -46,7 +41,7 @@ export default function AdminDashboardPage() {
 
   const currentYearStr = new Date().getFullYear().toString();
   const [selectedYear, setSelectedYear] = useState<string>(currentYearStr);
-  const [availableYears, setAvailableYears] = useState<string[]>(['2026', '2027', '2028']);
+  const [availableYears, setAvailableYears] = useState<string[]>(['2025', '2026', '2027', '2028']);
 
   useEffect(() => {
     localStorage.setItem('user_email', 'berrada0amal@gmail.com');
@@ -60,29 +55,45 @@ export default function AdminDashboardPage() {
     setDbError(null);
 
     try {
-      let profsData: any[] = [];
-      let reqsData: any[] = [];
-      let transData: any[] = [];
+      // 1. Récupération des professeurs
+      const { data: pData, error: pError } = await supabase.from('professors').select('*');
+      if (pError) console.error("Erreur chargement professeurs:", pError);
+      const profsData = pData || [];
+      setProfesseursExistants(profsData);
 
-      const { data: pData } = await supabase.from('professors').select('*');
-      if (pData) { profsData = pData; setProfesseursExistants(pData); }
+      // 2. Récupération des demandes
+      const { data: rData, error: rError } = await supabase.from('requests').select('*');
+      if (rError) console.error("Erreur chargement demandes:", rError);
+      const reqsData = rData || [];
+      setProfesseursNouveaux(reqsData);
 
-      const { data: rData } = await supabase.from('requests').select('*');
-      if (rData) { reqsData = rData; setProfesseursNouveaux(rData); }
+      // 3. Récupération des transactions
+      const { data: tData, error: tError } = await supabase.from('transactions').select('*');
+      if (tError) console.error("Erreur chargement transactions:", tError);
+      const transData = tData || [];
+      setTransactionsList(transData);
 
-      const { data: tData } = await supabase.from('transactions').select('*');
-      if (tData) { transData = tData; setTransactionsList(tData); }
-
-      let combinedHistory: any[] = [...reqsData, ...profsData];
+      // Combiner l'historique global
+      const combinedHistory = [...reqsData, ...profsData];
       setAllRequestsHistory(combinedHistory);
 
-      let totalCa = transData.reduce((sum, item) => sum + Number(item.montant || item.amount || 0), 0);
+      // Calcul du chiffre d'affaires
+      let totalCa = transData.reduce((sum, item) => {
+        const val = Number(item.montant ?? item.amount ?? item.price ?? 0);
+        return sum + (isNaN(val) ? 0 : val);
+      }, 0);
+
+      // Si aucune transaction dédiée, repli sur le montant présent dans les demandes/profs
       if (totalCa === 0) {
-        totalCa = combinedHistory.reduce((sum, item) => sum + Number(item.montant || item.amount || 0), 0);
+        totalCa = combinedHistory.reduce((sum, item) => {
+          const val = Number(item.montant ?? item.amount ?? item.price ?? 0);
+          return sum + (isNaN(val) ? 0 : val);
+        }, 0);
       }
+
       setRealCa(totalCa);
     } catch (err: any) {
-      setDbError(err.message);
+      setDbError(err?.message || "Erreur lors du chargement des données.");
     } finally {
       setIsLoadingDb(false);
     }
@@ -97,7 +108,8 @@ export default function AdminDashboardPage() {
       if (dateVal) {
         const d = new Date(dateVal);
         if (!isNaN(d.getTime()) && d.getFullYear().toString() === selectedYear) {
-          monthsAmounts[d.getMonth()] += Number(item.montant || item.amount || 0);
+          const amt = Number(item.montant ?? item.amount ?? item.price ?? 0);
+          monthsAmounts[d.getMonth()] += isNaN(amt) ? 0 : amt;
         }
       }
     });
@@ -144,18 +156,18 @@ export default function AdminDashboardPage() {
 
   const getAllMoroccoRegionsStats = () => {
     const validProfs = professeursExistants.filter(p => {
-      const ville = (p.ville || p.city || '').toLowerCase().trim();
+      const ville = (p.ville || p.city || '').toString().toLowerCase().trim();
       return ville && ville !== 'admin';
     });
 
     const countsMap: { [key: string]: number } = {};
     validProfs.forEach(p => {
-      const v = (p.ville || p.city || '').toLowerCase().trim();
+      const v = (p.ville || p.city || '').toString().toLowerCase().trim();
       let matchedRegion = "Casablanca-Settat";
 
-      if (v.includes('casa') || v.includes('casablanca')) matchedRegion = "Casablanca-Settat";
+      if (v.includes('casa') || v.includes('casablanca') || v.includes('settat')) matchedRegion = "Casablanca-Settat";
       else if (v.includes('marakech') || v.includes('marrakech') || v.includes('safi')) matchedRegion = "Marrakech-Safi";
-      else if (v.includes('rabat') || v.includes('salé') || v.includes('kenitra') || v.includes('kénitra')) matchedRegion = "Rabat-Salé-Kénitra";
+      else if (v.includes('rabat') || v.includes('salé') || v.includes('sale') || v.includes('kenitra') || v.includes('kénitra')) matchedRegion = "Rabat-Salé-Kénitra";
       else if (v.includes('fès') || v.includes('fes') || v.includes('meknès') || v.includes('meknes')) matchedRegion = "Fès-Meknès";
       else if (v.includes('tanger') || v.includes('tetouan') || v.includes('tétouan') || v.includes('hoceima')) matchedRegion = "Tanger-Tétouan-Al Hoceïma";
       else if (v.includes('oujda') || v.includes('oriental') || v.includes('nador')) matchedRegion = "l'Oriental";
@@ -175,7 +187,9 @@ export default function AdminDashboardPage() {
     })).sort((a, b) => b.count - a.count);
   };
 
-  if (!authorized) return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500 font-medium">Chargement...</div>;
+  if (!authorized) {
+    return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500 font-medium">Chargement...</div>;
+  }
 
   return (
     <div className="min-h-screen bg-[#F4F5F7] text-gray-900 font-sans flex flex-col w-full">
@@ -214,6 +228,12 @@ export default function AdminDashboardPage() {
       {/* CONTENU PRINCIPAL */}
       <main className="flex-1 p-8 space-y-8 max-w-[95rem] w-full mx-auto overflow-y-auto">
         
+        {dbError && (
+          <div className="p-4 bg-red-50 border border-red-200 rounded-2xl text-red-700 text-xs font-bold">
+            Erreur Supabase : {dbError}
+          </div>
+        )}
+
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-black text-gray-900 tracking-tight">Dashboard & Analyses</h1>
@@ -239,7 +259,7 @@ export default function AdminDashboardPage() {
               <span className="px-2.5 py-1 bg-[#FF4747] text-white text-[11px] font-black rounded-full">-2,08%</span>
             </div>
             <div>
-              <span className="text-xs font-medium text-gray-500 block mb-0.5">Visitor</span>
+              <span className="text-xs font-medium text-gray-500 block mb-0.5">Visiteurs</span>
               <h3 className="text-2xl font-black text-gray-900 tracking-tight">14.987</h3>
             </div>
           </div>
@@ -261,7 +281,7 @@ export default function AdminDashboardPage() {
               <span className="p-1.5 bg-gray-100 rounded-full"><ChevronRight className="w-4 h-4 text-gray-600" /></span>
             </div>
             <div>
-              <h3 className="text-3xl font-black text-gray-900">{professeursExistants.filter(p => (p.ville || p.city || '').toLowerCase().trim() !== 'admin').length}</h3>
+              <h3 className="text-3xl font-black text-gray-900">{professeursExistants.length}</h3>
               <p className="text-[10px] text-emerald-600 font-medium mt-1">↑ En ligne sur la plateforme</p>
             </div>
           </div>
@@ -278,10 +298,9 @@ export default function AdminDashboardPage() {
           </div>
         </div>
 
-        {/* SECTION PRINCIPALE : 2 COLONNES */}
+        {/* SECTION PRINCIPALE : GRAPHIQUES ET REGIONS */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
           
-          {/* COLONNE GAUCHE (2 parts) : Chiffre d'affaires & Demandes */}
           <div className="lg:col-span-2 space-y-6">
             
             {/* Graphique CA */}
@@ -289,7 +308,7 @@ export default function AdminDashboardPage() {
               <div className="flex justify-between items-center mb-4">
                 <div>
                   <h2 className="text-base font-black text-gray-900">Évolution du chiffre d'affaires (MAD)</h2>
-                  <p className="text-xs text-gray-400">Total calculé en temps réel depuis les transactions ({selectedYear})</p>
+                  <p className="text-xs text-gray-400">Total calculé en temps réel depuis Supabase ({selectedYear})</p>
                 </div>
                 <span className="px-3 py-1 bg-amber-100 text-amber-800 font-black text-xs rounded-full">
                   {monthlyRevenueData.reduce((acc, curr) => acc + curr.amount, 0).toLocaleString()} MAD
@@ -317,7 +336,7 @@ export default function AdminDashboardPage() {
               </div>
             </div>
 
-            {/* Nouveau Graphique Demandes en Barres */}
+            {/* Graphique Demandes */}
             <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-xs space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
@@ -382,11 +401,11 @@ export default function AdminDashboardPage() {
 
           </div>
 
-          {/* COLONNE DROITE (1 part) : Professeurs par région */}
+          {/* Professeurs par région */}
           <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-xs space-y-4">
             <div>
               <h2 className="text-lg font-black text-gray-900">Professeurs par région</h2>
-              <p className="text-xs text-gray-400">Liste complète des 12 régions du Maroc</p>
+              <p className="text-xs text-gray-400">Répartition sur les 12 régions du Maroc</p>
             </div>
 
             <div className="border border-gray-200 rounded-2xl overflow-hidden">
@@ -424,24 +443,20 @@ export default function AdminDashboardPage() {
 
       </main>
 
-      {/* MENU LATÉRAL - CORRIGÉ AVEC UNE CLASSE DE TRANSITION/VISIBILITÉ FLUIDE */}
+      {/* MENU LATÉRAL */}
       <div className={`fixed inset-0 z-50 flex transition-all duration-300 ${isMobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
         <div className="fixed inset-0 bg-black/40 backdrop-blur-xs transition-opacity" onClick={() => setIsMobileMenuOpen(false)}></div>
         
         <div className={`relative w-80 bg-white text-gray-800 flex flex-col shadow-2xl z-10 h-full border-r border-gray-100 transform transition-transform duration-300 ease-out ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-          
-          {/* Bouton de fermeture */}
           <div className="absolute top-4 right-4 z-20">
             <button onClick={() => setIsMobileMenuOpen(false)} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg cursor-pointer transition">
               <X className="w-5 h-5" />
             </button>
           </div>
 
-          {/* Intégration directe du composant AdminPanel */}
           <div className="flex-1 overflow-y-auto">
             <AdminPanel />
           </div>
-
         </div>
       </div>
 

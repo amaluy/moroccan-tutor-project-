@@ -2,15 +2,10 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabase'; // Import direct de l'instance centralisée
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { ChevronLeft, ArrowRight, ShieldCheck, GraduationCap, Users, KeyRound } from 'lucide-react';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-);
 
 export default function ConnexionPage() {
   const router = useRouter();
@@ -79,7 +74,7 @@ export default function ConnexionPage() {
       localStorage.setItem('professor_data', JSON.stringify(professorData));
       
       const isAdmin = professorData.is_admin === true || 
-                    String(professorData.is_admin).toLowerCase() === 'true';
+                      String(professorData.is_admin).toLowerCase() === 'true';
 
       if (isAdmin) {
         localStorage.setItem('is_admin', 'true');

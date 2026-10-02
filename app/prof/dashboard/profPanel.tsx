@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LayoutDashboard, Users, Calendar, Settings, LogOut, GraduationCap } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 
 interface ProfPanelProps {
   profName: string;
@@ -29,10 +30,22 @@ export default function ProfPanel({ profName, profImage, niveau }: ProfPanelProp
     return niv;
   };
 
+  const handleLogout = async () => {
+    // 1. Déconnexion de la session Supabase Auth (utilisée par app/connexion/page.tsx)
+    await supabase.auth.signOut();
+
+    // 2. Nettoyage du localStorage
+    localStorage.removeItem('profEmail');
+    localStorage.removeItem('userEmail');
+
+    // 3. Redirection vers la page de connexion centralisée
+    window.location.href = '/connexion';
+  };
+
   return (
     <aside className="w-28 md:w-72 bg-[#1b222c] text-white min-h-screen p-4 md:p-6 flex flex-col justify-between shrink-0 shadow-xl transition-all">
       <div>
-        {/* LOGO EXACT COMME SUR L'IMAGE 2 */}
+        {/* LOGO PROFMAROC */}
         <div className="mb-8 flex items-center gap-3">
           <div className="bg-orange-50/10 p-2 rounded-2xl border border-orange-500/20 hidden md:flex items-center justify-center">
             <GraduationCap className="w-6 h-6 text-orange-500" />
@@ -47,9 +60,8 @@ export default function ProfPanel({ profName, profImage, niveau }: ProfPanelProp
           </div>
         </div>
 
-        {/* Profil du professeur (Sans le like) */}
+        {/* Profil du professeur connecté */}
         <div className="flex flex-col items-center mb-10 bg-[#252e3d]/50 p-4 rounded-3xl border border-gray-800/60 relative">
-          
           <div className="relative mb-3 mt-1">
             <div className="w-16 h-16 rounded-full p-[2px] bg-gradient-to-tr from-orange-400 via-cyan-400 to-blue-500 shadow-lg">
               {profImage ? (
@@ -60,14 +72,16 @@ export default function ProfPanel({ profName, profImage, niveau }: ProfPanelProp
                 />
               ) : (
                 <div className="w-full h-full rounded-full bg-[#1b222c] flex items-center justify-center text-lg font-bold text-white">
-                  {profName.charAt(0)}
+                  {profName ? profName.charAt(0).toUpperCase() : 'P'}
                 </div>
               )}
             </div>
             <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-[#1b222c] rounded-full"></span>
           </div>
 
-          <h2 className="font-bold text-sm md:text-base text-white text-center capitalize tracking-tight line-clamp-1">{profName}</h2>
+          <h2 className="font-bold text-sm md:text-base text-white text-center capitalize tracking-tight line-clamp-1">
+            {profName}
+          </h2>
           
           <span className="text-[11px] md:text-xs text-gray-400 font-medium mt-1 capitalize bg-gray-800/80 px-2.5 py-0.5 rounded-full border border-gray-700/50">
             {formatNiveau(niveau)}
@@ -104,10 +118,7 @@ export default function ProfPanel({ profName, profImage, niveau }: ProfPanelProp
       {/* Déconnexion */}
       <div className="pt-4 border-t border-gray-800/60">
         <button 
-          onClick={() => {
-            localStorage.removeItem('profEmail');
-            window.location.href = '/prof/login';
-          }}
+          onClick={handleLogout}
           className="w-full flex items-center justify-center md:justify-start gap-3 px-3.5 py-2.5 rounded-2xl text-sm font-semibold text-red-400 hover:bg-red-500/10 hover:text-red-300 transition cursor-pointer"
         >
           <LogOut className="w-5 h-5 shrink-0" />

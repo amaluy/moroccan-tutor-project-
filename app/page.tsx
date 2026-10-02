@@ -118,10 +118,10 @@ export default function HomePage() {
         .or('is_admin.is.null,is_admin.eq.false')
         .not('email', 'in', '("berrada0amal@gmail.com","louizisalaheddine@gmail.com")');
 
-      if (error) {
-        console.error('Erreur Supabase:', error);
-        setProfessors([]);
-      } else {
+     if (error) {
+  console.error('Erreur Supabase complète :', JSON.stringify(error, null, 2));
+  setProfessors([]);
+} else {
         let results = data || [];
 
         // DOUBLE SÉCURITÉ JAVASCRIPT : Filtrage strict pour ne jamais afficher les admins
