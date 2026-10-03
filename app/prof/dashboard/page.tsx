@@ -2,42 +2,43 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { supabase } from '@/lib/supabase';
 import { 
   Edit3, Calendar, Users, ArrowRight, 
-  X, GraduationCap
+  X, ArrowDown
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import birdAnimation from '@/app/bird.json';
+
+// Import dynamique correct pointant vers app/components/LottieAnimation
+const LottieAnimation = dynamic(() => import('@/app/components/LottieAnimation'), { ssr: false });
 
 const STEPS = [
   {
     targetId: "step-welcome",
     title: "Bienvenue dans votre Espace !",
     description: "Bonjour ! Je suis Profy 🦉. Je vais vous montrer comment piloter votre compte et trouver rapidement des élèves.",
-    placement: "bottom"
   },
   {
     targetId: "step-status",
     title: "1. Votre Statut de Visibilité",
     description: "Activez votre profil 'En Ligne' pour apparaître immédiatement dans les résultats de recherche des élèves et parents.",
-    placement: "bottom"
   },
   {
     targetId: "step-leads",
     title: "2. Demandes d'Élèves",
     description: "C'est ici que vous recevez toutes les demandes. Vous pouvez échanger directement avec les élèves et accepter leurs cours.",
-    placement: "bottom"
   },
   {
     targetId: "step-calendar",
     title: "3. Vos Disponibilités",
     description: "Indiquez vos jours et créneaux horaires libres pour permettre aux parents de planifier les séances à l'avance.",
-    placement: "bottom"
   },
   {
     targetId: "step-profile",
     title: "4. Modification de Profil",
     description: "Ajustez vos tarifs horaires, votre biographie, votre photo de profil et vos matières à tout moment.",
-    placement: "bottom"
   }
 ];
 
@@ -45,14 +46,16 @@ export default function ProfDashboard() {
   const [profData, setProfData] = useState<any>(null);
   const [profName, setProfName] = useState('');
   const [profImage, setProfImage] = useState('');
-  const [profNiveau, setProfNiveau] = useState<any>([]);
   const [isAvailable, setIsAvailable] = useState(true);
   const [loading, setLoading] = useState(true);
+
+  // Animation du hibou style Duolingo (marche dessin animé)
+  const [showCartoonWalkOwl, setShowCartoonWalkOwl] = useState(false);
 
   // ÉTATS DU GUIDE INTERACTIF
   const [currentStep, setCurrentStep] = useState(0);
   const [showTutorial, setShowTutorial] = useState(false);
-  const [owlPosition, setOwlPosition] = useState({ top: 200, left: 300 });
+  const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
 
   useEffect(() => {
     async function fetchProfData() {
@@ -96,9 +99,18 @@ export default function ProfDashboard() {
 
             setProfName(fullName || prof.email || 'Professeur');
             setProfImage(prof.photo_URL || prof.photo_url || prof.image_url || prof.photo || '');
-            setProfNiveau(prof.niveau || []);
             setIsAvailable(prof.available ?? true);
           }
+        }
+
+        // Lancement de l'animation de marche style Duolingo au premier chargement
+        const hasSeenIntro = sessionStorage.getItem('hasSeenCartoonWalkOwl');
+        if (!hasSeenIntro) {
+          setShowCartoonWalkOwl(true);
+          sessionStorage.setItem('hasSeenCartoonWalkOwl', 'true');
+          setTimeout(() => {
+            setShowCartoonWalkOwl(false);
+          }, 7000);
         }
 
         const hasSeenTour = localStorage.getItem('hasSeenFreeOwlTour');
@@ -116,25 +128,15 @@ export default function ProfDashboard() {
     fetchProfData();
   }, []);
 
-  // CALCUL DE LA POSITION DU HIBOU
+  // CALCUL DU RECTANGLE POUR LE FOCUS DU TUTORIEL CLASSIQUE
   useEffect(() => {
     if (!showTutorial) return;
 
-    const updatePosition = () => {
-      const targetElement = document.getElementById(STEPS[currentStep].targetId);
-      if (targetElement) {
-        const rect = targetElement.getBoundingClientRect();
-        
-        setOwlPosition({
-          top: rect.bottom + window.scrollY + 20,
-          left: Math.max(20, rect.left + rect.width / 2 - 160)
-        });
-      }
-    };
-
-    updatePosition();
-    window.addEventListener('resize', updatePosition);
-    return () => window.removeEventListener('resize', updatePosition);
+    const targetElement = document.getElementById(STEPS[currentStep].targetId);
+    if (targetElement) {
+      const rect = targetElement.getBoundingClientRect();
+      setTargetRect(rect);
+    }
   }, [currentStep, showTutorial]);
 
   const handleNextStep = () => {
@@ -166,21 +168,109 @@ export default function ProfDashboard() {
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex relative overflow-x-hidden">
       
-      {/* 1. FOND SOMBRE DE SURBRILLANCE */}
-      {showTutorial && (
-        <div className="fixed inset-0 bg-slate-950/75 backdrop-blur-[2px] z-30 transition-opacity duration-500 pointer-events-auto" />
-      )}
+      {/* --- 1. ANIMATION DU HIBOU STYLE CARTOON / DUOLINGO (MARCHE & SPOTLIGHT) --- */}
+      <AnimatePresence>
+        {showCartoonWalkOwl && (
+          <div className="fixed inset-0 z-50 pointer-events-none overflow-hidden">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: [0, 0.85, 0.85, 0] }}
+              transition={{ duration: 7, times: [0, 0.1, 0.9, 1] }}
+              className="absolute inset-0 bg-black/90 transition-opacity"
+            />
 
-      {/* Zone centrale principale (Page Blanche) */}
+            <motion.div
+              initial={{ x: "-15vw", y: "55vh" }}
+              animate={{ 
+                x: ["-15vw", "42vw", "42vw", "90vw"], 
+                y: ["55vh", "55vh", "55vh", "82vh"] 
+              }}
+              transition={{ 
+                duration: 7, 
+                times: [0, 0.4, 0.75, 1], 
+                ease: ["easeInOut", "easeInOut", "easeInOut"] 
+              }}
+              className="absolute z-50 flex items-center"
+            >
+              <motion.div
+                animate={{ 
+                  y: [0, -14, 0], 
+                  rotate: [0, 3, -3, 0] 
+                }}
+                transition={{ 
+                  repeat: Infinity, 
+                  duration: 0.55, 
+                  ease: "easeInOut" 
+                }}
+                className="relative flex items-center justify-center w-36 h-36 filter drop-shadow-[0_10px_20px_rgba(0,0,0,0.6)]"
+              >
+                <LottieAnimation 
+                  animationData={birdAnimation} 
+                  loop={true} 
+                  autoplay={true} 
+                  style={{ width: '100%', height: '100%' }}
+                />
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, scale: 0.7, y: 15 }}
+                animate={{ 
+                  opacity: [0, 1, 1, 0], 
+                  scale: [0.7, 1, 1, 0.7],
+                  y: [15, 0, 0, 15] 
+                }}
+                transition={{ duration: 7, times: [0.38, 0.43, 0.72, 0.77] }}
+                className="absolute left-32 -top-12 bg-white text-slate-900 px-6 py-4 rounded-3xl border-4 border-orange-500 shadow-2xl flex flex-col gap-2 min-w-[300px]"
+              >
+                <p className="text-sm font-black text-orange-600 tracking-wide">
+                  Bonjour, je suis votre assistant d'aide ! 🦉
+                </p>
+                <p className="text-xs text-slate-600 font-bold leading-relaxed">
+                  Clique ici pour accéder à mes services et découvrir l'espace.
+                </p>
+
+                <div className="absolute -bottom-7 left-8 bg-slate-900 text-white p-2 rounded-full shadow-xl animate-bounce border-2 border-orange-500">
+                  <ArrowDown className="w-5 h-5 stroke-[3]" />
+                </div>
+              </motion.div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* --- 2. SPOTLIGHT DU TUTORIEL INTERACTIF CLASSIQUE --- */}
+      <AnimatePresence>
+        {showTutorial && targetRect && (
+          <div className="fixed inset-0 z-30 pointer-events-none overflow-hidden">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/80"
+            />
+            <motion.div
+              className="absolute bg-white rounded-3xl shadow-2xl transition-all duration-300 pointer-events-auto"
+              style={{
+                top: targetRect.top - 8,
+                left: targetRect.left - 8,
+                width: targetRect.width + 16,
+                height: targetRect.height + 16,
+              }}
+              layoutId="spotlight-box"
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            />
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ZONE CENTRALE (TABLEAU DE BORD) */}
       <main className="flex-1 p-6 md:p-10 overflow-y-auto max-w-5xl mx-auto space-y-8 relative">
         
-        {/* EN-TÊTE BIENVENUE & STATUT */}
+        {/* EN-TÊTE */}
         <div 
           id="step-welcome"
           className={`px-2 py-2 transition-all duration-500 rounded-3xl ${
-            showTutorial && activeTarget === 'step-welcome'
-              ? 'relative z-40 bg-white/90 p-6 ring-4 ring-orange-500 shadow-2xl'
-              : ''
+            showTutorial && activeTarget === 'step-welcome' ? 'relative z-40 p-4' : ''
           }`}
         >
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -194,9 +284,7 @@ export default function ProfDashboard() {
             <div 
               id="step-status"
               className={`flex items-center gap-3 p-2 rounded-2xl border transition-all duration-500 ${
-                showTutorial && activeTarget === 'step-status'
-                  ? 'relative z-40 bg-white border-orange-500 ring-4 ring-orange-500 shadow-2xl scale-110'
-                  : 'bg-white border-slate-200/80 shadow-xs'
+                showTutorial && activeTarget === 'step-status' ? 'relative z-40 border-transparent shadow-none' : 'bg-white border-slate-200/80 shadow-xs'
               }`}
             >
               <span className="text-xs font-bold text-slate-500 pl-2">Statut :</span>
@@ -212,7 +300,6 @@ export default function ProfDashboard() {
           </div>
         </div>
 
-        {/* TITRE DE SECTION CENTRÉ AVEC ÉCRITURE PLUS DOUCE ET GRISÉE */}
         <div className="text-center py-2">
           <h2 className="text-base font-medium text-slate-400 tracking-wide">Que souhaitez-vous faire ?</h2>
         </div>
@@ -223,11 +310,7 @@ export default function ProfDashboard() {
           {/* Carte Demandes */}
           <div
             id="step-leads"
-            className={`transition-all duration-500 rounded-3xl ${
-              showTutorial && activeTarget === 'step-leads'
-                ? 'relative z-40 ring-4 ring-orange-500 shadow-2xl scale-[1.04] bg-white'
-                : ''
-            }`}
+            className={`${showTutorial && activeTarget === 'step-leads' ? 'relative z-40' : ''}`}
           >
             <Link 
               href="/prof/dashboard/demandes"
@@ -252,11 +335,7 @@ export default function ProfDashboard() {
           {/* Carte Disponibilités */}
           <div
             id="step-calendar"
-            className={`transition-all duration-500 rounded-3xl ${
-              showTutorial && activeTarget === 'step-calendar'
-                ? 'relative z-40 ring-4 ring-blue-500 shadow-2xl scale-[1.04] bg-white'
-                : ''
-            }`}
+            className={`${showTutorial && activeTarget === 'step-calendar' ? 'relative z-40' : ''}`}
           >
             <Link 
               href="/prof/dashboard/disponibilites"
@@ -281,11 +360,7 @@ export default function ProfDashboard() {
           {/* Carte Profil */}
           <div
             id="step-profile"
-            className={`transition-all duration-500 rounded-3xl ${
-              showTutorial && activeTarget === 'step-profile'
-                ? 'relative z-40 ring-4 ring-emerald-500 shadow-2xl scale-[1.04] bg-white'
-                : ''
-            }`}
+            className={`${showTutorial && activeTarget === 'step-profile' ? 'relative z-40' : ''}`}
           >
             <Link 
               href="/prof/profile"
@@ -309,7 +384,7 @@ export default function ProfDashboard() {
 
         </div>
 
-        {/* APERÇU SIMPLE DU PROFIL */}
+        {/* APERÇU PROFIL */}
         <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-orange-500 bg-slate-100 shrink-0">
@@ -335,74 +410,81 @@ export default function ProfDashboard() {
 
       </main>
 
-      {/* --- HIBOU VOLANT SANS LE BADGE PROFY --- */}
-      {showTutorial && (
-        <div 
-          className="absolute z-50 transition-all duration-700 ease-in-out pointer-events-auto flex items-start gap-4 max-w-md"
-          style={{ 
-            top: `${owlPosition.top}px`, 
-            left: `${owlPosition.left}px` 
-          }}
-        >
-          {/* HIBOU VOLANT AVEC LE CHAPEAU BIEN CENTRÉ SUR LA TÊTE */}
-          <div className="relative animate-bounce duration-1000 shrink-0 select-none">
-            <span className="text-6xl drop-shadow-2xl leading-none block filter">
-              🦉
-            </span>
-            <div className="absolute -top-3.5 left-[42%] -translate-x-1/2 -rotate-6 text-orange-400 drop-shadow-md pointer-events-none">
-              <GraduationCap className="w-7 h-7 fill-slate-900 stroke-orange-500 stroke-[2.5]" />
-            </div>
+      {/* --- 3. MODALE DU GUIDE INTERACTIF --- */}
+      <AnimatePresence>
+        {showTutorial && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-slate-900/95 backdrop-blur-xl border border-slate-700 p-6 rounded-3xl shadow-2xl max-w-sm w-full pointer-events-auto space-y-4 text-white"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-orange-400 uppercase tracking-wider">
+                  Étape {currentStep + 1} sur {STEPS.length}
+                </span>
+                <button 
+                  onClick={() => setShowTutorial(false)}
+                  className="text-slate-400 hover:text-white p-1 transition cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <h3 className="text-lg font-black text-white">
+                {STEPS[currentStep].title}
+              </h3>
+              
+              <p className="text-xs text-slate-300 font-medium leading-relaxed">
+                {STEPS[currentStep].description}
+              </p>
+
+              <div className="flex items-center justify-between pt-2 border-t border-slate-800">
+                <button
+                  onClick={handlePrevStep}
+                  disabled={currentStep === 0}
+                  className="text-xs font-bold text-slate-400 hover:text-white disabled:opacity-30 transition cursor-pointer"
+                >
+                  ← Précédent
+                </button>
+
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleNextStep}
+                  className="bg-orange-500 hover:bg-orange-600 text-white text-xs font-black px-4 py-2.5 rounded-xl transition shadow-lg shadow-orange-500/30 cursor-pointer flex items-center gap-1.5"
+                >
+                  <span>{currentStep === STEPS.length - 1 ? "Terminer" : "Suivant"}</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </motion.button>
+              </div>
+            </motion.div>
           </div>
+        )}
+      </AnimatePresence>
 
-          {/* TEXTE LIBRE SANS BADGE */}
-          <div className="space-y-2 text-white drop-shadow-md pt-1">
-            <div className="flex items-center justify-end">
-              <button 
-                onClick={() => setShowTutorial(false)}
-                className="text-slate-400 hover:text-white p-1 transition cursor-pointer"
-                title="Fermer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <h4 className="text-base font-black text-white -mt-2">{STEPS[currentStep].title}</h4>
-            <p className="text-xs text-slate-200 font-medium leading-relaxed max-w-xs">
-              {STEPS[currentStep].description}
-            </p>
-
-            <div className="flex items-center gap-3 pt-2">
-              <button
-                onClick={handlePrevStep}
-                disabled={currentStep === 0}
-                className="text-xs font-bold text-slate-400 hover:text-white disabled:opacity-30 disabled:hover:text-slate-400 transition cursor-pointer"
-              >
-                ← Précédent
-              </button>
-
-              <button
-                onClick={handleNextStep}
-                className="bg-orange-500 hover:bg-orange-600 text-white text-xs font-black px-4 py-2 rounded-xl transition shadow-lg shadow-orange-500/30 cursor-pointer flex items-center gap-1"
-              >
-                <span>{currentStep === STEPS.length - 1 ? "J'ai tout compris !" : "Suivant"}</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
-          </div>
-        </div>
-      )}
-
-      {/* BOUTON FLOTTANT EN BAS À DROITE */}
+      {/* BOUTON FLOTTANT EN BAS À DROITE POUR RELANCER LE GUIDE */}
       {!showTutorial && (
-        <button
+        <motion.button
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          whileHover={{ scale: 1.1, rotate: 5 }}
+          whileTap={{ scale: 0.95 }}
           onClick={restartTutorial}
-          className="fixed bottom-6 right-6 bg-slate-900 text-white p-3.5 rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all z-40 flex items-center gap-2.5 border-2 border-orange-500 cursor-pointer group"
+          className="fixed bottom-6 right-6 bg-slate-900 text-white p-3.5 rounded-full shadow-2xl transition-all z-40 flex items-center gap-2.5 border-2 border-orange-500 cursor-pointer group"
           title="Relancer le guide interactif"
         >
-          <span className="text-2xl group-hover:rotate-12 transition-transform">🦉</span>
+          <div className="w-8 h-8 flex items-center justify-center group-hover:rotate-12 transition-transform">
+            <LottieAnimation 
+              animationData={birdAnimation} 
+              loop={true} 
+              autoplay={true} 
+              style={{ width: '100%', height: '100%' }}
+            />
+          </div>
           <span className="text-xs font-extrabold pr-1 hidden sm:inline text-orange-400">Besoin d'aide ?</span>
-        </button>
+        </motion.button>
       )}
 
     </div>
