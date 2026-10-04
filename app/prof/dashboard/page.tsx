@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 import { supabase } from '@/lib/supabase';
 import { 
   Edit3, Calendar, Users, ArrowRight, 
-  X, ArrowDown, Sun, Moon
+  X, ArrowDown, Sun, Moon, LogOut, ChevronDown, User 
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import birdAnimation from '@/app/bird.json';
@@ -22,7 +22,7 @@ const STEPS = [
   {
     targetId: "step-status",
     title: "1. Votre Statut de Visibilité",
-    description: "Activez votre profil 'En Ligne' pour apparaître immédiatement dans les résultats de recherche des élèves et parents.",
+    description: "Cliquez sur ce témoin coloré dans la barre du haut pour passer 'En Ligne' ou 'Masqué' instantanément.",
   },
   {
     targetId: "step-leads",
@@ -46,10 +46,10 @@ export default function ProfDashboard() {
   const [profName, setProfName] = useState('');
   const [profImage, setProfImage] = useState('');
   const [isAvailable, setIsAvailable] = useState(true);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading]  = useState(true);
 
-  // --- GESTION DU MODE SOMBRE / CLAIR ---
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('prof_theme');
@@ -64,10 +64,13 @@ export default function ProfDashboard() {
     localStorage.setItem('prof_theme', nextMode ? 'dark' : 'light');
   };
 
-  // Animation du hibou
-  const [showCartoonWalkOwl, setShowCartoonWalkOwl] = useState(false);
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    localStorage.clear();
+    window.location.href = '/connexion';
+  };
 
-  // Guide interactif
+  const [showCartoonWalkOwl, setShowCartoonWalkOwl] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [showTutorial, setShowTutorial] = useState(false);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
@@ -182,20 +185,123 @@ export default function ProfDashboard() {
   const activeTarget = STEPS[currentStep].targetId;
 
   return (
-    <div className={`min-h-screen flex relative overflow-x-hidden transition-colors duration-300 ${isDarkMode ? 'bg-[#0A0A0A] text-slate-100' : 'bg-[#F8FAFC] text-slate-900'}`}>
+    <div className={`min-h-screen flex flex-col relative overflow-x-hidden transition-colors duration-300 ${isDarkMode ? 'bg-[#0A0A0A] text-slate-100' : 'bg-[#F8FAFC] text-slate-900'}`}>
       
-      {/* BOUTON FLOTTANT POUR BASCULER MODE SOMBRE / CLAIR (Haut à droite) */}
-      <button
-        onClick={toggleTheme}
-        className={`fixed top-6 right-6 z-40 p-3 rounded-full shadow-lg border transition-all cursor-pointer flex items-center justify-center ${
-          isDarkMode 
-            ? 'bg-slate-900 text-amber-400 border-slate-700 hover:bg-slate-800' 
-            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-        }`}
-        title={isDarkMode ? "Passer en mode clair" : "Passer en mode sombre"}
-      >
-        {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-      </button>
+      {/* --- TOPBAR STYLE SUPABASE --- */}
+      <header className={`sticky top-0 z-40 border-b px-6 py-3.5 flex items-center justify-between transition-colors duration-300 ${
+        isDarkMode ? 'bg-[#0A0A0A]/90 border-slate-800 backdrop-blur-md' : 'bg-white/90 border-slate-200 backdrop-blur-md'
+      }`}>
+        {/* Nom de la plateforme sans le carré P */}
+        <div className="flex items-center gap-8">
+          <Link href="/prof/dashboard" className="flex items-center gap-2.5 group">
+            <span className={`text-lg font-black tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+              Prof<span className="text-orange-500">Maroc</span>
+            </span>
+          </Link>
+
+          {/* Menu de navigation central */}
+          <nav className="hidden md:flex items-center gap-1">
+            <Link href="/prof/dashboard" className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${isDarkMode ? 'text-white bg-slate-800/60' : 'text-slate-900 bg-slate-100'}`}>
+              Dashboard
+            </Link>
+            <Link href="/prof/dashboard/demandes" className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${isDarkMode ? 'text-slate-400 hover:text-white hover:bg-slate-800/40' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`}>
+              Demandes
+            </Link>
+            <Link href="/prof/dashboard/disponibilites" className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${isDarkMode ? 'text-slate-400 hover:text-white hover:bg-slate-800/40' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`}>
+              Disponibilités
+            </Link>
+          </nav>
+        </div>
+
+        {/* Actions Droite : Statut lumineux + Thème + Profil */}
+        <div className="flex items-center gap-3">
+          
+          {/* Bouton Statut Lumineux (Sans texte "Statut") */}
+          <div id="step-status" className={`${showTutorial && activeTarget === 'step-status' ? 'relative z-40' : ''}`}>
+            <button
+              onClick={() => setIsAvailable(!isAvailable)}
+              className={`p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-center relative ${
+                isDarkMode 
+                  ? 'bg-slate-900 border-slate-700 hover:bg-slate-800' 
+                  : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
+              }`}
+              title={isAvailable ? "En ligne (cliquez pour masquer)" : "Masqué (cliquez pour mettre en ligne)"}
+            >
+              <div className={`w-3.5 h-3.5 rounded-full transition-all duration-300 shadow-md ${
+                isAvailable ? 'bg-emerald-500 shadow-emerald-500/50 animate-pulse' : 'bg-rose-500 shadow-rose-500/50'
+              }`} />
+            </button>
+          </div>
+
+          {/* Bouton Dark / Light */}
+          <button
+            onClick={toggleTheme}
+            className={`p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-center ${
+              isDarkMode 
+                ? 'bg-slate-900 text-amber-400 border-slate-700 hover:bg-slate-800' 
+                : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+            }`}
+            title={isDarkMode ? "Passer en mode clair" : "Passer en mode sombre"}
+          >
+            {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          </button>
+
+          {/* Profil Utilisateur (Avatar + Dropdown) */}
+          <div className="relative">
+            <button
+              onClick={() => setShowProfileMenu(!showProfileMenu)}
+              className={`flex items-center gap-2.5 p-1.5 rounded-xl border transition cursor-pointer ${
+                isDarkMode ? 'bg-slate-900 border-slate-800 hover:bg-slate-800' : 'bg-white border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              <div className="w-8 h-8 rounded-full overflow-hidden border border-orange-500 bg-slate-200 shrink-0">
+                {profImage ? (
+                  <img src={profImage} alt={profName} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center font-bold text-xs text-slate-700">
+                    {profName[0] || 'P'}
+                  </div>
+                )}
+              </div>
+              <span className={`text-xs font-bold hidden sm:inline px-1 ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>
+                {profName.split(' ')[0]}
+              </span>
+              <ChevronDown className={`w-3.5 h-3.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`} />
+            </button>
+
+            {/* Menu Déroulant Profil */}
+            {showProfileMenu && (
+              <div className={`absolute right-0 mt-2 w-56 rounded-2xl border shadow-xl p-2 z-50 transition-all ${
+                isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
+              }`}>
+                <div className="px-3 py-2 border-b border-slate-700/50 mb-1">
+                  <p className="text-xs font-bold truncate">{profName}</p>
+                  <p className="text-[10px] text-slate-400 truncate">{profData?.email || 'Professeur'}</p>
+                </div>
+                
+                <Link 
+                  href="/prof/profile"
+                  onClick={() => setShowProfileMenu(false)}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition ${
+                    isDarkMode ? 'hover:bg-slate-800 text-slate-300' : 'hover:bg-slate-100 text-slate-700'
+                  }`}
+                >
+                  <User className="w-4 h-4 text-orange-500" />
+                  <span>Mon Profil</span>
+                </Link>
+
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-rose-500 hover:bg-rose-500/10 transition cursor-pointer mt-1"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Se déconnecter</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </header>
 
       {/* --- ANIMATION DU HIBOU --- */}
       <AnimatePresence>
@@ -261,45 +367,14 @@ export default function ProfDashboard() {
       </AnimatePresence>
 
       {/* ZONE CENTRALE */}
-      <main className="flex-1 p-6 md:p-10 overflow-y-auto max-w-5xl mx-auto space-y-8 relative">
+      <main className="flex-1 p-6 md:p-12 max-w-5xl mx-auto space-y-8 relative w-full">
         
-        {/* EN-TÊTE */}
-        <div id="step-welcome" className={`px-2 py-2 transition-all duration-500 rounded-3xl ${showTutorial && activeTarget === 'step-welcome' ? 'relative z-40 p-4' : ''}`}>
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div>
-              <h1 className={`text-3xl sm:text-4xl font-black capitalize tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                Bonjour, {profName}
-              </h1>
-            </div>
-
-            {/* Statut En ligne */}
-            <div 
-              id="step-status"
-              className={`flex items-center gap-3 p-2 rounded-2xl border transition-all duration-500 ${
-                showTutorial && activeTarget === 'step-status' 
-                  ? 'relative z-40 border-transparent shadow-none' 
-                  : isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200/80 shadow-xs'
-              }`}
-            >
-              <span className={`text-xs font-bold pl-2 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Statut :</span>
-              <button
-                onClick={() => setIsAvailable(!isAvailable)}
-                className={`px-4 py-2 rounded-xl text-xs font-extrabold transition cursor-pointer ${
-                  isAvailable ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
-                }`}
-              >
-                {isAvailable ? '🟢 En Ligne' : '🔴 Masqué'}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="text-center py-2">
-          <h2 className="text-base font-medium text-slate-400 tracking-wide">Que souhaitez-vous faire ?</h2>
+        <div id="step-welcome" className="pt-4 text-center">
+          <h2 className="text-lg font-medium text-slate-400 tracking-wide">Que souhaitez-vous faire ?</h2>
         </div>
 
         {/* CARTES DE RACCOURCIS (Grille Bento) */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
           
           {/* Carte Demandes */}
           <div id="step-leads" className={`${showTutorial && activeTarget === 'step-leads' ? 'relative z-40' : ''}`}>
@@ -379,32 +454,6 @@ export default function ProfDashboard() {
             </Link>
           </div>
 
-        </div>
-
-        {/* APERÇU PROFIL */}
-        <div className={`rounded-3xl p-6 border transition-all duration-300 flex flex-col sm:flex-row items-center justify-between gap-4 ${
-          isDarkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200/80 shadow-xs'
-        }`}>
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-orange-500 bg-slate-100 shrink-0">
-              {profImage ? (
-                <img src={profImage} alt={profName} className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center font-bold text-slate-600">
-                  {profName[0]}
-                </div>
-              )}
-            </div>
-            <div>
-              <h4 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{profName}</h4>
-              <p className="text-xs text-slate-400 mt-0.5">{profData?.matiere || 'Professeur'} • {profData?.ville || 'Maroc'}</p>
-            </div>
-          </div>
-
-          <div className="text-right">
-            <span className="text-xs text-slate-400 font-medium">Tarif réglé</span>
-            <p className={`text-xl font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{profData?.tarif || '200'} DH<span className="text-xs text-slate-400 font-normal">/h</span></p>
-          </div>
         </div>
 
       </main>
