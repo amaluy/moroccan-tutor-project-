@@ -2,15 +2,52 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { Search, ArrowLeft, Phone, Lock, Unlock, CheckCircle2, User, BookOpen } from 'lucide-react';
 
+interface Lead {
+  id: number | string;
+  student_name: string;
+  student_phone: string;
+  message: string;
+  status: string;
+  is_read: boolean;
+  subject: string;
+}
+
+interface Professor {
+  email?: string;
+  leads_restants?: number;
+  [key: string]: unknown;
+}
+
 export default function ProfMessagerie() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const [conversations, setConversations] = useState<any[]>([]);
-  const [selectedLead, setSelectedLead] = useState<any>(null);
+  const [conversations, setConversations] = useState<Lead[]>([]);
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [profData, setProfData] = useState<any>(null);
+  const [profData, setProfData] = useState<Professor | null>(null);
+
+  const markAsRead = async (lead: Lead | null) => {
+    if (!lead || lead.is_read) return;
+
+    setConversations((prev: Lead[]) =>
+      prev.map(item => item.id === lead.id ? { ...item, is_read: true } : item)
+    );
+
+    try {
+      // Double cast pour contourner le type 'never' de Supabase
+      await (supabase.from('leads') as unknown as {
+        update: (values: Record<string, unknown>) => { eq: (column: string, value: unknown) => Promise<unknown> }
+      })
+        .update({ is_read: true })
+        .eq('id', lead.id);
+    } catch (e) {
+      console.error("Erreur marquage lead comme lu:", e);
+    }
+  };
 
   useEffect(() => {
     async function fetchLeadsAndProf() {
@@ -26,18 +63,16 @@ export default function ProfMessagerie() {
           localStorage.getItem('email') || '';
 
         if (!profEmail) {
-          window.location.href = '/connexion';
+          router.push('/connexion');
           return;
         }
 
-        // 1. Récupérer les infos du prof
         const { data: allProfs } = await supabase.from('professors').select('*');
         if (allProfs) {
-          const prof = allProfs.find((p: any) => p.email && p.email.toLowerCase().trim() === profEmail.toLowerCase().trim());
+          const prof = allProfs.find((p: Professor) => p.email && typeof p.email === 'string' && p.email.toLowerCase().trim() === profEmail.toLowerCase().trim());
           if (prof) setProfData(prof);
         }
 
-        // 2. Récupérer les leads de la table 'leads'
         const { data: leadsData, error } = await supabase
           .from('leads')
           .select('*')
@@ -48,12 +83,11 @@ export default function ProfMessagerie() {
         }
 
         if (leadsData && leadsData.length > 0) {
-          setConversations(leadsData);
-          // Sélectionner par défaut le premier lead et le marquer comme lu si besoin
-          setSelectedLead(leadsData[0]);
-          markAsRead(leadsData[0]);
+          setConversations(leadsData as Lead[]);
+          setSelectedLead(leadsData[0] as Lead);
+          markAsRead(leadsData[0] as Lead);
         } else {
-          const mockLeads = [
+          const mockLeads: Lead[] = [
             {
               id: 1,
               student_name: 'Amal',
@@ -75,39 +109,18 @@ export default function ProfMessagerie() {
     }
 
     fetchLeadsAndProf();
-  }, []);
+  }, [router]);
 
-  // Fonction pour marquer un message/lead comme lu
-  const markAsRead = async (lead: any) => {
-    if (!lead || lead.is_read) return;
-
-    // Mise à jour locale
-    setConversations(prev =>
-      prev.map(item => item.id === lead.id ? { ...item, is_read: true } : item)
-    );
-
-    // Mise à jour dans Supabase
-    try {
-      await supabase
-        .from('leads')
-        .update({ is_read: true })
-        .eq('id', lead.id);
-    } catch (e) {
-      console.error("Erreur marquage lead comme lu:", e);
-    }
-  };
-
-  // Gestion du clic sur un lead dans la liste
-  const handleSelectLead = (lead: any) => {
+  const handleSelectLead = (lead: Lead) => {
     setSelectedLead(lead);
     markAsRead(lead);
   };
 
-  const handleUnlockLead = async (leadId: number) => {
+  const handleUnlockLead = async (leadId: number | string) => {
     const currentCredits = profData?.leads_restants ?? 0;
     if (currentCredits <= 0) {
       alert("Vous n'avez plus assez de leads/crédits. Veuillez recharger votre compte.");
-      window.location.href = '/prof/dashboard/credits';
+      router.push('/prof/dashboard/credits');
       return;
     }
 
@@ -119,11 +132,16 @@ export default function ProfMessagerie() {
     });
 
     setConversations(updatedConversations);
-    setSelectedLead(updatedConversations.find(l => l.id === leadId));
+    const foundLead = updatedConversations.find(l => l.id === leadId);
+    if (foundLead) {
+      setSelectedLead(foundLead);
+    }
 
     try {
-      await supabase
-        .from('leads')
+      // Double cast pour contourner le type 'never' de Supabase
+      await (supabase.from('leads') as unknown as {
+        update: (values: Record<string, unknown>) => { eq: (column: string, value: unknown) => Promise<unknown> }
+      })
         .update({ status: 'accepted' })
         .eq('id', leadId);
     } catch (e) {
@@ -168,7 +186,6 @@ export default function ProfMessagerie() {
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 flex">
         <div className="bg-white border border-slate-200 rounded-3xl shadow-sm w-full grid grid-cols-1 md:grid-cols-12 overflow-hidden h-[calc(100vh-140px)]">
           
-          {/* Colonne de gauche : Liste des élèves */}
           <div className="md:col-span-4 border-r border-slate-200 flex flex-col bg-slate-50/50">
             <div className="p-4 border-b border-slate-200">
               <div className="relative">
@@ -194,7 +211,7 @@ export default function ProfMessagerie() {
                   const studentName = lead.student_name || 'Élève';
                   const studentMessage = lead.message || 'Nouvelle demande...';
                   const unlocked = lead.status === 'accepted' || lead.status === 'unlocked';
-                  const isUnread = lead.is_read === false; // Indicateur non lu
+                  const isUnread = lead.is_read === false;
 
                   return (
                     <button
@@ -204,7 +221,6 @@ export default function ProfMessagerie() {
                         isSelected ? 'bg-orange-50/60 border-l-4 border-orange-500' : 'hover:bg-slate-100/60'
                       }`}
                     >
-                      {/* Pastille point rouge si non lu */}
                       {isUnread && (
                         <span className="absolute top-4 right-4 w-2.5 h-2.5 bg-orange-500 rounded-full animate-pulse" />
                       )}
@@ -234,7 +250,6 @@ export default function ProfMessagerie() {
             </div>
           </div>
 
-          {/* Colonne de droite : Détails de la demande */}
           <div className="md:col-span-8 flex flex-col bg-white">
             {selectedLead ? (
               <>
@@ -269,14 +284,14 @@ export default function ProfMessagerie() {
 
                 <div className="flex-1 p-8 overflow-y-auto space-y-6 bg-slate-50/40">
                   <div className="space-y-2">
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Message de l'élève :</p>
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Message de l&apos;élève :</p>
                     <div className="bg-white border border-slate-200/80 p-5 rounded-2xl shadow-xs text-xs text-slate-800 font-medium leading-relaxed max-w-xl">
-                      "{selectedLead.message || "Bonjour, je souhaite prendre des cours avec vous."}"
+                      &quot;{selectedLead.message || "Bonjour, je souhaite prendre des cours avec vous."}&quot;
                     </div>
                   </div>
 
                   <div className="space-y-2 pt-2">
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Numéro de téléphone de l'élève :</p>
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Numéro de téléphone de l&apos;élève :</p>
                     
                     {isLeadUnlocked ? (
                       <div className="bg-emerald-50 border border-emerald-200 p-5 rounded-2xl flex items-center justify-between max-w-xl shadow-xs">
@@ -307,7 +322,7 @@ export default function ProfMessagerie() {
                           <div>
                             <p className="text-xs font-bold text-amber-900">Numéro masqué</p>
                             <p className="text-[11px] text-amber-700 mt-0.5">
-                              Débloquez ce lead (1 crédit) pour afficher le numéro et contacter l'élève.
+                              Débloquez ce lead (1 crédit) pour afficher le numéro et contacter l&apos;élève.
                             </p>
                           </div>
                         </div>
@@ -325,7 +340,7 @@ export default function ProfMessagerie() {
 
                 <div className="p-4 border-t border-slate-200 bg-white text-center">
                   <p className="text-[11px] text-slate-400 font-medium">
-                    💡 <span className="font-bold text-slate-600">Rappel :</span> Aucun chat en direct n'est nécessaire. Contactez directement l'élève par téléphone ou WhatsApp une fois le lead débloqué.
+                    💡 <span className="font-bold text-slate-600">Rappel :</span> Aucun chat en direct n&apos;est nécessaire. Contactez directement l&apos;élève par téléphone ou WhatsApp une fois le lead débloqué.
                   </p>
                 </div>
               </>

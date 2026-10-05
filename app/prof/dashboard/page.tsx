@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
+import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import { 
   Edit3, Calendar, Users, ArrowRight, 
@@ -12,6 +14,27 @@ import { motion, AnimatePresence } from 'framer-motion';
 import birdAnimation from '@/app/bird.json';
 
 const LottieAnimation = dynamic(() => import('@/app/components/LottieAnimation'), { ssr: false });
+
+interface Professor {
+  id: string | number;
+  email?: string;
+  'Prénom'?: string;
+  prenom?: string;
+  'Nom'?: string;
+  nom?: string;
+  photo_URL?: string;
+  photo_url?: string;
+  image_url?: string;
+  photo?: string;
+  available?: boolean;
+  leads_restants?: number;
+}
+
+interface Lead {
+  id: string | number;
+  professor_email?: string;
+  is_read?: boolean;
+}
 
 const STEPS = [
   {
@@ -47,25 +70,25 @@ const STEPS = [
 ];
 
 export default function ProfDashboard() {
-  const [profData, setProfData] = useState<any>(null);
+  const router = useRouter();
+  const [profData, setProfData] = useState<Professor | null>(null);
   const [profName, setProfName] = useState('');
   const [profImage, setProfImage] = useState('');
   const [isAvailable, setIsAvailable] = useState(true);
   const [loading, setLoading] = useState(true);
   
-  // Compteurs basés sur la table leads
   const [unreadCount, setUnreadCount] = useState(0);
   const [pendingDemandesCount, setPendingDemandesCount] = useState(0);
 
-  const [isDarkMode, setIsDarkMode] = useState(false);
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
-
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('prof_theme');
-    if (savedTheme === 'dark') {
-      setIsDarkMode(true);
+  // Initialisation paresseuse pour éviter le useEffect et l'erreur ESLint set-state-in-effect
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('prof_theme') === 'dark';
     }
-  }, []);
+    return false;
+  });
+
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   const toggleTheme = () => {
     const nextMode = !isDarkMode;
@@ -76,7 +99,7 @@ export default function ProfDashboard() {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     localStorage.clear();
-    window.location.href = '/connexion';
+    router.push('/connexion');
   };
 
   const [showCartoonWalkOwl, setShowCartoonWalkOwl] = useState(false);
@@ -85,7 +108,7 @@ export default function ProfDashboard() {
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
 
   useEffect(() => {
-    let leadsSubscription: any;
+    let leadsSubscription: ReturnType<typeof supabase.channel> | null = null;
 
     async function fetchProfData() {
       try {
@@ -104,20 +127,21 @@ export default function ProfDashboard() {
           localStorage.getItem('user_id');
 
         if (!rawEmail && !storedId) {
-          window.location.href = '/connexion';
+          router.push('/connexion');
           return;
         }
 
-        const { data: allProfs } = await supabase.from('professors').select('*');
+        // Typage explicite pour éviter l'inférence 'never'
+        const { data: allProfs } = await supabase.from('professors').select('*').overrideTypes<Professor[], Array<string>>();
 
         if (allProfs) {
-          let prof = null;
+          let prof: Professor | undefined = undefined;
           if (storedId) {
-            prof = allProfs.find((p: any) => String(p.id) === String(storedId));
+            prof = allProfs.find((p) => String(p.id) === String(storedId));
           }
           if (!prof && rawEmail) {
             const cleanTarget = rawEmail.toLowerCase().trim();
-            prof = allProfs.find((p: any) => p.email && p.email.toLowerCase().trim() === cleanTarget);
+            prof = allProfs.find((p) => p.email && p.email.toLowerCase().trim() === cleanTarget);
           }
 
           if (prof) {
@@ -132,29 +156,23 @@ export default function ProfDashboard() {
 
             const profEmailTarget = (prof.email || rawEmail || '').toLowerCase().trim();
             
-            // 1. Récupération initiale des leads pour ce professeur
             const { data: leadsData } = await supabase
               .from('leads')
               .select('*')
               .eq('professor_email', profEmailTarget);
 
             if (leadsData) {
-              // Nombre total de demandes (leads)
               setPendingDemandesCount(leadsData.length);
-              
-              // Nombre de messages non lus (basé sur la colonne is_read = false dans la table leads)
-              const unreadLeads = leadsData.filter((lead: any) => lead.is_read === false).length;
+              const unreadLeads = leadsData.filter((lead: Lead) => lead.is_read === false).length;
               setUnreadCount(unreadLeads);
             }
 
-            // --- ABONNEMENT EN TEMPS RÉEL SUR LA TABLE LEADS UNIQUE ---
             leadsSubscription = supabase
               .channel(`realtime-leads-table-${profEmailTarget}`)
               .on(
                 'postgres_changes', 
                 { event: '*', schema: 'public', table: 'leads', filter: `professor_email=eq.${profEmailTarget}` }, 
                 async () => {
-                  // Re-fetch des leads à chaque modification de la table
                   const { data: updatedLeads } = await supabase
                     .from('leads')
                     .select('*')
@@ -162,7 +180,7 @@ export default function ProfDashboard() {
 
                   if (updatedLeads) {
                     setPendingDemandesCount(updatedLeads.length);
-                    const unreadLeads = updatedLeads.filter((lead: any) => lead.is_read === false).length;
+                    const unreadLeads = updatedLeads.filter((lead: Lead) => lead.is_read === false).length;
                     setUnreadCount(unreadLeads);
                   }
                 }
@@ -195,17 +213,26 @@ export default function ProfDashboard() {
     fetchProfData();
 
     return () => {
-      if (leadsSubscription) supabase.removeChannel(leadsSubscription);
+      if (leadsSubscription) {
+        supabase.removeChannel(leadsSubscription);
+      }
     };
-  }, []);
+  }, [router]);
 
+  // Utilisation d'un MutationObserver ou d'un évènement de redimensionnement pour mesurer la cible du tutoriel sans déclencher de setState synchrone en boucle
   useEffect(() => {
     if (!showTutorial) return;
-    const targetElement = document.getElementById(STEPS[currentStep].targetId);
-    if (targetElement) {
-      const rect = targetElement.getBoundingClientRect();
-      setTargetRect(rect);
-    }
+
+    const updateRect = () => {
+      const targetElement = document.getElementById(STEPS[currentStep].targetId);
+      if (targetElement) {
+        setTargetRect(targetElement.getBoundingClientRect());
+      }
+    };
+
+    updateRect();
+    window.addEventListener('resize', updateRect);
+    return () => window.removeEventListener('resize', updateRect);
   }, [currentStep, showTutorial]);
 
   const handleNextStep = () => {
@@ -328,9 +355,9 @@ export default function ProfDashboard() {
                 isDarkMode ? 'bg-slate-900 border-slate-800 hover:bg-slate-800' : 'bg-white border-slate-200 hover:bg-slate-50'
               }`}
             >
-              <div className="w-8 h-8 rounded-full overflow-hidden border border-orange-500 bg-slate-200 shrink-0">
+              <div className="w-8 h-8 rounded-full overflow-hidden border border-orange-500 bg-slate-200 shrink-0 relative">
                 {profImage ? (
-                  <img src={profImage} alt={profName} className="w-full h-full object-cover" />
+                  <Image src={profImage} alt={profName} fill className="object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center font-bold text-xs text-slate-700">
                     {profName[0] || 'P'}
@@ -408,8 +435,8 @@ export default function ProfDashboard() {
                 transition={{ duration: 7, times: [0.38, 0.43, 0.72, 0.77] }}
                 className="absolute left-32 -top-12 bg-white text-slate-900 px-6 py-4 rounded-3xl border-4 border-orange-500 shadow-2xl flex flex-col gap-2 min-w-[300px]"
               >
-                <p className="text-sm font-black text-orange-600 tracking-wide">Bonjour, je suis votre assistant d'aide ! 🦉</p>
-                <p className="text-xs text-slate-600 font-bold leading-relaxed">Clique ici pour accéder à mes services et découvrir l'espace.</p>
+                <p className="text-sm font-black text-orange-600 tracking-wide">Bonjour, je suis votre assistant d&apos;aide ! 🦉</p>
+                <p className="text-xs text-slate-600 font-bold leading-relaxed">Clique ici pour accéder à mes services et découvrir l&apos;espace.</p>
                 <div className="absolute -bottom-7 left-8 bg-slate-900 text-white p-2 rounded-full shadow-xl animate-bounce border-2 border-orange-500">
                   <ArrowDown className="w-5 h-5 stroke-[3]" />
                 </div>
@@ -469,7 +496,7 @@ export default function ProfDashboard() {
                 </div>
                 <div>
                   <div className="flex items-center gap-3">
-                    <h3 className={`text-xl font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Demandes d'élèves</h3>
+                    <h3 className={`text-xl font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Demandes d&apos;élèves</h3>
                     {pendingDemandesCount > 0 && (
                       <span className="bg-orange-500/10 text-orange-500 border border-orange-500/20 px-2.5 py-0.5 rounded-full text-xs font-bold">
                         {pendingDemandesCount} nouvelle{pendingDemandesCount > 1 ? 's' : ''}
@@ -641,7 +668,7 @@ export default function ProfDashboard() {
           <div className="w-8 h-8 flex items-center justify-center group-hover:rotate-12 transition-transform">
             <LottieAnimation animationData={birdAnimation} loop={true} autoplay={true} style={{ width: '100%', height: '100%' }} />
           </div>
-          <span className="text-xs font-extrabold pr-1 hidden sm:inline text-orange-500">Besoin d'aide ?</span>
+          <span className="text-xs font-extrabold pr-1 hidden sm:inline text-orange-500">Besoin d&apos;aide ?</span>
         </motion.button>
       )}
 
