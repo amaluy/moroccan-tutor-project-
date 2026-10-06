@@ -80,7 +80,6 @@ export default function ProfDashboard() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [pendingDemandesCount, setPendingDemandesCount] = useState(0);
 
-  // Initialisation paresseuse pour éviter le useEffect et l'erreur ESLint set-state-in-effect
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('prof_theme') === 'dark';
@@ -131,8 +130,8 @@ export default function ProfDashboard() {
           return;
         }
 
-        // Typage explicite pour éviter l'inférence 'never'
-        const { data: allProfs } = await supabase.from('professors').select('*').overrideTypes<Professor[], Array<string>>();
+        const response = await supabase.from('professors').select('*');
+        const allProfs = response.data as Professor[] | null;
 
         if (allProfs) {
           let prof: Professor | undefined = undefined;
@@ -219,7 +218,6 @@ export default function ProfDashboard() {
     };
   }, [router]);
 
-  // Utilisation d'un MutationObserver ou d'un évènement de redimensionnement pour mesurer la cible du tutoriel sans déclencher de setState synchrone en boucle
   useEffect(() => {
     if (!showTutorial) return;
 
