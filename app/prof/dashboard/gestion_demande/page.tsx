@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import { 
   Clock, CheckCircle2, Moon, Sun, 
-  MessageSquare, ExternalLink, X, Phone, Mail, BookOpen
+  ExternalLink, X, Phone, Mail, BookOpen
 } from 'lucide-react';
 
 interface StudentRequest {
@@ -107,8 +107,28 @@ export default function GestionDemandePage() {
       <header className={`sticky top-0 z-40 border-b px-6 py-3 flex items-center justify-between transition-colors duration-300 ${
         isDarkMode ? 'bg-[#0A0A0A]/90 border-slate-800 backdrop-blur-md' : 'bg-white/90 border-slate-200 backdrop-blur-md'
       }`}>
-        {/* Espace vide à gauche puisque les liens ont été retirés */}
-        <div></div>
+        {/* Navigation / Onglets intégrés dans la navbar */}
+        <div className={`flex p-1 rounded-xl border ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-slate-100 border-slate-200'}`}>
+          <button
+            onClick={() => setActiveTab('accepted')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${
+              activeTab === 'accepted' ? 'bg-orange-500 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <CheckCircle2 className="w-4 h-4" />
+            <span>Étudiants Acceptés ({acceptedStudents.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('pending')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${
+              activeTab === 'pending' ? 'bg-orange-500 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Clock className="w-4 h-4" />
+            <span>Demandes en attente ({pendingStudents.length})</span>
+          </button>
+        </div>
 
         <div className="flex items-center gap-3">
           <button
@@ -120,7 +140,6 @@ export default function GestionDemandePage() {
             {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </button>
 
-          {/* Profil simple sans menu déroulant */}
           <div className={`flex items-center gap-2.5 px-3 py-1.5 rounded-full border ${
             isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
           }`}>
@@ -143,35 +162,6 @@ export default function GestionDemandePage() {
       {/* CONTENU PRINCIPAL */}
       <main className="flex-1 p-6 md:p-10 max-w-6xl mx-auto space-y-6 w-full">
         
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-black">Gestion des Demandes & Élèves</h1>
-            <p className="text-xs text-slate-400 mt-1">Tableau de suivi des étudiants engagés et des requêtes en attente.</p>
-          </div>
-
-          <div className={`flex p-1.5 rounded-2xl border ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-xs'}`}>
-            <button
-              onClick={() => setActiveTab('accepted')}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer ${
-                activeTab === 'accepted' ? 'bg-orange-500 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <CheckCircle2 className="w-4 h-4" />
-              <span>Étudiants Acceptés ({acceptedStudents.length})</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('pending')}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer ${
-                activeTab === 'pending' ? 'bg-orange-500 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <Clock className="w-4 h-4" />
-              <span>Demandes en attente ({pendingStudents.length})</span>
-            </button>
-          </div>
-        </div>
-
         <div className={`rounded-3xl border overflow-hidden shadow-xl ${isDarkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200'}`}>
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
