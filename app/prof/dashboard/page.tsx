@@ -30,12 +30,6 @@ interface Professor {
   leads_restants?: number;
 }
 
-interface Lead {
-  id: string | number;
-  professor_email?: string;
-  is_read?: boolean;
-}
-
 const STEPS = [
   {
     targetId: "step-welcome",
@@ -50,7 +44,7 @@ const STEPS = [
   {
     targetId: "step-leads",
     title: "2. Demandes d'Élèves",
-    description: "C'est ici que vous recevez toutes les demandes principales. Vous pouvez échanger directement avec les élèves.",
+    description: "C'est ici que vous accédez à la gestion complète de vos demandes de cours.",
   },
   {
     targetId: "step-credits",
@@ -78,7 +72,6 @@ export default function ProfDashboard() {
   const [loading, setLoading] = useState(true);
   
   const [unreadCount, setUnreadCount] = useState(0);
-  const [pendingDemandesCount, setPendingDemandesCount] = useState(0);
 
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -107,8 +100,6 @@ export default function ProfDashboard() {
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
 
   useEffect(() => {
-    let leadsSubscription: ReturnType<typeof supabase.channel> | null = null;
-
     async function fetchProfData() {
       try {
         setLoading(true);
@@ -161,31 +152,9 @@ export default function ProfDashboard() {
               .eq('professor_email', profEmailTarget);
 
             if (leadsData) {
-              setPendingDemandesCount(leadsData.length);
-              const unreadLeads = leadsData.filter((lead: Lead) => lead.is_read === false).length;
+              const unreadLeads = leadsData.filter((lead: any) => lead.is_read === false).length;
               setUnreadCount(unreadLeads);
             }
-
-            // CORRECTION : Ajout de Date.now() pour garantir un nom de canal unique et éviter les erreurs de doublons Supabase
-            leadsSubscription = supabase
-              .channel(`realtime-leads-table-${profEmailTarget}-${Date.now()}`)
-              .on(
-                'postgres_changes', 
-                { event: '*', schema: 'public', table: 'leads', filter: `professor_email=eq.${profEmailTarget}` }, 
-                async () => {
-                  const { data: updatedLeads } = await supabase
-                    .from('leads')
-                    .select('*')
-                    .eq('professor_email', profEmailTarget);
-
-                  if (updatedLeads) {
-                    setPendingDemandesCount(updatedLeads.length);
-                    const unreadLeads = updatedLeads.filter((lead: Lead) => lead.is_read === false).length;
-                    setUnreadCount(unreadLeads);
-                  }
-                }
-              )
-              .subscribe();
           }
         }
 
@@ -211,12 +180,6 @@ export default function ProfDashboard() {
     }
 
     fetchProfData();
-
-    return () => {
-      if (leadsSubscription) {
-        supabase.removeChannel(leadsSubscription);
-      }
-    };
   }, [router]);
 
   useEffect(() => {
@@ -285,17 +248,12 @@ export default function ProfDashboard() {
             </Link>
 
             <Link 
-              href="/prof/dashboard/demandes" 
+              href="/prof/dashboard/gestion_demande" 
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-2 relative ${
                 isDarkMode ? 'text-slate-400 hover:text-white hover:bg-slate-800/40' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
               }`}
             >
               <span>Demandes</span>
-              {pendingDemandesCount > 0 && (
-                <span className="bg-orange-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full">
-                  {pendingDemandesCount}
-                </span>
-              )}
             </Link>
             
             <Link 
@@ -474,40 +432,28 @@ export default function ProfDashboard() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
           
-          {/* DEMANDES D'ÉLÈVES */}
+          {/* GESTION DES DEMANDES (Redirige vers /prof/dashboard/gestion_demande) */}
           <div id="step-leads" className={`md:col-span-2 ${showTutorial && activeTarget === 'step-leads' ? 'relative z-40' : ''}`}>
             <Link 
-              href="/prof/dashboard/demandes"
-              className={`p-8 rounded-3xl border transition-all duration-300 flex flex-col justify-between group h-full block relative overflow-hidden ${
+              href="/prof/dashboard/gestion_demande"
+              className={`p-8 rounded-3xl border transition-all duration-300 flex flex-col justify-between group h-full block ${
                 isDarkMode 
                   ? 'bg-slate-900/60 border-slate-800 hover:border-slate-700 hover:bg-slate-900' 
                   : 'bg-white border-slate-200/80 shadow-xs hover:shadow-lg'
               }`}
             >
               <div className="space-y-4">
-                <div className="w-14 h-14 bg-orange-50 text-orange-600 rounded-2xl flex items-center justify-center font-bold group-hover:scale-110 transition-transform relative">
-                  <Users className="w-7 h-7" />
-                  {pendingDemandesCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-orange-600 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center shadow">
-                      {pendingDemandesCount}
-                    </span>
-                  )}
+                <div className="w-12 h-12 bg-orange-50 text-orange-600 rounded-2xl flex items-center justify-center font-bold group-hover:scale-110 transition-transform">
+                  <Users className="w-6 h-6" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-3">
-                    <h3 className={`text-xl font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Demandes d&apos;élèves</h3>
-                    {pendingDemandesCount > 0 && (
-                      <span className="bg-orange-500/10 text-orange-500 border border-orange-500/20 px-2.5 py-0.5 rounded-full text-xs font-bold">
-                        {pendingDemandesCount} nouvelle{pendingDemandesCount > 1 ? 's' : ''}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-slate-400 font-medium leading-relaxed mt-1 max-w-lg">
-                    Consultez et répondez instantanément aux élèves qui ont demandé un cours avec vous. Échangez directement via votre messagerie.
+                  <h3 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Gestion des Demandes d&apos;Élèves</h3>
+                  <p className="text-xs text-slate-400 font-medium leading-relaxed mt-1">
+                    Consultez et gérez toutes les requêtes reçues de la part des élèves pour planifier vos cours.
                   </p>
                 </div>
               </div>
-              <div className="mt-8 flex items-center text-xs font-extrabold text-orange-500 gap-1.5 group-hover:translate-x-1 transition-transform">
+              <div className="mt-6 flex items-center text-xs font-extrabold text-orange-600 gap-1.5 group-hover:translate-x-1 transition-transform">
                 <span>Voir les demandes</span>
                 <ArrowRight className="w-4 h-4" />
               </div>
