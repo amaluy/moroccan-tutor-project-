@@ -166,8 +166,9 @@ export default function ProfDashboard() {
               setUnreadCount(unreadLeads);
             }
 
+            // CORRECTION : Ajout de Date.now() pour garantir un nom de canal unique et éviter les erreurs de doublons Supabase
             leadsSubscription = supabase
-              .channel(`realtime-leads-table-${profEmailTarget}`)
+              .channel(`realtime-leads-table-${profEmailTarget}-${Date.now()}`)
               .on(
                 'postgres_changes', 
                 { event: '*', schema: 'public', table: 'leads', filter: `professor_email=eq.${profEmailTarget}` }, 
