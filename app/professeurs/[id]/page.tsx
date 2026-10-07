@@ -28,8 +28,8 @@ interface Professor {
   city?: string;
   niveau?: string;
   level?: string;
-  matiere?: string;
-  subject?: string;
+  matiere?: any;
+  subject?: any;
   title?: string;
   tarif?: number | string;
   price?: number | string;
@@ -116,7 +116,21 @@ export default function ProfessorDetail() {
 
   const photo = professor.photo_URL || professor.photo_url || professor.photo || professor.avatar_url;
   const city = professor.ville || professor.city || "Marrakech";
-  const subject = professor.matiere || professor.subject || "Français";
+
+  // --- TRAITEMENT ROBUSTE DE LA MATIÈRE ---
+  const rawSubject = professor.matiere || professor.subject || "Français";
+  let subjectDisplay = "Français";
+  if (Array.isArray(rawSubject)) {
+    subjectDisplay = rawSubject.join(', ');
+  } else if (typeof rawSubject === 'string') {
+    try {
+      const parsed = JSON.parse(rawSubject);
+      subjectDisplay = Array.isArray(parsed) ? parsed.join(', ') : rawSubject;
+    } catch {
+      subjectDisplay = rawSubject.replace(/^\{|\}$/g, '').replace(/"/g, '');
+    }
+  }
+
   const price = Number(professor.tarif !== undefined && professor.tarif !== null ? professor.tarif : professor.price) || 250;
   const bio = professor.bio || professor.description || "";
   const level = professor.niveau || professor.level || "lyceecollege";
@@ -144,7 +158,6 @@ export default function ProfessorDetail() {
     }
   }
 
-  // Fonction pour rendre le format "matin-lu" lisible (ex: "Lundi - Matin")
   const formatSlot = (slot: string) => {
     const parts = slot.split('-');
     if (parts.length !== 2) return slot;
@@ -180,7 +193,7 @@ export default function ProfessorDetail() {
     <main className="min-h-screen bg-[#faf9f6] text-slate-900 font-sans flex flex-col justify-between relative overflow-x-hidden">
       
       {/* Top Header Navigation */}
-      <header className="bg-white/80 backdrop-blur-md border-b border-slate-200/60 px-6 py-4 flex items-center justify-between sticky top-0 z-30">
+      <header className="bg-white/85 backdrop-blur-md border-b border-slate-200/60 px-6 py-4 flex items-center justify-between sticky top-0 z-30">
         <Link href="/" className="flex items-center gap-2 text-xs font-bold text-slate-700 hover:text-slate-900 transition">
           <ArrowLeft className="w-4 h-4" /> Retour aux recherches
         </Link>
@@ -207,7 +220,7 @@ export default function ProfessorDetail() {
           <div className="lg:col-span-7 space-y-6">
             <div className="flex flex-wrap gap-2">
               <span className="bg-rose-500 text-white px-3.5 py-1 rounded-full text-xs font-bold shadow-sm capitalize">
-                {subject.toLowerCase()}
+                {subjectDisplay.toLowerCase()}
               </span>
             </div>
 
@@ -252,7 +265,6 @@ export default function ProfessorDetail() {
       {/* RESTE DU CONTENU */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 w-full grid grid-cols-1 lg:grid-cols-12 gap-12 relative">
         
-        {/* Colonne de gauche (Cours & Disponibilités en Boutons) */}
         <div className="lg:col-span-7 space-y-8">
           
           <div className="space-y-3">
@@ -262,7 +274,7 @@ export default function ProfessorDetail() {
                 {level}
               </span>
               <span className="bg-white border border-slate-200 px-3 py-1 rounded-full text-xs font-medium text-slate-600">
-                Français
+                {subjectDisplay}
               </span>
             </div>
             <p className="text-xs text-slate-600 leading-relaxed pt-2">
@@ -270,7 +282,6 @@ export default function ProfessorDetail() {
             </p>
           </div>
 
-          {/* Affichage des disponibilités sous forme de boutons */}
           <div className="space-y-4">
             <h3 className="text-sm font-black text-slate-900">Créneaux de disponibilité</h3>
             {availabilities.length === 0 ? (
@@ -292,7 +303,6 @@ export default function ProfessorDetail() {
 
         </div>
 
-        {/* Colonne de droite : Carte Flottante */}
         <div className="lg:col-span-5 relative">
           <div className="bg-white/95 backdrop-blur-xl border border-slate-200/90 rounded-3xl p-6 shadow-2xl sticky top-24 space-y-6 z-20">
             
@@ -374,9 +384,13 @@ export default function ProfessorDetail() {
               </div>
             </div>
 
-            <button className="w-full bg-[#ff2d55] hover:bg-[#e02447] text-white font-extrabold py-3.5 rounded-2xl text-sm transition shadow-lg shadow-rose-500/20 active:scale-95 cursor-pointer">
+            {/* BOUTON CONTACTER MODIFIÉ EN LINK */}
+            <Link 
+              href={`/professeurs/${id}/contacter`}
+              className="block w-full text-center bg-[#ff2d55] hover:bg-[#e02447] text-white font-extrabold py-3.5 rounded-2xl text-sm transition shadow-lg shadow-rose-500/20 active:scale-95 cursor-pointer"
+            >
               Contacter
-            </button>
+            </Link>
 
             <div className="border border-slate-200/80 rounded-2xl p-4 text-center space-y-2 bg-slate-50/50">
               <p className="text-[11px] font-bold text-slate-600">Donner votre avis sur {fullName.toLowerCase()}</p>
