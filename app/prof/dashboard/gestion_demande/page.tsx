@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import { 
@@ -15,20 +14,20 @@ interface Lead {
   student_family_name?: string;
   email?: string;
   telephone?: string;
-  student_subjects?: string[];
-  student_grade?: string; // 'primaire', 'college', 'lycée'
+  'student subjects'?: string[] | string;
+  student_subjects?: string[] | string;
+  student_grade?: string; 
   status: 'accepted' | 'pending' | 'refused';
   created_at?: string;
   message?: string;
 }
 
 export default function GestionDemandePage() {
-  const router = useRouter();
   const [activeTab, setActiveTab] = useState<'accepted' | 'pending'>('accepted');
   const [profName, setProfName] = useState('sami el idrissi');
   const [profImage, setProfImage] = useState('');
-  const [profEmail, setProfEmail] = useState('');
   const [profNiveaux, setProfNiveaux] = useState<string[]>([]);
+  const [profMatiere, setProfMatiere] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -40,8 +39,6 @@ export default function GestionDemandePage() {
 
   const [leads, setLeads] = useState<Lead[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<Lead | null>(null);
-  
-  // Filtre actif par niveau scolaire (ex: 'all', 'primaire', 'college', 'lycée')
   const [gradeFilter, setGradeFilter] = useState<string>('all');
 
   const toggleTheme = () => {
@@ -56,42 +53,55 @@ export default function GestionDemandePage() {
         setLoading(true);
         const { data: { user } } = await supabase.auth.getUser();
         const storedId = localStorage.getItem('professor_id') || localStorage.getItem('user_id');
-        const rawEmail = user?.email || localStorage.getItem('professor_email') || '';
+        const rawEmail = user?.email || localStorage.getItem('professor_email') || 'samielfidrissi@gmail.com';
 
         let currentEmail = rawEmail;
         let niveaux: string[] = [];
+        let matieres: string[] = [];
 
         // 1. Récupérer le professeur depuis la table `professors`
         const { data: allProfs } = await supabase.from('professors').select('*');
-        if (allProfs) {
-          let prof = storedId ? allProfs.find((p) => String(p.id) === String(storedId)) : null;
+        const typedProfs = allProfs as Record<string, unknown>[] | null;
+
+        if (typedProfs) {
+          let prof = storedId ? typedProfs.find((p) => String(p.id) === String(storedId)) : null;
           if (!prof && rawEmail) {
-            prof = allProfs.find((p) => p.email && p.email.toLowerCase().trim() === rawEmail.toLowerCase().trim());
+            prof = typedProfs.find((p) => typeof p.email === 'string' && p.email.toLowerCase().trim() === rawEmail.toLowerCase().trim());
           }
           if (prof) {
-            const prenom = prof['Prénom'] || prof.prenom || '';
-            const nom = prof['Nom'] || prof.nom || '';
+            const prenom = (prof['Prénom'] as string) || (prof.prenom as string) || '';
+            const nom = (prof['Nom'] as string) || (prof.nom as string) || '';
             const fullName = `${prenom} ${nom}`.trim();
             if (fullName) setProfName(fullName);
-            setProfImage(prof.photo_URL || prof.photo_url || prof.image_url || prof.photo || '');
-            if (prof.email) currentEmail = prof.email;
+            setProfImage((prof.photo_URL as string) || (prof.photo_url as string) || (prof.image_url as string) || (prof.photo as string) || '');
+            if (typeof prof.email === 'string') currentEmail = prof.email;
             
-            // Récupérer la colonne `niveau` (tableau de texte ex: ["lycee", "college"])[cite: 13]
-            if (Array.isArray(prof.niveau)) {
-              niveaux = prof.niveau;
-            } else if (typeof prof.niveau === 'string') {
+            // Récupérer le niveau
+            const rawNiveau = prof.niveau;
+            if (Array.isArray(rawNiveau)) {
+              niveaux = rawNiveau as string[];
+            } else if (typeof rawNiveau === 'string') {
+              try { niveaux = JSON.parse(rawNiveau); } catch { niveaux = [rawNiveau]; }
+            }
+
+            // Récupérer la matière du prof (colonne 'matiere')
+            const rawMatiere = prof.matiere;
+            if (Array.isArray(rawMatiere)) {
+              matieres = rawMatiere as string[];
+            } else if (typeof rawMatiere === 'string') {
               try {
-                niveaux = JSON.parse(prof.niveau);
+                matieres = JSON.parse(rawMatiere);
               } catch {
-                niveaux = [prof.niveau];
+                const cleaned = rawMatiere.replace(/^\{|\}$/g, '').replace(/"/g, '');
+                matieres = cleaned.split(',').map((s: string) => s.trim());
               }
             }
           }
         }
-        setProfEmail(currentEmail);
         setProfNiveaux(niveaux);
+        setProfMatiere(matieres);
 
-        // 2. Récupérer les leads correspondants via `professor_email`
+        // 2. Récupérer les leads correspondants
         if (currentEmail) {
           const { data: leadsData, error } = await supabase
             .from('leads')
@@ -99,7 +109,7 @@ export default function GestionDemandePage() {
             .ilike('professor_email', currentEmail.trim());
 
           if (!error && leadsData) {
-            setLeads(leadsData);
+            setLeads(leadsData as Lead[]);
           }
         }
       } catch (err) {
@@ -111,7 +121,36 @@ export default function GestionDemandePage() {
     fetchProfAndLeads();
   }, []);
 
-  // Filtrage selon l'onglet (accepted / pending) et le `student_grade` de la table leads[cite: 14]
+  // Fonction intelligente récupérant depuis 'student subjects' ou 'student_subjects', avec fallback sur le prof
+  const getMatchedSubjects = (item: Lead) => {
+    const rawSubjects = item['student subjects'] || item.student_subjects;
+    let subjectsList: string[] = [];
+
+    if (rawSubjects) {
+      if (Array.isArray(rawSubjects)) {
+        subjectsList = rawSubjects;
+      } else if (typeof rawSubjects === 'string') {
+        const trimmed = rawSubjects.trim();
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (Array.isArray(parsed)) subjectsList = parsed;
+          else subjectsList = [trimmed];
+        } catch {
+          const cleaned = trimmed.replace(/^\{|\}$/g, '').replace(/"/g, '');
+          subjectsList = cleaned.split(',').map(s => s.trim());
+        }
+      }
+    }
+
+    // Si vide ou null dans le lead, on bascule sur la matière du professeur connecté
+    if (subjectsList.length === 0 || subjectsList.includes('null') || subjectsList.includes('NULL')) {
+      subjectsList = profMatiere;
+    }
+
+    const filtered = subjectsList.filter(s => s && s.toLowerCase() !== 'null' && s !== '[]');
+    return filtered.length > 0 ? filtered.join(', ') : 'Non spécifié';
+  };
+
   const filteredLeads = leads.filter(l => {
     const matchesTab = activeTab === 'accepted' ? l.status === 'accepted' : l.status === 'pending';
     const matchesGrade = gradeFilter === 'all' || (l.student_grade && l.student_grade.toLowerCase().trim() === gradeFilter.toLowerCase().trim());
@@ -124,7 +163,7 @@ export default function GestionDemandePage() {
   return (
     <div className={`min-h-screen flex flex-col relative transition-colors duration-300 ${isDarkMode ? 'bg-[#0A0A0A] text-slate-100' : 'bg-[#F8FAFC] text-slate-900'}`}>
       
-      {/* --- NAVBAR --- */}
+      {/* NAVBAR */}
       <header className={`sticky top-0 z-40 border-b px-6 py-3 flex items-center justify-between transition-colors duration-300 ${
         isDarkMode ? 'bg-[#0A0A0A]/90 border-slate-800 backdrop-blur-md' : 'bg-white/90 border-slate-200 backdrop-blur-md'
       }`}>
@@ -182,7 +221,6 @@ export default function GestionDemandePage() {
       {/* CONTENU PRINCIPAL */}
       <main className="flex-1 p-6 md:p-10 max-w-6xl mx-auto space-y-6 w-full">
         
-        {/* Affichage des filtres basé sur les niveaux autorisés du professeur */}
         {profNiveaux.length > 0 && !profNiveaux.includes('admin') && profNiveaux[0] !== '[]' && (
           <div className="flex items-center gap-2 overflow-x-auto pb-2">
             <span className="text-xs font-bold text-slate-400 flex items-center gap-1.5 mr-2">
@@ -241,9 +279,7 @@ export default function GestionDemandePage() {
                 ) : (
                   filteredLeads.map((item) => {
                     const fullName = `${item.student_name || ''} ${item.student_family_name || ''}`.trim() || 'Étudiant';
-                    const subjectsText = Array.isArray(item.student_subjects) 
-                      ? item.student_subjects.join(', ') 
-                      : (item.student_subjects || 'Non spécifié');
+                    const subjectsText = getMatchedSubjects(item);
 
                     return (
                       <tr key={item.id} className={`transition-colors ${isDarkMode ? 'hover:bg-slate-800/40' : 'hover:bg-slate-50'}`}>
@@ -253,7 +289,11 @@ export default function GestionDemandePage() {
                           </div>
                           <span>{fullName}</span>
                         </td>
-                        <td className="py-4 px-6 font-medium text-slate-400">{subjectsText}</td>
+                        <td className="py-4 px-6 font-medium text-slate-300">
+                          <span className="bg-orange-500/10 text-orange-500 px-2.5 py-1 rounded-lg border border-orange-500/20 font-semibold capitalize">
+                            {subjectsText}
+                          </span>
+                        </td>
                         <td className="py-4 px-6 font-medium capitalize text-slate-300">{item.student_grade || '-'}</td>
                         <td className="py-4 px-6">
                           {item.status === 'accepted' ? (
@@ -327,7 +367,7 @@ export default function GestionDemandePage() {
                 <BookOpen className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" />
                 <div className="leading-relaxed bg-slate-800/40 p-3 rounded-xl border border-slate-700/50 w-full space-y-1">
                   <span className="font-bold text-orange-400">Matière(s) choisie(s) :</span>
-                  <p>{Array.isArray(selectedStudent.student_subjects) ? selectedStudent.student_subjects.join(', ') : (selectedStudent.student_subjects || 'Aucune matière')}</p>
+                  <p className="capitalize">{getMatchedSubjects(selectedStudent)}</p>
                 </div>
               </div>
               {selectedStudent.message && (
