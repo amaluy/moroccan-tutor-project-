@@ -16,6 +16,7 @@ interface Lead {
   telephone?: string;
   'student subjects'?: string[] | string;
   student_subjects?: string[] | string;
+  'student grade'?: string;
   student_grade?: string; 
   status: 'accepted' | 'pending' | 'refused';
   created_at?: string;
@@ -76,12 +77,18 @@ export default function GestionDemandePage() {
             setProfImage((prof.photo_URL as string) || (prof.photo_url as string) || (prof.image_url as string) || (prof.photo as string) || '');
             if (typeof prof.email === 'string') currentEmail = prof.email;
             
-            // Récupérer le niveau
+            // Récupérer le niveau du professeur (colonne 'niveau' en tableau)
             const rawNiveau = prof.niveau;
             if (Array.isArray(rawNiveau)) {
               niveaux = rawNiveau as string[];
             } else if (typeof rawNiveau === 'string') {
-              try { niveaux = JSON.parse(rawNiveau); } catch { niveaux = [rawNiveau]; }
+              try { 
+                const parsed = JSON.parse(rawNiveau);
+                niveaux = Array.isArray(parsed) ? parsed : [rawNiveau];
+              } catch { 
+                const cleaned = rawNiveau.replace(/^\{|\}$/g, '').replace(/"/g, '');
+                niveaux = cleaned.split(',').map((s: string) => s.trim());
+              }
             }
 
             // Récupérer la matière du prof (colonne 'matiere')
@@ -121,7 +128,6 @@ export default function GestionDemandePage() {
     fetchProfAndLeads();
   }, []);
 
-  // Fonction intelligente récupérant depuis 'student subjects' ou 'student_subjects', avec fallback sur le prof
   const getMatchedSubjects = (item: Lead) => {
     const rawSubjects = item['student subjects'] || item.student_subjects;
     let subjectsList: string[] = [];
@@ -142,7 +148,6 @@ export default function GestionDemandePage() {
       }
     }
 
-    // Si vide ou null dans le lead, on bascule sur la matière du professeur connecté
     if (subjectsList.length === 0 || subjectsList.includes('null') || subjectsList.includes('NULL')) {
       subjectsList = profMatiere;
     }
@@ -151,9 +156,31 @@ export default function GestionDemandePage() {
     return filtered.length > 0 ? filtered.join(', ') : 'Non spécifié';
   };
 
+  const getStudentGrade = (item: Lead) => {
+    return item['student grade'] || item.student_grade || '';
+  };
+
+  // Fonction utilitaire pour normaliser (supprimer les accents et mettre en minuscules)
+  const normalizeText = (text: string) => {
+    return text
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
+  };
+
   const filteredLeads = leads.filter(l => {
     const matchesTab = activeTab === 'accepted' ? l.status === 'accepted' : l.status === 'pending';
-    const matchesGrade = gradeFilter === 'all' || (l.student_grade && l.student_grade.toLowerCase().trim() === gradeFilter.toLowerCase().trim());
+    
+    if (gradeFilter === 'all') {
+      return matchesTab;
+    }
+
+    const studentGradeNormalized = normalizeText(getStudentGrade(l));
+    const filterNormalized = normalizeText(gradeFilter);
+
+    const matchesGrade = studentGradeNormalized === filterNormalized;
+
     return matchesTab && matchesGrade;
   });
 
@@ -280,6 +307,7 @@ export default function GestionDemandePage() {
                   filteredLeads.map((item) => {
                     const fullName = `${item.student_name || ''} ${item.student_family_name || ''}`.trim() || 'Étudiant';
                     const subjectsText = getMatchedSubjects(item);
+                    const studentGrade = getStudentGrade(item);
 
                     return (
                       <tr key={item.id} className={`transition-colors ${isDarkMode ? 'hover:bg-slate-800/40' : 'hover:bg-slate-50'}`}>
@@ -294,7 +322,15 @@ export default function GestionDemandePage() {
                             {subjectsText}
                           </span>
                         </td>
-                        <td className="py-4 px-6 font-medium capitalize text-slate-300">{item.student_grade || '-'}</td>
+                        <td className="py-4 px-6 font-medium capitalize text-slate-300">
+                          {studentGrade ? (
+                            <span className="bg-slate-500/10 text-slate-300 px-2.5 py-1 rounded-lg border border-slate-500/20 font-semibold">
+                              {studentGrade}
+                            </span>
+                          ) : (
+                            '-'
+                          )}
+                        </td>
                         <td className="py-4 px-6">
                           {item.status === 'accepted' ? (
                             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
@@ -350,7 +386,7 @@ export default function GestionDemandePage() {
               </div>
               <div>
                 <h3 className="text-lg font-black">{`${selectedStudent.student_name || ''} ${selectedStudent.student_family_name || ''}`}</h3>
-                <p className="text-xs text-orange-500 font-bold capitalize">Niveau : {selectedStudent.student_grade || 'Non spécifié'}</p>
+                <p className="text-xs text-orange-500 font-bold capitalize">Niveau : {getStudentGrade(selectedStudent) || 'Non spécifié'}</p>
               </div>
             </div>
 
