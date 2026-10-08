@@ -4,7 +4,24 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
-import { ArrowLeft, Send, Loader2, CheckCircle2 } from 'lucide-react';
+import { Send, Loader2, CheckCircle2 } from 'lucide-react';
+
+interface Professor {
+  id: string;
+  Nom?: string;
+  Prénom?: string;
+  nom?: string;
+  prenom?: string;
+  name?: string;
+  email?: string;
+  Email?: string;
+}
+
+const MOROCCAN_CITIES = [
+  'Casablanca', 'Rabat', 'Marrakech', 'Fès', 'Tanger', 
+  'Agadir', 'Meknès', 'Oujda', 'Kénitra', 'Tétouan', 
+  'Salé', 'El Jadida', 'Mohammedia', 'Beni Mellal', 'Nador', 'Saffi'
+];
 
 export default function ContacterProfesseur() {
   const params = useParams();
@@ -16,23 +33,22 @@ export default function ContacterProfesseur() {
   const [success, setSuccess] = useState(false);
   const [professorEmail, setProfessorEmail] = useState('');
   const [professorName, setProfessorName] = useState('');
+  const [professorSubjects, setProfessorSubjects] = useState<string[]>([]);
 
-  // États du formulaire adaptés (formulé du point de vue de l'élève)
   const [formData, setFormData] = useState({
     student_name: '',
     student_family_name: '',
     student_phone: '',
     student_adress: '',
-    student_ville: '',
+    student_ville: 'Casablanca',
     student_age: '',
     student_price_monthly: '',
     private_school: 'Non',
     message: '',
     student_subjects: '',
-    student_grade: '',
+    student_grade: 'Lycée',
   });
 
-  // 1. Récupérer l'email et le nom du professeur concerné
   useEffect(() => {
     if (!professorId) return;
 
@@ -40,7 +56,7 @@ export default function ContacterProfesseur() {
       try {
         const { data, error } = await supabase
           .from('professors')
-          .select('email, Email, Nom, nom, Prénom, prenom, name')
+          .select('*')
           .eq('id', professorId)
           .single();
 
@@ -52,6 +68,23 @@ export default function ContacterProfesseur() {
 
           setProfessorEmail(email);
           setProfessorName(name);
+
+          const rawSubject = data.matiere || data.subject || "Français";
+          let subjectsList: string[] = [];
+          if (Array.isArray(rawSubject)) {
+            subjectsList = rawSubject;
+          } else if (typeof rawSubject === 'string') {
+            try {
+              const parsed = JSON.parse(rawSubject);
+              subjectsList = Array.isArray(parsed) ? parsed : [rawSubject];
+            } catch {
+              subjectsList = rawSubject.replace(/^\{|\}$/g, '').replace(/"/g, '').split(',').map((s: string) => s.trim());
+            }
+          }
+          setProfessorSubjects(subjectsList);
+          if (subjectsList.length > 0) {
+            setFormData(prev => ({ ...prev, student_subjects: subjectsList[0] }));
+          }
         }
       } catch (err) {
         console.error('Erreur récupération professeur:', err);
@@ -64,42 +97,44 @@ export default function ContacterProfesseur() {
   }, [professorId]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
   };
 
-  // 2. Soumission du formulaire et insertion dans la table `leads` avec `lead_date` (timestamptz)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
 
     try {
-      const { error } = await supabase.from('leads').insert([
-        {
-          professor_email: professorEmail,
-          student_name: formData.student_name,
-          student_family_name: formData.student_family_name,
-          student_phone: formData.student_phone,
-          student_adress: formData.student_adress,
-          student_ville: formData.student_ville,
-          student_age: formData.student_age ? Number(formData.student_age) : null,
-          student_price_monthly: formData.student_price_monthly ? Number(formData.student_price_monthly) : null,
-          private_school: formData.private_school,
-          status: 'pending', // 'pending' pour qu'apparaisse dans les demandes en attente du prof
-          message: formData.message,
-          student_subjects: formData.student_subjects,
-          student_grade: formData.student_grade,
-          lead_date: new Date().toISOString(), // Stocke le timestamp exact en base de données
-        },
-      ]);
+      const payload = {
+        professor_email: professorEmail,
+        student_name: formData.student_name,
+        student_family_name: formData.student_family_name,
+        student_phone: formData.student_phone,
+        student_adress: formData.student_adress,
+        student_ville: formData.student_ville,
+        'student age': formData.student_age ? Number(formData.student_age) : null,
+        student_price_monthly: formData.student_price_monthly ? Number(formData.student_price_monthly) : null,
+        private_school: formData.private_school === 'Oui',
+        status: 'pending',
+        is_read: false, // Définit explicitement is_read à false par défaut
+        message: formData.message,
+        'student subjects': formData.student_subjects ? [formData.student_subjects] : [],
+        'student grade': formData.student_grade,
+        lead_date: new Date().toISOString(),
+      };
+
+      const { error } = await supabase.from('leads').insert([payload]);
 
       if (error) {
-        console.error('Erreur insertion lead:', error);
-        alert("Une erreur est survenue lors de l'envoi de votre demande.");
+        console.error('Détail Erreur Supabase:', error);
+        alert(`Erreur d'insertion: ${error.message || JSON.stringify(error)}`);
       } else {
         setSuccess(true);
       }
     } catch (err) {
       console.error('Erreur technique:', err);
+      alert("Une erreur technique est survenue.");
     } finally {
       setSubmitting(false);
     }
@@ -138,10 +173,6 @@ export default function ContacterProfesseur() {
   return (
     <main className="min-h-screen bg-[#faf9f6] text-slate-900 font-sans py-10 px-4 sm:px-6">
       <div className="max-w-2xl mx-auto space-y-6">
-        
-        <Link href={`/professeurs/${professorId}`} className="inline-flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-slate-900 transition">
-          <ArrowLeft className="w-4 h-4" /> Retour au profil de {professorName}
-        </Link>
 
         <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200/80 space-y-6">
           <div>
@@ -153,27 +184,27 @@ export default function ContacterProfesseur() {
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-slate-700 uppercase">Votre prénom</label>
+                <label className="text-[11px] font-bold text-slate-700 uppercase">Prénom</label>
                 <input 
                   type="text" 
                   name="student_name" 
                   required 
                   value={formData.student_name} 
                   onChange={handleChange}
-                  placeholder="Ex: Yassine"
+                  placeholder="Yassine"
                   className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-xs font-medium focus:bg-white focus:border-slate-900 focus:outline-none transition"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-slate-700 uppercase">Votre nom</label>
+                <label className="text-[11px] font-bold text-slate-700 uppercase">Nom</label>
                 <input 
                   type="text" 
                   name="student_family_name" 
                   required 
                   value={formData.student_family_name} 
                   onChange={handleChange}
-                  placeholder="Ex: Alami"
+                  placeholder="Alami"
                   className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-xs font-medium focus:bg-white focus:border-slate-900 focus:outline-none transition"
                 />
               </div>
@@ -181,26 +212,26 @@ export default function ContacterProfesseur() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-slate-700 uppercase">Votre téléphone</label>
+                <label className="text-[11px] font-bold text-slate-700 uppercase">Téléphone</label>
                 <input 
                   type="text" 
                   name="student_phone" 
                   required 
                   value={formData.student_phone} 
                   onChange={handleChange}
-                  placeholder="Ex: 0600000000"
+                  placeholder="0600000000"
                   className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-xs font-medium focus:bg-white focus:border-slate-900 focus:outline-none transition"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-slate-700 uppercase">Votre âge</label>
+                <label className="text-[11px] font-bold text-slate-700 uppercase">Âge</label>
                 <input 
                   type="number" 
                   name="student_age" 
                   value={formData.student_age} 
                   onChange={handleChange}
-                  placeholder="Ex: 16"
+                  placeholder="16"
                   className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-xs font-medium focus:bg-white focus:border-slate-900 focus:outline-none transition"
                 />
               </div>
@@ -208,26 +239,27 @@ export default function ContacterProfesseur() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-slate-700 uppercase">Votre ville</label>
-                <input 
-                  type="text" 
+                <label className="text-[11px] font-bold text-slate-700 uppercase">Ville</label>
+                <select 
                   name="student_ville" 
-                  required 
                   value={formData.student_ville} 
                   onChange={handleChange}
-                  placeholder="Ex: Casablanca"
                   className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-xs font-medium focus:bg-white focus:border-slate-900 focus:outline-none transition"
-                />
+                >
+                  {MOROCCAN_CITIES.map((city) => (
+                    <option key={city} value={city}>{city}</option>
+                  ))}
+                </select>
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-slate-700 uppercase">Votre adresse</label>
+                <label className="text-[11px] font-bold text-slate-700 uppercase">Adresse</label>
                 <input 
                   type="text" 
                   name="student_adress" 
                   value={formData.student_adress} 
                   onChange={handleChange}
-                  placeholder="Ex: Maarif, Rue X"
+                  placeholder="Ex: Rue Mohammed V, Quartier..."
                   className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-xs font-medium focus:bg-white focus:border-slate-900 focus:outline-none transition"
                 />
               </div>
@@ -236,26 +268,31 @@ export default function ContacterProfesseur() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="space-y-1.5">
                 <label className="text-[11px] font-bold text-slate-700 uppercase">Matières souhaitées</label>
-                <input 
-                  type="text" 
+                <select 
                   name="student_subjects" 
                   value={formData.student_subjects} 
                   onChange={handleChange}
-                  placeholder="Ex: Mathématiques"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-xs font-medium focus:bg-white focus:border-slate-900 focus:outline-none transition"
-                />
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-xs font-medium focus:bg-white focus:border-slate-900 focus:outline-none transition capitalize"
+                >
+                  {professorSubjects.map((sub, idx) => (
+                    <option key={idx} value={sub}>{sub}</option>
+                  ))}
+                </select>
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-slate-700 uppercase">Votre niveau scolaire</label>
-                <input 
-                  type="text" 
+                <label className="text-[11px] font-bold text-slate-700 uppercase">Niveau scolaire</label>
+                <select 
                   name="student_grade" 
                   value={formData.student_grade} 
                   onChange={handleChange}
-                  placeholder="Ex: Lycée / Collège"
                   className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-xs font-medium focus:bg-white focus:border-slate-900 focus:outline-none transition"
-                />
+                >
+                  <option value="Lycée">Lycée</option>
+                  <option value="Collège">Collège</option>
+                  <option value="Primaire">Primaire</option>
+                  <option value="Lycée / Collège">Lycée / Collège</option>
+                </select>
               </div>
 
               <div className="space-y-1.5">
@@ -265,7 +302,7 @@ export default function ContacterProfesseur() {
                   name="student_price_monthly" 
                   value={formData.student_price_monthly} 
                   onChange={handleChange}
-                  placeholder="Ex: 1000"
+                  placeholder="1000"
                   className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-xs font-medium focus:bg-white focus:border-slate-900 focus:outline-none transition"
                 />
               </div>
