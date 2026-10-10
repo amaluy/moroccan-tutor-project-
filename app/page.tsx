@@ -1,16 +1,18 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import HelpModal from './components/HelpModal';
+import HeroBackground3D from './components/HeroBackground3D'; // Import du fond 3D
 import { supabase } from '@/lib/supabase';
+import gsap from 'gsap'; // Import de GSAP
 import { 
   Search, MapPin, BookOpen, CheckCircle2, 
   Filter, ShieldCheck, PhoneCall,
   GraduationCap, DollarSign, Laptop, Home, 
-  Award, Loader2, RefreshCcw, ExternalLink, UserPlus, ChevronRight, Star, Heart, User
+  Award, Loader2, RefreshCcw, UserPlus, ChevronRight, Star, Heart, User
 } from 'lucide-react';
 
 interface Professor {
@@ -55,6 +57,20 @@ export default function HomePage() {
   const [priceRange, setPriceRange] = useState('');
   const [locationType, setLocationType] = useState('');
 
+  // Référence GSAP pour animer le Hero
+  const heroRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Animation d'entrée fluide avec GSAP
+    if (heroRef.current) {
+      gsap.fromTo(
+        heroRef.current.children,
+        { opacity: 0, y: 30 },
+        { opacity: 1, y: 0, duration: 1, stagger: 0.2, ease: 'power3.out' }
+      );
+    }
+  }, []);
+
   // Effet Machine à écrire fluide
   const words = ["en Maths", "en Français", "en Anglais", "en Physique", "en SVT", "en Arabe"];
   const [currentWordIndex, setCurrentWordIndex] = useState(0);
@@ -95,7 +111,6 @@ export default function HomePage() {
     "Primaire", "Collège", "Secondaire", "Niveau Supérieur"
   ];
 
-  // Fonction de nettoyage pour éviter d'afficher des crochets ou du JSON brut
   const formatCleanText = (val: any): string => {
     if (!val) return '';
     const str = String(val);
@@ -111,20 +126,18 @@ export default function HomePage() {
   const fetchProfessors = async () => {
     setLoading(true);
     try {
-      // REQUÊTE SUPABASE : Exclut les is_admin et les emails d'administration dès la source
       const { data, error } = await supabase
         .from('professors')
         .select('*')
         .or('is_admin.is.null,is_admin.eq.false')
         .not('email', 'in', '("berrada0amal@gmail.com","louizisalaheddine@gmail.com")');
 
-     if (error) {
-  console.error('Erreur Supabase complète :', JSON.stringify(error, null, 2));
-  setProfessors([]);
-} else {
+      if (error) {
+        console.error('Erreur Supabase :', JSON.stringify(error, null, 2));
+        setProfessors([]);
+      } else {
         let results = data || [];
 
-        // DOUBLE SÉCURITÉ JAVASCRIPT : Filtrage strict pour ne jamais afficher les admins
         results = results.filter(p => {
           const email = (p.email || p.Email || '').toLowerCase().trim();
           if (p.is_admin === true) return false;
@@ -224,11 +237,14 @@ export default function HomePage() {
         onOpenHelp={() => setIsHelpOpen(true)}
       />
 
-      {/* HERO SECTION */}
+      {/* HERO SECTION AVEC THREE.JS & GSAP */}
       <section className="bg-white border-b border-slate-200/60 py-16 lg:py-24 px-4 sm:px-8 relative overflow-hidden">
-        <div className="absolute top-1/2 right-0 -translate-y-1/2 w-[700px] h-[700px] bg-slate-100/60 rounded-full blur-[160px] pointer-events-none -z-10" />
+        {/* Intégration du composant Three.js en arrière-plan */}
+        <HeroBackground3D />
         
-        <div className="max-w-[90rem] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-center">
+        <div className="absolute top-1/2 right-0 -translate-y-1/2 w-[700px] h-[700px] bg-purple-100/40 rounded-full blur-[160px] pointer-events-none -z-10" />
+        
+        <div ref={heroRef} className="max-w-[90rem] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-center relative z-10">
           
           <div className="lg:col-span-6 space-y-6 text-center lg:text-left lg:pl-12">
             
@@ -273,7 +289,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* SECTION FILTRES ET RESULTATS */}
+      {/* SECTION FILTRES ET RESULTATS (Le reste de votre page inchangé) */}
       <section className="max-w-[90rem] mx-auto px-4 sm:px-8 py-12 w-full grid grid-cols-1 lg:grid-cols-12 gap-8">
         
         {/* PANNEAU DE FILTRAGE */}
