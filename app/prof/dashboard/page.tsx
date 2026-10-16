@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import birdAnimation from '@/app/bird.json';
+import ProfileViewsCard from '@/app/components/ProfileViewsCard';
 
 const LottieAnimation = dynamic(() => import('@/app/components/LottieAnimation'), { ssr: false });
 
@@ -37,9 +38,9 @@ const STEPS = [
     description: "Bonjour ! Je suis Profy 🦉. Je vais vous montrer comment piloter votre compte et trouver rapidement des élèves.",
   },
   {
-    targetId: "step-status",
-    title: "1. Votre Statut de Visibilité",
-    description: "Cliquez sur ce témoin coloré dans la barre du haut pour passer 'En Ligne' ou 'Masqué' instantanément.",
+    targetId: "step-views",
+    title: "1. Vues & Visibilité du Profil",
+    description: "Consultez le nombre de parents et d'élèves qui recherchent vos cours chaque jour.",
   },
   {
     targetId: "step-competition",
@@ -54,7 +55,7 @@ const STEPS = [
   {
     targetId: "step-credits",
     title: "4. Leads Restants",
-    description: "Suivez votre solde de credits/leads pour répondre aux élèves.",
+    description: "Suivez votre solde de crédits/leads pour répondre aux élèves.",
   },
   {
     targetId: "step-calendar",
@@ -477,9 +478,14 @@ export default function ProfDashboard() {
         {/* LAYOUT EN 12 COLONNES (8 Gauche / 4 Droite pour la Compétition) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
-          {/* SECTEUR GAUCHE (ACTIONS ET SERVICES - 8 COLONNES) */}
+          {/* SECTEUR GAUCHE (ACTIONS ET ANALYTICS - 8 COLONNES) */}
           <div className="lg:col-span-8 space-y-6">
             
+            {/* COMPOSANT GRAPHIC DE VISIBILITÉ / VUES PROFIL */}
+            <div id="step-views" className={`${showTutorial && activeTarget === 'step-views' ? 'relative z-40' : ''}`}>
+              <ProfileViewsCard isDarkMode={isDarkMode} />
+            </div>
+
             {/* GESTION DES DEMANDES (Grosse carte principale) */}
             <div id="step-leads" className={`${showTutorial && activeTarget === 'step-leads' ? 'relative z-40' : ''}`}>
               <Link 
@@ -487,11 +493,11 @@ export default function ProfDashboard() {
                 className={`p-8 rounded-3xl border transition-all duration-300 flex flex-col justify-between group block relative overflow-hidden ${
                   isDarkMode 
                     ? 'bg-gradient-to-br from-slate-900 via-slate-900 to-orange-950/20 border-slate-800 hover:border-orange-500/40' 
-                    : 'bg-white border-slate-200/80 shadow-sm hover:shadow-xl hover:border-orange-200'
+                    : 'bg-white border-slate-200/80 shadow-xs hover:shadow-xl hover:border-orange-200'
                 }`}
               >
                 <div className="space-y-4 relative z-10">
-                  <div className="w-14 h-14 bg-orange-50 dark:bg-orange-950/50 text-orange-600 rounded-2xl flex items-center justify-center font-bold group-hover:scale-110 transition-transform shadow-sm">
+                  <div className="w-14 h-14 bg-orange-50 dark:bg-orange-950/50 text-orange-600 rounded-2xl flex items-center justify-center font-bold group-hover:scale-110 transition-transform shadow-xs">
                     <Users className="w-7 h-7" />
                   </div>
                   <div>
@@ -518,7 +524,7 @@ export default function ProfDashboard() {
                   className={`p-7 rounded-3xl border transition-all duration-300 flex flex-col justify-between group h-full block ${
                     isDarkMode 
                       ? 'bg-slate-900/60 border-slate-800 hover:border-slate-700' 
-                      : 'bg-white border-slate-200/80 shadow-sm hover:shadow-md'
+                      : 'bg-white border-slate-200/80 shadow-xs hover:shadow-md'
                   }`}
                 >
                   <div className="space-y-4">
@@ -549,7 +555,7 @@ export default function ProfDashboard() {
                   className={`p-7 rounded-3xl border transition-all duration-300 flex flex-col justify-between group h-full block ${
                     isDarkMode 
                       ? 'bg-slate-900/60 border-slate-800 hover:border-slate-700' 
-                      : 'bg-white border-slate-200/80 shadow-sm hover:shadow-md'
+                      : 'bg-white border-slate-200/80 shadow-xs hover:shadow-md'
                   }`}
                 >
                   <div className="space-y-4">
@@ -579,7 +585,7 @@ export default function ProfDashboard() {
                 className={`p-7 rounded-3xl border transition-all duration-300 flex flex-col justify-between group block ${
                   isDarkMode 
                     ? 'bg-slate-900/60 border-slate-800 hover:border-slate-700' 
-                    : 'bg-white border-slate-200/80 shadow-sm hover:shadow-md'
+                    : 'bg-white border-slate-200/80 shadow-xs hover:shadow-md'
                 }`}
               >
                 <div className="space-y-4">
@@ -610,7 +616,7 @@ export default function ProfDashboard() {
             } ${
               isDarkMode 
                 ? 'bg-gradient-to-b from-slate-900 via-slate-900 to-purple-950/30 border-slate-800 text-white' 
-                : 'bg-gradient-to-b from-white via-purple-50/20 to-purple-100/40 border-slate-200 shadow-sm text-slate-900'
+                : 'bg-gradient-to-b from-white via-purple-50/20 to-purple-100/40 border-slate-200 shadow-xs text-slate-900'
             }`}>
               
               {/* EN-TÊTE LIGUE ET XP */}
