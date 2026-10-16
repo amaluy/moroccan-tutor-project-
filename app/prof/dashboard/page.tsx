@@ -8,7 +8,7 @@ import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import { 
   Edit3, Calendar, Users, ArrowRight, 
-  X, ArrowDown, Sun, Moon, LogOut, ChevronDown, User, Coins, PlusCircle, MessageSquare, Flame, Zap
+  X, ArrowDown, Sun, Moon, LogOut, ChevronDown, User, Coins, PlusCircle, MessageSquare, Flame, Zap, Trophy, ShieldCheck
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import birdAnimation from '@/app/bird.json';
@@ -43,28 +43,28 @@ const STEPS = [
   },
   {
     targetId: "step-competition",
-    title: "2. Votre Position dans la Ligue",
-    description: "Suivez votre classement et accumulez des points XP pour grimper dans les ligues supérieures !",
+    title: "2. Votre Ligue & Classement",
+    description: "Suivez votre position latérale en temps réel et gagnez des XP pour passer dans la ligue supérieure !",
   },
   {
     targetId: "step-leads",
     title: "3. Demandes d'Élèves",
-    description: "C'est ici que vous accédez à la gestion complète de vos demandes de cours.",
+    description: "Consultez et gérez toutes les requêtes reçues pour vos cours.",
   },
   {
     targetId: "step-credits",
-    title: "4. Solde de Leads Restants",
-    description: "Suivez ici vos leads restants directement depuis votre base de données pour répondre aux cours.",
+    title: "4. Leads Restants",
+    description: "Suivez votre solde de credits/leads pour répondre aux élèves.",
   },
   {
     targetId: "step-calendar",
-    title: "5. Vos Disponibilités",
-    description: "Indiquez vos jours et créneaux horaires libres pour permettre aux parents de planifier les séances.",
+    title: "5. Planning",
+    description: "Gérez vos jours et créneaux de cours en toute simplicité.",
   },
   {
     targetId: "step-profile",
-    title: "6. Modification de Profil",
-    description: "Ajustez vos tarifs horaires, votre biographie, votre photo de profil et vos matières à tout moment.",
+    title: "6. Édition de Profil",
+    description: "Ajustez vos tarifs et vos informations à tout moment.",
   }
 ];
 
@@ -78,7 +78,7 @@ export default function ProfDashboard() {
   
   const [unreadCount, setUnreadCount] = useState(0);
 
-  // ÉTATS LEADERBOARD (DUOLINGO STYLE)
+  // Leaderboard States
   const [profRank, setProfRank] = useState<number>(0);
   const [profScore, setProfScore] = useState<number>(0);
   const [profLeague, setProfLeague] = useState<string>('Ligue Bronze 🥉');
@@ -167,7 +167,7 @@ export default function ProfDashboard() {
               setUnreadCount(unreadLeads);
             }
 
-            // --- RÉCUPÉRATION DU CLASSEMENT STRICT DEPUIS LA VUE SUPABASE ---
+            // Récupération de la vue Supabase avec classement strict
             const { data: leaderboardData } = await supabase
               .from('professor_leaderboard')
               .select('*')
@@ -181,7 +181,7 @@ export default function ProfDashboard() {
                 setProfLeague(currentProfInBoard.league || 'Ligue Bronze 🥉');
               }
 
-              const formattedTop = leaderboardData.slice(0, 5).map((p: any) => ({
+              const formattedTop = leaderboardData.slice(0, 6).map((p: any) => ({
                 id: p.id,
                 name: `${p['Prénom'] || p.prenom || ''} ${p['Nom'] || p.nom || ''}`.trim() || 'Professeur',
                 score: p.total_score,
@@ -256,7 +256,7 @@ export default function ProfDashboard() {
   if (loading) {
     return (
       <div className={`min-h-screen flex items-center justify-center font-bold text-sm ${isDarkMode ? 'bg-[#0A0A0A] text-slate-400' : 'bg-slate-50 text-slate-500'}`}>
-        Chargement...
+        Chargement de l&apos;espace enseignant...
       </div>
     );
   }
@@ -265,7 +265,7 @@ export default function ProfDashboard() {
   const leadBalance = profData?.leads_restants ?? 0;
 
   return (
-    <div className={`min-h-screen flex flex-col relative overflow-x-hidden transition-colors duration-300 ${isDarkMode ? 'bg-[#0A0A0A] text-slate-100' : 'bg-[#F8FAFC] text-slate-900'}`}>
+    <div className={`min-h-screen flex flex-col relative transition-colors duration-300 ${isDarkMode ? 'bg-[#0A0A0A] text-slate-100' : 'bg-[#F8FAFC] text-slate-900'}`}>
       
       {/* --- TOPBAR --- */}
       <header className={`sticky top-0 z-40 border-b px-6 py-3.5 flex items-center justify-between transition-colors duration-300 ${
@@ -459,216 +459,242 @@ export default function ProfDashboard() {
         )}
       </AnimatePresence>
 
-      {/* ZONE CENTRALE DU DASHBOARD */}
-      <main className="flex-1 p-6 md:p-12 max-w-5xl mx-auto space-y-8 relative w-full">
+      {/* --- STRUCTURE PRINCIPALE DU DASHBOARD (GRID AVEC BARRE LATÉRALE) --- */}
+      <main className="flex-1 p-6 md:p-10 max-w-7xl mx-auto w-full space-y-6">
         
-        <div id="step-welcome" className="pt-2 text-center">
-          <h2 className="text-lg font-medium text-slate-400 tracking-wide">Que souhaitez-vous faire ?</h2>
+        {/* TITRE BIENVENUE */}
+        <div id="step-welcome" className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-black tracking-tight">Bonjour, {profName.split(' ')[0]} 👋</h1>
+            <p className="text-xs text-slate-400 font-medium mt-0.5">Pilotez vos demandes de cours et suivez votre évolution sur ProfMaroc.</p>
+          </div>
+          <div className="hidden sm:flex items-center gap-2 bg-purple-500/10 border border-purple-500/20 px-3.5 py-1.5 rounded-full text-xs font-bold text-purple-400">
+            <ShieldCheck className="w-4 h-4 text-purple-400" />
+            <span>Enseignant Vérifié</span>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+        {/* LAYOUT EN 12 COLONNES (8 Gauche / 4 Droite pour la Compétition) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
-          {/* SECTION COMPÉTITION DUOLINGO */}
-          <div id="step-competition" className={`md:col-span-2 p-8 rounded-3xl border transition-all duration-300 relative overflow-hidden ${
-            showTutorial && activeTarget === 'step-competition' ? 'relative z-40' : ''
-          } ${
-            isDarkMode 
-              ? 'bg-gradient-to-br from-slate-900 via-slate-900 to-purple-950/40 border-slate-800 text-white' 
-              : 'bg-gradient-to-br from-white via-purple-50/30 to-purple-100/50 border-slate-200/80 shadow-xs text-slate-900'
-          }`}>
+          {/* SECTEUR GAUCHE (ACTIONS ET SERVICES - 8 COLONNES) */}
+          <div className="lg:col-span-8 space-y-6">
             
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-slate-700/30 pb-6">
-              
-              <div className="space-y-1">
-                <div className="inline-flex items-center gap-2 bg-amber-500/10 text-amber-500 border border-amber-500/20 px-3 py-1 rounded-full text-xs font-black">
-                  <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-                  <span>{profLeague}</span>
-                </div>
-                <h3 className="text-2xl font-black tracking-tight">Classement de la Ligue</h3>
-                <p className="text-xs text-slate-400 font-medium">Répondez aux demandes d&apos;élèves pour gagner des XP et monter dans la ligue supérieure.</p>
-              </div>
-
-              {/* RANG ET SCORE XP */}
-              <div className="flex items-center gap-4 bg-slate-950/40 border border-purple-500/30 px-6 py-4 rounded-2xl backdrop-blur-md">
-                <div className="text-center">
-                  <p className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">Votre Rang</p>
-                  <p className="text-3xl font-black text-purple-400">#{profRank || '-'}</p>
-                </div>
-                <div className="h-8 w-[1px] bg-slate-800" />
-                <div className="text-center">
-                  <p className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">Points XP</p>
-                  <p className="text-3xl font-black text-amber-400">{profScore} <span className="text-xs">XP</span></p>
-                </div>
-              </div>
-
-            </div>
-
-            {/* LISTE STRICTE DUOLINGO (#1, #2, #3...) */}
-            <div className="pt-6 space-y-3">
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Classement Général Enseignant</p>
-
-              <div className="space-y-2">
-                {topProfessors.length > 0 ? (
-                  topProfessors.map((prof) => (
-                    <div
-                      key={prof.id}
-                      className={`p-4 rounded-2xl border flex items-center justify-between transition-all duration-300 ${
-                        prof.isCurrentProf
-                          ? 'bg-purple-600/20 border-purple-500 text-white shadow-md ring-2 ring-purple-500/30'
-                          : isDarkMode ? 'bg-slate-950/60 border-slate-800' : 'bg-white border-slate-200'
-                      }`}
-                    >
-                      <div className="flex items-center gap-4">
-                        <span className={`w-8 h-8 rounded-xl text-xs font-black flex items-center justify-center shrink-0 ${
-                          prof.rank === 1 ? 'bg-amber-400 text-slate-950 shadow-lg shadow-amber-400/40' :
-                          prof.rank === 2 ? 'bg-slate-300 text-slate-950' :
-                          prof.rank === 3 ? 'bg-amber-700 text-white' : 'bg-slate-800 text-slate-400'
-                        }`}>
-                          #{prof.rank}
-                        </span>
-
-                        <div>
-                          <p className="text-xs font-bold flex items-center gap-2">
-                            {prof.isCurrentProf ? `${prof.name} (Vous)` : prof.name}
-                            {prof.rank === 1 && <Flame className="w-3.5 h-3.5 text-orange-500 fill-orange-500" />}
-                          </p>
-                          <p className="text-[10px] text-slate-400 font-medium">{prof.league}</p>
-                        </div>
-                      </div>
-
-                      <span className="text-xs font-black text-amber-500">
-                        {prof.score} XP
-                      </span>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-xs text-slate-500 italic">Chargement du classement de la ligue...</p>
-                )}
-              </div>
-            </div>
-
-          </div>
-
-          {/* GESTION DES DEMANDES */}
-          <div id="step-leads" className={`md:col-span-2 ${showTutorial && activeTarget === 'step-leads' ? 'relative z-40' : ''}`}>
-            <Link 
-              href="/prof/dashboard/gestion_demande"
-              className={`p-8 rounded-3xl border transition-all duration-300 flex flex-col justify-between group h-full block ${
-                isDarkMode 
-                  ? 'bg-slate-900/60 border-slate-800 hover:border-slate-700 hover:bg-slate-900' 
-                  : 'bg-white border-slate-200/80 shadow-xs hover:shadow-lg'
-              }`}
-            >
-              <div className="space-y-4">
-                <div className="w-12 h-12 bg-orange-50 text-orange-600 rounded-2xl flex items-center justify-center font-bold group-hover:scale-110 transition-transform">
-                  <Users className="w-6 h-6" />
-                </div>
-                <div>
-                  <h3 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Gestion des Demandes d&apos;Élèves</h3>
-                  <p className="text-xs text-slate-400 font-medium leading-relaxed mt-1">
-                    Consultez et gérez toutes les requêtes reçues de la part des élèves pour planifier vos cours.
-                  </p>
-                </div>
-              </div>
-              <div className="mt-6 flex items-center text-xs font-extrabold text-orange-600 gap-1.5 group-hover:translate-x-1 transition-transform">
-                <span>Voir les demandes</span>
-                <ArrowRight className="w-4 h-4" />
-              </div>
-            </Link>
-          </div>
-
-          {/* LEADS RESTANTS */}
-          <div id="step-credits" className={`md:col-span-1 ${showTutorial && activeTarget === 'step-credits' ? 'relative z-40' : ''}`}>
-            <Link 
-              href="/prof/dashboard/credits"
-              className={`p-8 rounded-3xl border transition-all duration-300 flex flex-col justify-between group h-full block ${
-                isDarkMode 
-                  ? 'bg-slate-900/60 border-slate-800 hover:border-slate-700 hover:bg-slate-900' 
-                  : 'bg-white border-slate-200/80 shadow-xs hover:shadow-lg'
-              }`}
-            >
-              <div className="space-y-4">
-                <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center font-bold group-hover:scale-110 transition-transform">
-                  <Coins className="w-6 h-6" />
-                </div>
-                <div>
-                  <h3 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Mes Leads Restants</h3>
-                  <div className="pt-2">
-                    <span className="text-[11px] text-slate-400 uppercase tracking-wider font-semibold">Solde actuel :</span>
-                    <p className={`text-2xl font-black mt-0.5 ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`}>
-                      {leadBalance} Leads
+            {/* GESTION DES DEMANDES (Grosse carte principale) */}
+            <div id="step-leads" className={`${showTutorial && activeTarget === 'step-leads' ? 'relative z-40' : ''}`}>
+              <Link 
+                href="/prof/dashboard/gestion_demande"
+                className={`p-8 rounded-3xl border transition-all duration-300 flex flex-col justify-between group block relative overflow-hidden ${
+                  isDarkMode 
+                    ? 'bg-gradient-to-br from-slate-900 via-slate-900 to-orange-950/20 border-slate-800 hover:border-orange-500/40' 
+                    : 'bg-white border-slate-200/80 shadow-sm hover:shadow-xl hover:border-orange-200'
+                }`}
+              >
+                <div className="space-y-4 relative z-10">
+                  <div className="w-14 h-14 bg-orange-50 dark:bg-orange-950/50 text-orange-600 rounded-2xl flex items-center justify-center font-bold group-hover:scale-110 transition-transform shadow-sm">
+                    <Users className="w-7 h-7" />
+                  </div>
+                  <div>
+                    <h3 className={`text-lg font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Gestion des Demandes d&apos;Élèves</h3>
+                    <p className="text-xs text-slate-400 font-medium leading-relaxed mt-1 max-w-lg">
+                      Accédez rapidement aux demandes de cours soumises par les étudiants et les familles adaptées à vos matières.
                     </p>
                   </div>
                 </div>
+                <div className="mt-8 flex items-center text-xs font-black text-orange-600 gap-2 group-hover:translate-x-1.5 transition-transform relative z-10">
+                  <span>Voir toutes les demandes</span>
+                  <ArrowRight className="w-4 h-4" />
+                </div>
+              </Link>
+            </div>
+
+            {/* GRILLE SECONDAIRE (LEADS & DISPONIBILITÉS - 2 COLONNES) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              
+              {/* LEADS RESTANTS */}
+              <div id="step-credits" className={`${showTutorial && activeTarget === 'step-credits' ? 'relative z-40' : ''}`}>
+                <Link 
+                  href="/prof/dashboard/credits"
+                  className={`p-7 rounded-3xl border transition-all duration-300 flex flex-col justify-between group h-full block ${
+                    isDarkMode 
+                      ? 'bg-slate-900/60 border-slate-800 hover:border-slate-700' 
+                      : 'bg-white border-slate-200/80 shadow-sm hover:shadow-md'
+                  }`}
+                >
+                  <div className="space-y-4">
+                    <div className="w-12 h-12 bg-amber-50 dark:bg-amber-950/40 text-amber-600 rounded-2xl flex items-center justify-center font-bold group-hover:scale-110 transition-transform">
+                      <Coins className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Mes Leads Restants</h3>
+                      <div className="pt-2">
+                        <span className="text-[10px] text-slate-400 uppercase tracking-wider font-extrabold">Solde Actuel :</span>
+                        <p className={`text-3xl font-black mt-0.5 ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`}>
+                          {leadBalance} <span className="text-xs font-semibold text-slate-400">Leads</span>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-6 flex items-center text-xs font-extrabold text-amber-600 gap-1.5 group-hover:translate-x-1 transition-transform">
+                    <PlusCircle className="w-4 h-4" />
+                    <span>Recharger mon solde</span>
+                  </div>
+                </Link>
               </div>
-              <div className="mt-6 flex items-center text-xs font-extrabold text-amber-600 gap-1.5 group-hover:translate-x-1 transition-transform">
-                <PlusCircle className="w-4 h-4" />
-                <span>Recharger mes leads</span>
+
+              {/* DISPONIBILITÉS */}
+              <div id="step-calendar" className={`${showTutorial && activeTarget === 'step-calendar' ? 'relative z-40' : ''}`}>
+                <Link 
+                  href="/prof/dashboard/disponibilites"
+                  className={`p-7 rounded-3xl border transition-all duration-300 flex flex-col justify-between group h-full block ${
+                    isDarkMode 
+                      ? 'bg-slate-900/60 border-slate-800 hover:border-slate-700' 
+                      : 'bg-white border-slate-200/80 shadow-sm hover:shadow-md'
+                  }`}
+                >
+                  <div className="space-y-4">
+                    <div className="w-12 h-12 bg-blue-50 dark:bg-blue-950/40 text-blue-600 rounded-2xl flex items-center justify-center font-bold group-hover:scale-110 transition-transform">
+                      <Calendar className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Mes Disponibilités</h3>
+                      <p className="text-xs text-slate-400 font-medium leading-relaxed mt-1">
+                        Organisez vos créneaux et jours disponibles pour recevoir des propositions de cours.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-6 flex items-center text-xs font-extrabold text-blue-600 gap-1.5 group-hover:translate-x-1 transition-transform">
+                    <span>Ajuster mon planning</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </div>
+                </Link>
               </div>
-            </Link>
+
+            </div>
+
+            {/* MODIFICATION DE PROFIL */}
+            <div id="step-profile" className={`${showTutorial && activeTarget === 'step-profile' ? 'relative z-40' : ''}`}>
+              <Link 
+                href="/prof/profile"
+                className={`p-7 rounded-3xl border transition-all duration-300 flex flex-col justify-between group block ${
+                  isDarkMode 
+                    ? 'bg-slate-900/60 border-slate-800 hover:border-slate-700' 
+                    : 'bg-white border-slate-200/80 shadow-sm hover:shadow-md'
+                }`}
+              >
+                <div className="space-y-4">
+                  <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 rounded-2xl flex items-center justify-center font-bold group-hover:scale-110 transition-transform">
+                    <Edit3 className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Modifier mon Profil</h3>
+                    <p className="text-xs text-slate-400 font-medium leading-relaxed mt-1">
+                      Mettez à jour vos tarifs horaires, votre biographie, vos diplômes et vos matières enseignées.
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-6 flex items-center text-xs font-extrabold text-emerald-600 gap-1.5 group-hover:translate-x-1 transition-transform">
+                  <span>Mettre à jour la fiche</span>
+                  <ArrowRight className="w-4 h-4" />
+                </div>
+              </Link>
+            </div>
+
           </div>
 
-          {/* DISPONIBILITÉS */}
-          <div id="step-calendar" className={`md:col-span-1 ${showTutorial && activeTarget === 'step-calendar' ? 'relative z-40' : ''}`}>
-            <Link 
-              href="/prof/dashboard/disponibilites"
-              className={`p-8 rounded-3xl border transition-all duration-300 flex flex-col justify-between group h-full block ${
-                isDarkMode 
-                  ? 'bg-slate-900/60 border-slate-800 hover:border-slate-700 hover:bg-slate-900' 
-                  : 'bg-white border-slate-200/80 shadow-xs hover:shadow-lg'
-              }`}
-            >
-              <div className="space-y-4">
-                <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center font-bold group-hover:scale-110 transition-transform">
-                  <Calendar className="w-6 h-6" />
+          {/* SECTEUR DROIT LATÉRAL (COMPÉTITION & LEADERBOARD - 4 COLONNES) */}
+          <div className="lg:col-span-4 space-y-6">
+            
+            <div id="step-competition" className={`p-6 rounded-3xl border transition-all duration-300 relative overflow-hidden ${
+              showTutorial && activeTarget === 'step-competition' ? 'relative z-40' : ''
+            } ${
+              isDarkMode 
+                ? 'bg-gradient-to-b from-slate-900 via-slate-900 to-purple-950/30 border-slate-800 text-white' 
+                : 'bg-gradient-to-b from-white via-purple-50/20 to-purple-100/40 border-slate-200 shadow-sm text-slate-900'
+            }`}>
+              
+              {/* EN-TÊTE LIGUE ET XP */}
+              <div className="border-b border-slate-700/30 pb-5 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="inline-flex items-center gap-1.5 bg-amber-500/10 text-amber-500 border border-amber-500/20 px-3 py-1 rounded-full text-xs font-black">
+                    <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                    <span>{profLeague}</span>
+                  </div>
+                  <Trophy className="w-5 h-5 text-amber-400" />
                 </div>
-                <div>
-                  <h3 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Mes Disponibilités</h3>
-                  <p className="text-xs text-slate-400 font-medium leading-relaxed mt-1">
-                    Ajustez vos jours et horaires de cours selon votre emploi du temps.
-                  </p>
-                </div>
-              </div>
-              <div className="mt-6 flex items-center text-xs font-extrabold text-blue-600 gap-1.5 group-hover:translate-x-1 transition-transform">
-                <span>Gérer mon planning</span>
-                <ArrowRight className="w-4 h-4" />
-              </div>
-            </Link>
-          </div>
 
-          {/* PROFIL */}
-          <div id="step-profile" className={`md:col-span-2 ${showTutorial && activeTarget === 'step-profile' ? 'relative z-40' : ''}`}>
-            <Link 
-              href="/prof/profile"
-              className={`p-8 rounded-3xl border transition-all duration-300 flex flex-col justify-between group h-full block ${
-                isDarkMode 
-                  ? 'bg-slate-900/60 border-slate-800 hover:border-slate-700 hover:bg-slate-900' 
-                  : 'bg-white border-slate-200/80 shadow-xs hover:shadow-lg'
-              }`}
-            >
-              <div className="space-y-4">
-                <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center font-bold group-hover:scale-110 transition-transform">
-                  <Edit3 className="w-6 h-6" />
-                </div>
                 <div>
-                  <h3 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Modifier mon Profil</h3>
-                  <p className="text-xs text-slate-400 font-medium leading-relaxed mt-1">
-                    Mettez à jour vos tarifs, votre bio et vos matières enseignées à tout moment.
-                  </p>
+                  <h3 className="text-lg font-black tracking-tight">Classement Ligue</h3>
+                  <p className="text-[11px] text-slate-400 font-medium mt-0.5">Gagnez des XP en répondant aux élèves pour grimper !</p>
+                </div>
+
+                {/* CARTE SCORE RANG */}
+                <div className="grid grid-cols-2 gap-3 bg-slate-950/40 border border-purple-500/20 p-3.5 rounded-2xl text-center backdrop-blur-md">
+                  <div>
+                    <p className="text-[9px] text-slate-400 font-black uppercase tracking-wider">Rang</p>
+                    <p className="text-xl font-black text-purple-400 mt-0.5">#{profRank || '-'}</p>
+                  </div>
+                  <div className="border-l border-slate-800">
+                    <p className="text-[9px] text-slate-400 font-black uppercase tracking-wider">Points</p>
+                    <p className="text-xl font-black text-amber-400 mt-0.5">{profScore} <span className="text-[10px]">XP</span></p>
+                  </div>
                 </div>
               </div>
-              <div className="mt-6 flex items-center text-xs font-extrabold text-emerald-600 gap-1.5 group-hover:translate-x-1 transition-transform">
-                <span>Éditer ma fiche</span>
-                <ArrowRight className="w-4 h-4" />
+
+              {/* LISTE CLASSEMENT STRICT STYLE DUOLINGO */}
+              <div className="pt-5 space-y-3">
+                <p className="text-[11px] font-black text-slate-400 uppercase tracking-wider">Top Enseignants</p>
+
+                <div className="space-y-2">
+                  {topProfessors.length > 0 ? (
+                    topProfessors.map((prof) => (
+                      <div
+                        key={prof.id}
+                        className={`p-3 rounded-2xl border flex items-center justify-between transition-all duration-300 ${
+                          prof.isCurrentProf
+                            ? 'bg-purple-600/20 border-purple-500 text-white shadow-md ring-2 ring-purple-500/30'
+                            : isDarkMode ? 'bg-slate-950/50 border-slate-800/80' : 'bg-white/80 border-slate-200/80'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 overflow-hidden">
+                          {/* RANG STRICT UNIQUE (#1, #2, #3...) */}
+                          <span className={`w-7 h-7 rounded-xl text-[11px] font-black flex items-center justify-center shrink-0 ${
+                            prof.rank === 1 ? 'bg-amber-400 text-slate-950 shadow-md shadow-amber-400/30' :
+                            prof.rank === 2 ? 'bg-slate-300 text-slate-950' :
+                            prof.rank === 3 ? 'bg-amber-700 text-white' : 'bg-slate-800 text-slate-400'
+                          }`}>
+                            #{prof.rank}
+                          </span>
+
+                          <div className="overflow-hidden">
+                            <p className="text-xs font-bold truncate flex items-center gap-1.5">
+                              <span className="truncate">{prof.isCurrentProf ? `${prof.name} (Vous)` : prof.name}</span>
+                              {prof.rank === 1 && <Flame className="w-3 h-3 text-orange-500 fill-orange-500 shrink-0" />}
+                            </p>
+                            <p className="text-[9px] text-slate-400 font-medium truncate">{prof.league}</p>
+                          </div>
+                        </div>
+
+                        <span className="text-xs font-black text-amber-500 shrink-0 pl-2">
+                          {prof.score} XP
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-xs text-slate-500 italic">Chargement des données du classement...</p>
+                  )}
+                </div>
               </div>
-            </Link>
+
+            </div>
+
           </div>
 
         </div>
 
       </main>
 
-      {/* --- MODALE DU GUIDE INTERACTIF --- */}
+      {/* --- MODALE TUTORIEL INTERACTIF --- */}
       <AnimatePresence>
         {showTutorial && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
@@ -714,7 +740,7 @@ export default function ProfDashboard() {
         )}
       </AnimatePresence>
 
-      {/* BOUTON FLOTTANT POUR RELANCER LE GUIDE */}
+      {/* BOUTON FLOTTANT DU TUTORIEL */}
       {!showTutorial && (
         <motion.button
           initial={{ scale: 0 }}
