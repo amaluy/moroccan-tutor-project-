@@ -8,7 +8,7 @@ import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import { 
   Edit3, Calendar, Users, ArrowRight, 
-  X, ArrowDown, Sun, Moon, LogOut, ChevronDown, User, Coins, PlusCircle, MessageSquare
+  X, ArrowDown, Sun, Moon, LogOut, ChevronDown, User, Coins, PlusCircle, MessageSquare, Flame, Zap
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import birdAnimation from '@/app/bird.json';
@@ -42,23 +42,28 @@ const STEPS = [
     description: "Cliquez sur ce témoin coloré dans la barre du haut pour passer 'En Ligne' ou 'Masqué' instantanément.",
   },
   {
+    targetId: "step-competition",
+    title: "2. Votre Position dans la Ligue",
+    description: "Suivez votre classement et accumulez des points XP pour grimper dans les ligues supérieures !",
+  },
+  {
     targetId: "step-leads",
-    title: "2. Demandes d'Élèves",
+    title: "3. Demandes d'Élèves",
     description: "C'est ici que vous accédez à la gestion complète de vos demandes de cours.",
   },
   {
     targetId: "step-credits",
-    title: "3. Solde de Leads Restants",
+    title: "4. Solde de Leads Restants",
     description: "Suivez ici vos leads restants directement depuis votre base de données pour répondre aux cours.",
   },
   {
     targetId: "step-calendar",
-    title: "4. Vos Disponibilités",
+    title: "5. Vos Disponibilités",
     description: "Indiquez vos jours et créneaux horaires libres pour permettre aux parents de planifier les séances.",
   },
   {
     targetId: "step-profile",
-    title: "5. Modification de Profil",
+    title: "6. Modification de Profil",
     description: "Ajustez vos tarifs horaires, votre biographie, votre photo de profil et vos matières à tout moment.",
   }
 ];
@@ -72,6 +77,12 @@ export default function ProfDashboard() {
   const [loading, setLoading] = useState(true);
   
   const [unreadCount, setUnreadCount] = useState(0);
+
+  // ÉTATS LEADERBOARD (DUOLINGO STYLE)
+  const [profRank, setProfRank] = useState<number>(0);
+  const [profScore, setProfScore] = useState<number>(0);
+  const [profLeague, setProfLeague] = useState<string>('Ligue Bronze 🥉');
+  const [topProfessors, setTopProfessors] = useState<any[]>([]);
 
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -154,6 +165,31 @@ export default function ProfDashboard() {
             if (leadsData) {
               const unreadLeads = leadsData.filter((lead: any) => lead.is_read === false).length;
               setUnreadCount(unreadLeads);
+            }
+
+            // --- RÉCUPÉRATION DU CLASSEMENT STRICT DEPUIS LA VUE SUPABASE ---
+            const { data: leaderboardData } = await supabase
+              .from('professor_leaderboard')
+              .select('*')
+              .order('rank', { ascending: true });
+
+            if (leaderboardData) {
+              const currentProfInBoard = leaderboardData.find((p: any) => String(p.id) === String(prof?.id));
+              if (currentProfInBoard) {
+                setProfRank(currentProfInBoard.rank);
+                setProfScore(currentProfInBoard.total_score);
+                setProfLeague(currentProfInBoard.league || 'Ligue Bronze 🥉');
+              }
+
+              const formattedTop = leaderboardData.slice(0, 5).map((p: any) => ({
+                id: p.id,
+                name: `${p['Prénom'] || p.prenom || ''} ${p['Nom'] || p.nom || ''}`.trim() || 'Professeur',
+                score: p.total_score,
+                rank: p.rank,
+                league: p.league,
+                isCurrentProf: String(p.id) === String(prof?.id)
+              }));
+              setTopProfessors(formattedTop);
             }
           }
         }
@@ -360,7 +396,7 @@ export default function ProfDashboard() {
         </div>
       </header>
 
-      {/* --- ANIMATION HIBOU --- */}
+      {/* --- ANIMATION HIBOU PROFY --- */}
       <AnimatePresence>
         {showCartoonWalkOwl && (
           <div className="fixed inset-0 z-50 pointer-events-none overflow-hidden">
@@ -423,7 +459,7 @@ export default function ProfDashboard() {
         )}
       </AnimatePresence>
 
-      {/* ZONE CENTRALE */}
+      {/* ZONE CENTRALE DU DASHBOARD */}
       <main className="flex-1 p-6 md:p-12 max-w-5xl mx-auto space-y-8 relative w-full">
         
         <div id="step-welcome" className="pt-2 text-center">
@@ -432,7 +468,88 @@ export default function ProfDashboard() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
           
-          {/* GESTION DES DEMANDES (Redirige vers /prof/dashboard/gestion_demande) */}
+          {/* SECTION COMPÉTITION DUOLINGO */}
+          <div id="step-competition" className={`md:col-span-2 p-8 rounded-3xl border transition-all duration-300 relative overflow-hidden ${
+            showTutorial && activeTarget === 'step-competition' ? 'relative z-40' : ''
+          } ${
+            isDarkMode 
+              ? 'bg-gradient-to-br from-slate-900 via-slate-900 to-purple-950/40 border-slate-800 text-white' 
+              : 'bg-gradient-to-br from-white via-purple-50/30 to-purple-100/50 border-slate-200/80 shadow-xs text-slate-900'
+          }`}>
+            
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-slate-700/30 pb-6">
+              
+              <div className="space-y-1">
+                <div className="inline-flex items-center gap-2 bg-amber-500/10 text-amber-500 border border-amber-500/20 px-3 py-1 rounded-full text-xs font-black">
+                  <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                  <span>{profLeague}</span>
+                </div>
+                <h3 className="text-2xl font-black tracking-tight">Classement de la Ligue</h3>
+                <p className="text-xs text-slate-400 font-medium">Répondez aux demandes d&apos;élèves pour gagner des XP et monter dans la ligue supérieure.</p>
+              </div>
+
+              {/* RANG ET SCORE XP */}
+              <div className="flex items-center gap-4 bg-slate-950/40 border border-purple-500/30 px-6 py-4 rounded-2xl backdrop-blur-md">
+                <div className="text-center">
+                  <p className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">Votre Rang</p>
+                  <p className="text-3xl font-black text-purple-400">#{profRank || '-'}</p>
+                </div>
+                <div className="h-8 w-[1px] bg-slate-800" />
+                <div className="text-center">
+                  <p className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">Points XP</p>
+                  <p className="text-3xl font-black text-amber-400">{profScore} <span className="text-xs">XP</span></p>
+                </div>
+              </div>
+
+            </div>
+
+            {/* LISTE STRICTE DUOLINGO (#1, #2, #3...) */}
+            <div className="pt-6 space-y-3">
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Classement Général Enseignant</p>
+
+              <div className="space-y-2">
+                {topProfessors.length > 0 ? (
+                  topProfessors.map((prof) => (
+                    <div
+                      key={prof.id}
+                      className={`p-4 rounded-2xl border flex items-center justify-between transition-all duration-300 ${
+                        prof.isCurrentProf
+                          ? 'bg-purple-600/20 border-purple-500 text-white shadow-md ring-2 ring-purple-500/30'
+                          : isDarkMode ? 'bg-slate-950/60 border-slate-800' : 'bg-white border-slate-200'
+                      }`}
+                    >
+                      <div className="flex items-center gap-4">
+                        <span className={`w-8 h-8 rounded-xl text-xs font-black flex items-center justify-center shrink-0 ${
+                          prof.rank === 1 ? 'bg-amber-400 text-slate-950 shadow-lg shadow-amber-400/40' :
+                          prof.rank === 2 ? 'bg-slate-300 text-slate-950' :
+                          prof.rank === 3 ? 'bg-amber-700 text-white' : 'bg-slate-800 text-slate-400'
+                        }`}>
+                          #{prof.rank}
+                        </span>
+
+                        <div>
+                          <p className="text-xs font-bold flex items-center gap-2">
+                            {prof.isCurrentProf ? `${prof.name} (Vous)` : prof.name}
+                            {prof.rank === 1 && <Flame className="w-3.5 h-3.5 text-orange-500 fill-orange-500" />}
+                          </p>
+                          <p className="text-[10px] text-slate-400 font-medium">{prof.league}</p>
+                        </div>
+                      </div>
+
+                      <span className="text-xs font-black text-amber-500">
+                        {prof.score} XP
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-xs text-slate-500 italic">Chargement du classement de la ligue...</p>
+                )}
+              </div>
+            </div>
+
+          </div>
+
+          {/* GESTION DES DEMANDES */}
           <div id="step-leads" className={`md:col-span-2 ${showTutorial && activeTarget === 'step-leads' ? 'relative z-40' : ''}`}>
             <Link 
               href="/prof/dashboard/gestion_demande"

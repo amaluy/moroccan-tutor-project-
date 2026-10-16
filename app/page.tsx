@@ -12,7 +12,7 @@ import {
   Search, MapPin, BookOpen, CheckCircle2, 
   Filter, ShieldCheck, PhoneCall,
   GraduationCap, DollarSign, Laptop, Home, 
-  Award, Loader2, RefreshCcw, UserPlus, ChevronRight, Star, Heart, User,
+  Award, Loader2, RefreshCcw, UserPlus, ChevronRight, Star, User,
   ChevronDown, HelpCircle, Mail, Phone, Sparkles
 } from 'lucide-react';
 
@@ -329,7 +329,7 @@ export default function HomePage() {
       </section>
 
       {/* MATIÈRES POPULAIRES */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-8 py-16 w-full space-y-10">
+      <section className="max-w-7xl mx-auto px-4 sm:px-8 py-12 w-full space-y-8">
         <div className="text-center space-y-3">
           <h2 className="text-2xl sm:text-4xl font-black text-slate-900">Explorez par matière populaire</h2>
           <p className="text-xs sm:text-sm text-slate-600 max-w-xl mx-auto">
@@ -360,268 +360,274 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* CARTE STYLISÉE DU MAROC */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-8 py-12 w-full space-y-8">
-        <div className="text-center space-y-3">
+      {/* SECTION DU HAUT : FILTRE À CÔTÉ DE LA CARTE DU MAROC */}
+      <section id="search-section" className="max-w-[90rem] mx-auto px-4 sm:px-8 py-8 w-full space-y-6">
+        <div className="text-center space-y-2">
           <div className="inline-flex items-center gap-2 bg-purple-100 text-purple-800 px-3.5 py-1 rounded-full text-xs font-bold">
             <MapPin className="w-4 h-4 text-purple-600" />
             <span>Disponible dans tout le Maroc</span>
           </div>
-          <h2 className="text-3xl sm:text-4xl font-black text-slate-900">
+          <h2 className="text-2xl sm:text-4xl font-black text-slate-900">
             Nos professeurs près de chez vous
           </h2>
           <p className="text-xs sm:text-sm text-slate-600 max-w-xl mx-auto">
-            Sélectionnez votre ville sur le dessin ou dans la liste pour afficher directement les profs disponibles.
+            Ajustez vos filtres ou sélectionnez votre ville directement sur la carte interactive du Maroc.
           </p>
         </div>
 
-        <MoroccoMap 
-          selectedCity={selectedCity}
-          onSelectCity={(cityName) => {
-            setSelectedCity(cityName);
-            const resultsElement = document.getElementById('search-results');
-            if (resultsElement) {
-              resultsElement.scrollIntoView({ behavior: 'smooth' });
-            }
-          }} 
-        />
-      </section>
-
-      {/* SECTION FILTRES ET RESULTATS */}
-      <section id="search-results" className="max-w-[90rem] mx-auto px-4 sm:px-8 py-8 w-full grid grid-cols-1 lg:grid-cols-12 gap-8">
-        
-        {/* PANNEAU DE FILTRAGE */}
-        <aside className="lg:col-span-3 space-y-6">
-          <form onSubmit={handleApplyFilters} className="bg-white p-6 rounded-3xl border border-slate-200/85 shadow-sm space-y-5 sticky top-24 backdrop-blur-md">
-            
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-              <h3 className="font-bold text-slate-900 flex items-center gap-2 text-sm">
-                <Filter className="w-4 h-4 text-slate-700" />
-                Filtrer les professeurs
-              </h3>
-              <button 
-                type="button" 
-                onClick={handleReset} 
-                className="text-xs text-slate-500 hover:text-slate-900 font-semibold cursor-pointer flex items-center gap-1 transition group"
-              >
-                <RefreshCcw className="w-3 h-3 group-hover:rotate-180 transition duration-500" />
-                Réinitialiser
-              </button>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                <BookOpen className="w-3.5 h-3.5 text-slate-700" />
-                Matière
-              </label>
-              <select 
-                value={selectedSubject}
-                onChange={(e) => setSelectedSubject(e.target.value)}
-                className="w-full bg-slate-50/80 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-800 font-medium focus:bg-white focus:border-slate-700 focus:ring-4 focus:ring-slate-100 focus:outline-none transition duration-200 cursor-pointer"
-              >
-                <option value="">Toutes les matières</option>
-                {subjects.map((sub, idx) => (
-                  <option key={idx} value={sub}>{sub}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5 text-slate-700" />
-                Ville
-              </label>
-              <input 
-                type="text" 
-                placeholder="Ex: Casablanca, Rabat..." 
-                value={selectedCity}
-                onChange={(e) => setSelectedCity(e.target.value)}
-                className="w-full bg-slate-50/80 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 font-medium focus:bg-white focus:border-slate-700 focus:ring-4 focus:ring-slate-100 focus:outline-none transition duration-200"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                <GraduationCap className="w-3.5 h-3.5 text-slate-700" />
-                Niveau d'études
-              </label>
-              <select 
-                value={selectedLevel}
-                onChange={(e) => setSelectedLevel(e.target.value)}
-                className="w-full bg-slate-50/80 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-800 font-medium focus:bg-white focus:border-slate-700 focus:ring-4 focus:ring-slate-100 focus:outline-none transition duration-200 cursor-pointer"
-              >
-                <option value="">Tous les niveaux</option>
-                {levels.map((lvl, idx) => (
-                  <option key={idx} value={lvl}>{lvl}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                <DollarSign className="w-3.5 h-3.5 text-slate-700" />
-                Tarif horaire
-              </label>
-              <select 
-                value={priceRange}
-                onChange={(e) => setPriceRange(e.target.value)}
-                className="w-full bg-slate-50/80 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-800 font-medium focus:bg-white focus:border-slate-700 focus:ring-4 focus:ring-slate-100 focus:outline-none transition duration-200 cursor-pointer"
-              >
-                <option value="">Tous les tarifs</option>
-                <option value="0-100">Moins de 100 DH/h</option>
-                <option value="100-150">100 DH - 150 DH/h</option>
-                <option value="150-200">150 DH - 200 DH/h</option>
-                <option value="200+">Plus de 200 DH/h</option>
-              </select>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700">Lieu du cours</label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setLocationType(locationType === 'domicile' ? '' : 'domicile')}
-                  className={`flex flex-col items-center justify-center p-3 rounded-xl border text-xs font-semibold transition-all duration-200 cursor-pointer ${
-                    locationType === 'domicile' ? 'bg-slate-100 border-slate-800 text-slate-900 shadow-xs scale-[1.02]' : 'bg-slate-50/80 border-slate-200 text-slate-600 hover:bg-slate-100 hover:border-slate-300'
-                  }`}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          
+          {/* COLONNE GAUCHE (4 COLS) : FILTRE */}
+          <aside className="lg:col-span-4 h-full">
+            <form onSubmit={handleApplyFilters} className="bg-white p-6 rounded-3xl border border-slate-200/85 shadow-md space-y-5 backdrop-blur-md">
+              
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3.5">
+                <h3 className="font-bold text-slate-900 flex items-center gap-2 text-sm">
+                  <Filter className="w-4 h-4 text-purple-600" />
+                  Filtrer les professeurs
+                </h3>
+                <button 
+                  type="button" 
+                  onClick={handleReset} 
+                  className="text-xs text-slate-500 hover:text-slate-900 font-semibold cursor-pointer flex items-center gap-1 transition group"
                 >
-                  <Home className="w-4 h-4 mb-1" />
-                  À domicile
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setLocationType(locationType === 'en_ligne' ? '' : 'en_ligne')}
-                  className={`flex flex-col items-center justify-center p-3 rounded-xl border text-xs font-semibold transition-all duration-200 cursor-pointer ${
-                    locationType === 'en_ligne' ? 'bg-slate-100 border-slate-800 text-slate-900 shadow-xs scale-[1.02]' : 'bg-slate-50/80 border-slate-200 text-slate-600 hover:bg-slate-100 hover:border-slate-300'
-                  }`}
-                >
-                  <Laptop className="w-4 h-4 mb-1" />
-                  En ligne
+                  <RefreshCcw className="w-3 h-3 group-hover:rotate-180 transition duration-500" />
+                  Réinitialiser
                 </button>
               </div>
-            </div>
 
-            <button 
-              type="submit" 
-              className="w-full bg-slate-900 hover:bg-slate-800 text-white font-extrabold py-3.5 rounded-xl text-xs transition-all duration-300 shadow-md shadow-slate-900/10 hover:shadow-slate-900/20 flex items-center justify-center gap-2 cursor-pointer active:scale-95"
-            >
-              <Search className="w-4 h-4" />
-              Appliquer les filtres
-            </button>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                    <BookOpen className="w-3.5 h-3.5 text-slate-700" />
+                    Matière
+                  </label>
+                  <select 
+                    value={selectedSubject}
+                    onChange={(e) => setSelectedSubject(e.target.value)}
+                    className="w-full bg-slate-50/80 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-800 font-medium focus:bg-white focus:border-slate-700 focus:ring-4 focus:ring-slate-100 focus:outline-none transition duration-200 cursor-pointer"
+                  >
+                    <option value="">Toutes les matières</option>
+                    {subjects.map((sub, idx) => (
+                      <option key={idx} value={sub}>{sub}</option>
+                    ))}
+                  </select>
+                </div>
 
-          </form>
-        </aside>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-slate-700" />
+                    Ville
+                  </label>
+                  <input 
+                    type="text" 
+                    placeholder="Ex: Casablanca, Rabat..." 
+                    value={selectedCity}
+                    onChange={(e) => setSelectedCity(e.target.value)}
+                    className="w-full bg-slate-50/80 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 font-medium focus:bg-white focus:border-slate-700 focus:ring-4 focus:ring-slate-100 focus:outline-none transition duration-200"
+                  />
+                </div>
 
-        {/* LISTE DES RÉSULTATS */}
-        <div className="lg:col-span-9 space-y-6">
-          
-          <div className="flex items-center justify-between text-xs px-1">
-            <h2 className="text-lg font-black text-slate-900 flex items-center gap-2">
-              <Award className="w-5 h-5 text-slate-700" />
-              Nos Professeurs au Maroc
-            </h2>
-            <span className="font-bold bg-slate-200/70 text-slate-700 px-3 py-1 rounded-full">{professors.length} trouvé(s)</span>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                    <GraduationCap className="w-3.5 h-3.5 text-slate-700" />
+                    Niveau d'études
+                  </label>
+                  <select 
+                    value={selectedLevel}
+                    onChange={(e) => setSelectedLevel(e.target.value)}
+                    className="w-full bg-slate-50/80 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-800 font-medium focus:bg-white focus:border-slate-700 focus:ring-4 focus:ring-slate-100 focus:outline-none transition duration-200 cursor-pointer"
+                  >
+                    <option value="">Tous les niveaux</option>
+                    {levels.map((lvl, idx) => (
+                      <option key={idx} value={lvl}>{lvl}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                    <DollarSign className="w-3.5 h-3.5 text-slate-700" />
+                    Tarif horaire
+                  </label>
+                  <select 
+                    value={priceRange}
+                    onChange={(e) => setPriceRange(e.target.value)}
+                    className="w-full bg-slate-50/80 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-800 font-medium focus:bg-white focus:border-slate-700 focus:ring-4 focus:ring-slate-100 focus:outline-none transition duration-200 cursor-pointer"
+                  >
+                    <option value="">Tous les tarifs</option>
+                    <option value="0-100">Moins de 100 DH/h</option>
+                    <option value="100-150">100 DH - 150 DH/h</option>
+                    <option value="150-200">150 DH - 200 DH/h</option>
+                    <option value="200+">Plus de 200 DH/h</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700">Lieu du cours</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setLocationType(locationType === 'domicile' ? '' : 'domicile')}
+                    className={`flex flex-col items-center justify-center p-2.5 rounded-xl border text-xs font-semibold transition-all duration-200 cursor-pointer ${
+                      locationType === 'domicile' ? 'bg-purple-600 border-purple-600 text-white shadow-xs' : 'bg-slate-50/80 border-slate-200 text-slate-600 hover:bg-slate-100 hover:border-slate-300'
+                    }`}
+                  >
+                    <Home className="w-4 h-4 mb-1" />
+                    À domicile
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLocationType(locationType === 'en_ligne' ? '' : 'en_ligne')}
+                    className={`flex flex-col items-center justify-center p-2.5 rounded-xl border text-xs font-semibold transition-all duration-200 cursor-pointer ${
+                      locationType === 'en_ligne' ? 'bg-purple-600 border-purple-600 text-white shadow-xs' : 'bg-slate-50/80 border-slate-200 text-slate-600 hover:bg-slate-100 hover:border-slate-300'
+                    }`}
+                  >
+                    <Laptop className="w-4 h-4 mb-1" />
+                    En ligne
+                  </button>
+                </div>
+              </div>
+
+              <button 
+                type="submit" 
+                className="w-full bg-slate-900 hover:bg-slate-800 text-white font-extrabold py-3.5 rounded-xl text-xs transition-all duration-300 shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+              >
+                <Search className="w-4 h-4" />
+                Appliquer les filtres
+              </button>
+
+            </form>
+          </aside>
+
+          {/* COLONNE DROITE (8 COLS) : CARTE DU MAROC */}
+          <div className="lg:col-span-8 h-full">
+            <MoroccoMap 
+              selectedCity={selectedCity}
+              onSelectCity={(cityName) => {
+                setSelectedCity(cityName);
+                const resultsElement = document.getElementById('search-results');
+                if (resultsElement) {
+                  resultsElement.scrollIntoView({ behavior: 'smooth' });
+                }
+              }} 
+            />
           </div>
 
-          {loading ? (
-            <div className="bg-white rounded-3xl border border-slate-200/80 p-16 text-center flex flex-col items-center justify-center gap-3 shadow-xs">
-              <Loader2 className="w-8 h-8 text-slate-700 animate-spin" />
-              <p className="text-sm font-semibold text-slate-600">Recherche des professeurs en cours...</p>
-            </div>
-          ) : professors.length === 0 ? (
-            <div className="bg-white rounded-3xl border border-slate-200/80 p-16 text-center space-y-4 shadow-xs">
-              <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center mx-auto animate-bounce">
-                <Search className="w-6 h-6" />
-              </div>
-              <div className="space-y-1">
-                <p className="text-base font-bold text-slate-900">Aucun professeur trouvé</p>
-                <p className="text-xs text-slate-500">Aucun profil ne correspond exactement à vos critères de recherche actuels.</p>
-              </div>
-              <button 
-                onClick={handleReset} 
-                className="bg-slate-100 text-slate-800 text-xs font-bold px-5 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-200 transition cursor-pointer shadow-xs active:scale-95"
-              >
-                Réinitialiser les filtres
-              </button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {professors.map((prof) => {
-                const nomField = prof.Nom || prof.nom || '';
-                const prenomField = prof.Prénom || prof.prenom || '';
-                const fullName = (nomField || prenomField) ? `${prenomField} ${nomField}`.trim() : (prof.name || 'Professeur');
-                const photo = prof.photo_URL || prof.photo_url || prof.photo || prof.avatar_url;
-                const city = formatCleanText(prof.ville || prof.city) || "Maroc";
-                const subject = formatCleanText(prof.matiere || prof.subject) || "Soutien scolaire";
-                const levelText = formatCleanText(prof.niveau || prof.level);
-                const price = Number(prof.tarif !== undefined && prof.tarif !== null ? prof.tarif : prof.price) || 0;
+        </div>
+      </section>
 
-                return (
-                  <div key={prof.id} className="bg-white rounded-3xl overflow-hidden border border-slate-200/80 shadow-md hover:shadow-xl transition-all duration-300 flex flex-col justify-between group">
-                    <div className="relative h-72 w-full bg-slate-900 overflow-hidden">
-                      {photo ? (
-                        <img src={photo} alt={fullName} className="w-full h-full object-cover group-hover:scale-105 transition duration-700" />
-                      ) : (
-                        <div className="w-full h-full bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 flex items-center justify-center relative overflow-hidden group-hover:scale-105 transition duration-700">
-                          <div className="w-24 h-24 rounded-full bg-slate-600/60 border-2 border-slate-500/50 flex items-center justify-center text-slate-200 shadow-inner backdrop-blur-sm">
-                            <User className="w-12 h-12 stroke-[1.5]" />
-                          </div>
+      {/* SECTION DES RÉSULTATS (PLEINE LARGEUR EN BAS) */}
+      <section id="search-results" className="max-w-[90rem] mx-auto px-4 sm:px-8 py-8 w-full space-y-6">
+        
+        <div className="flex items-center justify-between text-xs px-1 border-b border-slate-200 pb-4">
+          <h2 className="text-xl font-black text-slate-900 flex items-center gap-2">
+            <Award className="w-5 h-5 text-purple-600" />
+            Nos Professeurs au Maroc
+          </h2>
+          <span className="font-bold bg-purple-100 text-purple-800 px-3.5 py-1 rounded-full text-xs">
+            {professors.length} professeur(s) trouvé(s)
+          </span>
+        </div>
+
+        {loading ? (
+          <div className="bg-white rounded-3xl border border-slate-200/80 p-16 text-center flex flex-col items-center justify-center gap-3 shadow-xs">
+            <Loader2 className="w-8 h-8 text-purple-600 animate-spin" />
+            <p className="text-sm font-semibold text-slate-600">Recherche des professeurs en cours...</p>
+          </div>
+        ) : professors.length === 0 ? (
+          <div className="bg-white rounded-3xl border border-slate-200/80 p-16 text-center space-y-4 shadow-xs">
+            <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center mx-auto animate-bounce">
+              <Search className="w-6 h-6" />
+            </div>
+            <div className="space-y-1">
+              <p className="text-base font-bold text-slate-900">Aucun professeur trouvé</p>
+              <p className="text-xs text-slate-500">Aucun profil ne correspond exactement à vos critères de recherche actuels.</p>
+            </div>
+            <button 
+              onClick={handleReset} 
+              className="bg-slate-100 text-slate-800 text-xs font-bold px-5 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-200 transition cursor-pointer shadow-xs active:scale-95"
+            >
+              Réinitialiser les filtres
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {professors.map((prof) => {
+              const nomField = prof.Nom || prof.nom || '';
+              const prenomField = prof.Prénom || prof.prenom || '';
+              const fullName = (nomField || prenomField) ? `${prenomField} ${nomField}`.trim() : (prof.name || 'Professeur');
+              const photo = prof.photo_URL || prof.photo_url || prof.photo || prof.avatar_url;
+              const city = formatCleanText(prof.ville || prof.city) || "Maroc";
+              const subject = formatCleanText(prof.matiere || prof.subject) || "Soutien scolaire";
+              const levelText = formatCleanText(prof.niveau || prof.level);
+              const price = Number(prof.tarif !== undefined && prof.tarif !== null ? prof.tarif : prof.price) || 0;
+
+              return (
+                <div key={prof.id} className="bg-white rounded-3xl overflow-hidden border border-slate-200/80 shadow-md hover:shadow-xl transition-all duration-300 flex flex-col justify-between group">
+                  <div className="relative h-64 w-full bg-slate-900 overflow-hidden">
+                    {photo ? (
+                      <img src={photo} alt={fullName} className="w-full h-full object-cover group-hover:scale-105 transition duration-700" />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 flex items-center justify-center relative overflow-hidden group-hover:scale-105 transition duration-700">
+                        <div className="w-20 h-20 rounded-full bg-slate-600/60 border-2 border-slate-500/50 flex items-center justify-center text-slate-200 shadow-inner backdrop-blur-sm">
+                          <User className="w-10 h-10 stroke-[1.5]" />
                         </div>
-                      )}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                      <div className="absolute top-4 left-4 bg-black/40 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1 rounded-full border border-white/10 flex items-center gap-1.5">
-                        <ShieldCheck className="w-3 h-3 text-emerald-400" />
-                        Vérifié
                       </div>
-                      <div className="absolute bottom-4 left-4 right-4 text-white">
-                        <h3 className="text-xl font-black tracking-tight">{fullName}</h3>
-                        <p className="text-xs text-slate-200 font-medium flex items-center gap-1 mt-0.5">
-                          <MapPin className="w-3.5 h-3.5 text-slate-300" />
-                          {city} (face à face & webcam)
-                        </p>
-                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                    <div className="absolute top-3 left-3 bg-black/40 backdrop-blur-md text-white text-[10px] font-bold px-2.5 py-1 rounded-full border border-white/10 flex items-center gap-1.5">
+                      <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                      Vérifié
                     </div>
-
-                    <div className="p-5 space-y-4 flex flex-col justify-between flex-grow bg-white">
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between text-xs font-bold text-slate-700">
-                          <div className="flex items-center gap-1">
-                            <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
-                            <span>5 (6 avis)</span>
-                          </div>
-                          <span className="bg-emerald-50 text-emerald-700 border border-emerald-200/60 px-2.5 py-0.5 rounded-full text-[10px]">
-                            Disponible
-                          </span>
-                        </div>
-                        <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed font-medium">
-                          <strong className="text-slate-900">{subject}</strong> {levelText ? `- Niveau : ${levelText}. ` : ''} Professeur qualifié prêt à vous accompagner vers la réussite.
-                        </p>
-                      </div>
-
-                      <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
-                        <div>
-                          <div className="text-sm font-black text-slate-900">
-                            {price} MAD<span className="text-[10px] font-normal text-slate-500">/h</span>
-                          </div>
-                          <div className="text-[10px] font-bold text-rose-600">
-                            1er cours offert
-                          </div>
-                        </div>
-                        <Link 
-                          href={`/professeurs/${prof.id}`}
-                          className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold px-5 py-2.5 rounded-xl transition duration-200 shadow-sm active:scale-95"
-                        >
-                          Contacter
-                        </Link>
-                      </div>
+                    <div className="absolute bottom-3 left-3 right-3 text-white">
+                      <h3 className="text-lg font-black tracking-tight">{fullName}</h3>
+                      <p className="text-[11px] text-slate-200 font-medium flex items-center gap-1 mt-0.5">
+                        <MapPin className="w-3 h-3 text-slate-300" />
+                        {city} (face à face & webcam)
+                      </p>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          )}
 
-        </div>
+                  <div className="p-5 space-y-4 flex flex-col justify-between flex-grow bg-white">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-xs font-bold text-slate-700">
+                        <div className="flex items-center gap-1">
+                          <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
+                          <span>5 (6 avis)</span>
+                        </div>
+                        <span className="bg-emerald-50 text-emerald-700 border border-emerald-200/60 px-2.5 py-0.5 rounded-full text-[10px]">
+                          Disponible
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed font-medium">
+                        <strong className="text-slate-900">{subject}</strong> {levelText ? `- Niveau : ${levelText}. ` : ''} Professeur qualifié prêt à vous accompagner vers la réussite.
+                      </p>
+                    </div>
+
+                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                      <div>
+                        <div className="text-sm font-black text-slate-900">
+                          {price} MAD<span className="text-[10px] font-normal text-slate-500">/h</span>
+                        </div>
+                        <div className="text-[10px] font-bold text-rose-600">
+                          1er cours offert
+                        </div>
+                      </div>
+                      <Link 
+                        href={`/professeurs/${prof.id}`}
+                        className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold px-4 py-2 rounded-xl transition duration-200 shadow-sm active:scale-95"
+                      >
+                        Contacter
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
       </section>
 
