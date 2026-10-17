@@ -11,7 +11,7 @@ import {
 import { 
   Edit3, Calendar, Users, ArrowRight, 
   X, Sun, Moon, LogOut, ChevronDown, User, Coins, PlusCircle, MessageSquare, ShieldCheck, Lightbulb, Zap,
-  LayoutGrid, ChevronsLeft, ChevronsRight, Globe
+  LayoutGrid, ChevronsLeft, ChevronsRight, Globe, Trophy, FileText
 } from 'lucide-react';
 
 // Importation des composants du dashboard
@@ -182,12 +182,15 @@ export default function ProfDashboard() {
 
   const leadBalance = profData?.leads_restants ?? 0;
 
+  // MISE À JOUR DE LA NAVIGATION AVEC COMPÉTITION ET RÉGLEMENTATION
   const navItems = [
     { href: '/prof/dashboard', label: "Vue d'ensemble", icon: LayoutGrid },
     { href: '/prof/dashboard/gestion_demande', label: 'Demandes', icon: Users },
     { href: '/prof/dashboard/messagerie', label: 'Messagerie', icon: MessageSquare, badge: unreadCount },
     { href: '/prof/dashboard/disponibilites', label: 'Disponibilités', icon: Calendar },
     { href: '/prof/dashboard/credits', label: 'Leads et crédits', icon: Coins },
+    { href: '/prof/dashboard/competition', label: 'Compétition', icon: Trophy },
+    { href: '/prof/dashboard/reglementation', label: 'Réglementation', icon: FileText },
     { href: '/prof/profile', label: 'Mon profil', icon: User },
   ];
 
