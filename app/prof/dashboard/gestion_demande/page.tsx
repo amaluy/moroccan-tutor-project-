@@ -1,11 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import { 
-  Clock, CheckCircle2, Moon, Sun, 
-  ExternalLink, X, Phone, Mail, BookOpen, Filter, Calendar, RotateCcw
+  Clock, CheckCircle2, 
+  ExternalLink, X, Phone, Mail, BookOpen, Filter, Calendar, RotateCcw, Table
 } from 'lucide-react';
 
 interface Lead {
@@ -26,11 +25,12 @@ interface Lead {
   message?: string;
 }
 
-export default function GestionDemandePage() {
-  const [activeTab, setActiveTab] = useState<'accepted' | 'pending'>('accepted');
-  const [profName, setProfName] = useState('sami el idrissi');
-  const [profImage, setProfImage] = useState('');
-  const [profNiveaux, setProfNiveaux] = useState<string[]>([]);
+interface GestionDemandeProps {
+  initialSubTab?: 'accepted' | 'pending';
+}
+
+export default function GestionDemandePage({ initialSubTab = 'accepted' }: GestionDemandeProps) {
+  const [activeTab, setActiveTab] = useState<'accepted' | 'pending'>(initialSubTab);
   const [profMatiere, setProfMatiere] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -44,16 +44,15 @@ export default function GestionDemandePage() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<Lead | null>(null);
 
-  // États pour les filtres verticaux
+  // États pour les filtres compacts
   const [filterVille, setFilterVille] = useState('all');
   const [filterMatiere, setFilterMatiere] = useState('all');
   const [filterNiveau, setFilterNiveau] = useState('all');
 
-  const toggleTheme = () => {
-    const nextMode = !isDarkMode;
-    setIsDarkMode(nextMode);
-    localStorage.setItem('prof_theme', nextMode ? 'dark' : 'light');
-  };
+  // Synchronisation si le parent change l'onglet
+  useEffect(() => {
+    setActiveTab(initialSubTab);
+  }, [initialSubTab]);
 
   useEffect(() => {
     async function fetchProfAndLeads() {
@@ -64,7 +63,6 @@ export default function GestionDemandePage() {
         const rawEmail = user?.email || localStorage.getItem('professor_email') || 'samielfidrissi@gmail.com';
 
         let currentEmail = rawEmail;
-        let niveaux: string[] = [];
         let matieres: string[] = [];
 
         const { data: allProfs } = await supabase.from('professors').select('*');
@@ -76,26 +74,8 @@ export default function GestionDemandePage() {
             prof = typedProfs.find((p) => typeof p.email === 'string' && p.email.toLowerCase().trim() === rawEmail.toLowerCase().trim());
           }
           if (prof) {
-            const prenom = (prof['Prénom'] as string) || (prof.prenom as string) || '';
-            const nom = (prof['Nom'] as string) || (prof.nom as string) || '';
-            const fullName = `${prenom} ${nom}`.trim();
-            if (fullName) setProfName(fullName);
-            setProfImage((prof.photo_URL as string) || (prof.photo_url as string) || (prof.image_url as string) || (prof.photo as string) || '');
             if (typeof prof.email === 'string') currentEmail = prof.email;
             
-            const rawNiveau = prof.niveau;
-            if (Array.isArray(rawNiveau)) {
-              niveaux = rawNiveau as string[];
-            } else if (typeof rawNiveau === 'string') {
-              try { 
-                const parsed = JSON.parse(rawNiveau);
-                niveaux = Array.isArray(parsed) ? parsed : [rawNiveau];
-              } catch { 
-                const cleaned = rawNiveau.replace(/^\{|\}$/g, '').replace(/"/g, '');
-                niveaux = cleaned.split(',').map((s: string) => s.trim());
-              }
-            }
-
             const rawMatiere = prof.matiere;
             if (Array.isArray(rawMatiere)) {
               matieres = rawMatiere as string[];
@@ -109,7 +89,6 @@ export default function GestionDemandePage() {
             }
           }
         }
-        setProfNiveaux(niveaux);
         setProfMatiere(matieres);
 
         if (currentEmail) {
@@ -191,270 +170,223 @@ export default function GestionDemandePage() {
     setFilterNiveau('all');
   };
 
-  const acceptedCount = leads.filter(l => l.status === 'accepted').length;
-  const pendingCount = leads.filter(l => l.status === 'pending').length;
+  const hasActiveFilters = filterVille !== 'all' || filterMatiere !== 'all' || filterNiveau !== 'all';
 
   return (
-    <div className={`min-h-screen flex flex-col relative transition-colors duration-300 ${isDarkMode ? 'bg-[#0A0A0A] text-slate-100' : 'bg-[#F8FAFC] text-slate-900'}`}>
+    <div className="w-full space-y-4">
       
-      {/* NAVBAR */}
-      <header className={`sticky top-0 z-40 border-b px-6 py-3 flex items-center justify-between transition-colors duration-300 ${
-        isDarkMode ? 'bg-[#0A0A0A]/90 border-slate-800 backdrop-blur-md' : 'bg-white/90 border-slate-200 backdrop-blur-md'
+      {/* BARRE DE FILTRES COMPACTE (Bulle de filtre discrète au-dessus du tableau) */}
+      <div className={`p-3 rounded-2xl border shadow-xs flex flex-wrap items-center justify-between gap-3 ${
+        isDarkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200'
       }`}>
-        <div className={`flex p-1 rounded-xl border ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-slate-100 border-slate-200'}`}>
-          <button
-            onClick={() => setActiveTab('accepted')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${
-              activeTab === 'accepted' ? 'bg-orange-500 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <CheckCircle2 className="w-4 h-4" />
-            <span>Étudiants Acceptés ({acceptedCount})</span>
-          </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-orange-500/10 text-orange-500 text-xs font-bold">
+            <Filter className="w-3.5 h-3.5" />
+            <span>Filtres :</span>
+          </div>
 
-          <button
-            onClick={() => setActiveTab('pending')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${
-              activeTab === 'pending' ? 'bg-orange-500 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
+          {/* Sélecteur Ville */}
+          <select
+            value={filterVille}
+            onChange={(e) => setFilterVille(e.target.value)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-medium border outline-none transition ${
+              isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'
             }`}
           >
-            <Clock className="w-4 h-4" />
-            <span>Demandes en attente ({pendingCount})</span>
-          </button>
+            <option value="all">📍 Toutes les villes</option>
+            {availableVilles.map(ville => (
+              <option key={ville} value={ville}>{ville}</option>
+            ))}
+          </select>
+
+          {/* Sélecteur Matière */}
+          <select
+            value={filterMatiere}
+            onChange={(e) => setFilterMatiere(e.target.value)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-medium border outline-none transition capitalize ${
+              isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'
+            }`}
+          >
+            <option value="all">📚 Toutes les matières</option>
+            {availableMatieres.map(mat => (
+              <option key={mat} value={mat}>{mat}</option>
+            ))}
+          </select>
+
+          {/* Sélecteur Niveau */}
+          <select
+            value={filterNiveau}
+            onChange={(e) => setFilterNiveau(e.target.value)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-medium border outline-none transition capitalize ${
+              isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'
+            }`}
+          >
+            <option value="all">🎓 Tous les niveaux</option>
+            {availableNiveaux.map(niv => (
+              <option key={niv} value={niv}>{niv}</option>
+            ))}
+          </select>
         </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={toggleTheme}
-            className={`p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-center ${
-              isDarkMode ? 'bg-slate-900 text-amber-400 border-slate-700 hover:bg-slate-800' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-            }`}
+        {hasActiveFilters && (
+          <button 
+            onClick={resetFilters}
+            className="text-xs font-bold text-rose-500 hover:text-rose-600 flex items-center gap-1 px-3 py-1.5 rounded-xl bg-rose-500/10 transition cursor-pointer"
           >
-            {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            <RotateCcw className="w-3 h-3" /> Réinitialiser
           </button>
+        )}
+      </div>
 
-          <div className={`flex items-center gap-2.5 px-3 py-1.5 rounded-full border ${
-            isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
-          }`}>
-            <div className="w-7 h-7 rounded-full overflow-hidden border border-orange-500 bg-slate-200 shrink-0 relative">
-              {profImage ? (
-                <Image src={profImage} alt={profName} fill className="object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center font-bold text-xs text-slate-700">
-                  {profName[0] || 's'}
-                </div>
-              )}
-            </div>
-            <span className={`text-xs font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>
-              {profName}
+      {/* TABLEAU PLEINE LARGEUR STYLE EXCEL */}
+      <div className={`rounded-2xl border overflow-hidden shadow-xl w-full ${
+        isDarkMode ? 'bg-slate-900/80 border-slate-700' : 'bg-white border-slate-300'
+      }`}>
+        
+        <div className={`px-5 py-3 border-b flex items-center justify-between text-xs font-bold ${
+          isDarkMode ? 'bg-slate-950 border-slate-700 text-slate-400' : 'bg-slate-100 border-slate-300 text-slate-600'
+        }`}>
+          <div className="flex items-center gap-2">
+            <Table className="w-4 h-4 text-orange-500" />
+            <span className="capitalize">
+              {activeTab === 'accepted' ? 'Étudiants Acceptés' : 'Demandes en attente'}
             </span>
           </div>
+          <span className="text-xs font-black bg-orange-500/10 text-orange-500 px-3 py-1 rounded-lg border border-orange-500/20">
+            {filteredLeads.length} ligne(s)
+          </span>
         </div>
-      </header>
 
-      {/* CONTENU PRINCIPAL AVEC MISE EN PAGE FLEX (Filtres verticaux à gauche / Tableau à droite) */}
-      <main className="flex-1 p-6 md:p-10 max-w-7xl mx-auto w-full">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
-          
-          {/* PANNEAU DE FILTRES VERTICAL (colonne de gauche) */}
-          <div className={`p-5 rounded-3xl border shadow-sm space-y-5 lg:sticky lg:top-24 ${
-            isDarkMode ? 'bg-slate-900/80 border-slate-800' : 'bg-white border-slate-200'
-          }`}>
-            <div className="flex items-center justify-between border-b pb-3 border-slate-700/30">
-              <h2 className="text-xs font-black uppercase tracking-wider flex items-center gap-2 text-orange-500">
-                <Filter className="w-4 h-4" /> Filtrer les étudiants
-              </h2>
-              <button 
-                onClick={resetFilters}
-                className="text-[11px] font-bold text-slate-400 hover:text-orange-500 flex items-center gap-1 transition cursor-pointer"
-              >
-                <RotateCcw className="w-3 h-3" /> Réinitialiser
-              </button>
-            </div>
+        <div className="overflow-x-auto w-full">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className={`text-[11px] uppercase tracking-wider font-extrabold ${
+                isDarkMode ? 'bg-slate-900/90 text-slate-300' : 'bg-slate-200 text-slate-700'
+              }`}>
+                <th className="py-3.5 px-5 border-r border-b border-slate-300 dark:border-slate-700">Nom de l&apos;étudiant</th>
+                <th className="py-3.5 px-5 border-r border-b border-slate-300 dark:border-slate-700">Matière(s) / Cours</th>
+                <th className="py-3.5 px-5 border-r border-b border-slate-300 dark:border-slate-700">Niveau (Grade)</th>
+                <th className="py-3.5 px-5 border-r border-b border-slate-300 dark:border-slate-700">Statut / Engagement</th>
+                <th className="py-3.5 px-5 border-r border-b border-slate-300 dark:border-slate-700">Date et Heure</th>
+                <th className="py-3.5 px-5 border-b border-slate-300 dark:border-slate-700 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody className="text-xs">
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="py-16 text-center text-slate-400">Chargement des données du tableau...</td>
+                </tr>
+              ) : filteredLeads.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-16 text-center text-slate-400">Aucun étudiant trouvé avec ces critères.</td>
+                </tr>
+              ) : (
+                filteredLeads.map((item, index) => {
+                  const fullName = `${item.student_name || ''} ${item.student_family_name || ''}`.trim() || 'Étudiant';
+                  const subjectsText = getMatchedSubjects(item);
+                  const studentGrade = getStudentGrade(item);
+                  const dateValue = item.lead_date || item.created_at;
 
-            <div className="space-y-4">
-              
-              {/* Filtre par Ville */}
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-bold uppercase text-slate-400">Ville</label>
-                <select
-                  value={filterVille}
-                  onChange={(e) => setFilterVille(e.target.value)}
-                  className={`w-full p-2.5 rounded-xl text-xs font-medium border outline-none transition ${
-                    isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'
-                  }`}
-                >
-                  <option value="all">Toutes les villes</option>
-                  {availableVilles.map(ville => (
-                    <option key={ville} value={ville}>{ville}</option>
-                  ))}
-                </select>
-              </div>
+                  const parsedDate = dateValue ? new Date(dateValue) : null;
+                  const isValidDate = parsedDate && !isNaN(parsedDate.getTime());
+                  const hasTime = isValidDate && (parsedDate.getHours() !== 0 || parsedDate.getMinutes() !== 0);
 
-              {/* Filtre par Matière */}
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-bold uppercase text-slate-400">Matière</label>
-                <select
-                  value={filterMatiere}
-                  onChange={(e) => setFilterMatiere(e.target.value)}
-                  className={`w-full p-2.5 rounded-xl text-xs font-medium border outline-none transition capitalize ${
-                    isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'
-                  }`}
-                >
-                  <option value="all">Toutes les matières</option>
-                  {availableMatieres.map(mat => (
-                    <option key={mat} value={mat}>{mat}</option>
-                  ))}
-                </select>
-              </div>
+                  const isEven = index % 2 === 0;
+                  const rowBg = isDarkMode 
+                    ? (isEven ? 'bg-slate-900/40' : 'bg-slate-950/40') 
+                    : (isEven ? 'bg-white' : 'bg-slate-50/70');
 
-              {/* Filtre par Niveau */}
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-bold uppercase text-slate-400">Niveau</label>
-                <select
-                  value={filterNiveau}
-                  onChange={(e) => setFilterNiveau(e.target.value)}
-                  className={`w-full p-2.5 rounded-xl text-xs font-medium border outline-none transition capitalize ${
-                    isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'
-                  }`}
-                >
-                  <option value="all">Tous les niveaux</option>
-                  {availableNiveaux.map(niv => (
-                    <option key={niv} value={niv}>{niv}</option>
-                  ))}
-                </select>
-              </div>
-
-            </div>
-          </div>
-
-          {/* TABLEAU DES DEMANDES (colonne de droite sur grand écran) */}
-          <div className="lg:col-span-3">
-            <div className={`rounded-3xl border overflow-hidden shadow-xl ${isDarkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200'}`}>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className={`border-b text-[11px] uppercase tracking-wider font-extrabold ${
-                      isDarkMode ? 'bg-slate-900/90 border-slate-800 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-600'
+                  return (
+                    <tr key={item.id} className={`${rowBg} transition-colors ${
+                      isDarkMode ? 'hover:bg-slate-800/60' : 'hover:bg-amber-50/40'
                     }`}>
-                      <th className="py-4 px-6">Nom de l&apos;étudiant</th>
-                      <th className="py-4 px-6">Matière(s) / Cours</th>
-                      <th className="py-4 px-6">Niveau (Grade)</th>
-                      <th className="py-4 px-6">Statut / Engagement</th>
-                      <th className="py-4 px-6">Date et Heure</th>
-                      <th className="py-4 px-6 text-right">Fiche Profil Résumé</th>
+                      <td className="py-3.5 px-5 font-bold border-r border-b border-slate-200 dark:border-slate-800 flex items-center gap-3">
+                        <div className="w-7 h-7 rounded-lg bg-orange-500/10 text-orange-500 font-black flex items-center justify-center shrink-0 text-xs">
+                          {fullName[0] || 'E'}
+                        </div>
+                        <div className="truncate">
+                          <span className={isDarkMode ? 'text-slate-100' : 'text-slate-900'}>{fullName}</span>
+                          {item.student_ville && (
+                            <p className="text-[10px] text-slate-400 font-normal">{item.student_ville}</p>
+                          )}
+                        </div>
+                      </td>
+
+                      <td className="py-3.5 px-5 font-medium border-r border-b border-slate-200 dark:border-slate-800">
+                        <span className="bg-orange-500/10 text-orange-500 px-2.5 py-1 rounded-md border border-orange-500/20 font-semibold capitalize">
+                          {subjectsText}
+                        </span>
+                      </td>
+
+                      <td className="py-3.5 px-5 font-medium capitalize border-r border-b border-slate-200 dark:border-slate-800">
+                        {studentGrade ? (
+                          <span className={`px-2.5 py-1 rounded-md border font-semibold ${isDarkMode ? 'bg-slate-800 text-slate-200 border-slate-700' : 'bg-slate-100 text-slate-700 border-slate-200'}`}>
+                            {studentGrade}
+                          </span>
+                        ) : (
+                          '-'
+                        )}
+                      </td>
+
+                      <td className="py-3.5 px-5 border-r border-b border-slate-200 dark:border-slate-800">
+                        {item.status === 'accepted' ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Engagé</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                            <Clock className="w-3.5 h-3.5" />
+                            <span>En attente</span>
+                          </span>
+                        )}
+                      </td>
+
+                      <td className="py-3.5 px-5 border-r border-b border-slate-200 dark:border-slate-800">
+                        {isValidDate ? (
+                          <div className="space-y-0.5">
+                            <div className={`font-bold flex items-center gap-1.5 ${isDarkMode ? 'text-slate-200' : 'text-slate-900'}`}>
+                              <Calendar className="w-3 h-3 text-orange-500 shrink-0" />
+                              {parsedDate.toLocaleDateString('fr-FR', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric'
+                              })}
+                            </div>
+                            {hasTime && (
+                              <div className={`text-[10px] font-medium flex items-center gap-1.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                                <Clock className="w-2.5 h-2.5 text-orange-400 shrink-0" />
+                                {parsedDate.toLocaleTimeString('fr-FR', {
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-slate-400">-</span>
+                        )}
+                      </td>
+
+                      <td className="py-3.5 px-5 border-b border-slate-200 dark:border-slate-800 text-right">
+                        <button
+                          onClick={() => setSelectedStudent(item)}
+                          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-orange-500/10 text-orange-500 font-bold hover:bg-orange-500 hover:text-white transition-all cursor-pointer shadow-xs"
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                          <span>Voir</span>
+                        </button>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-700/30 text-xs">
-                    {loading ? (
-                      <tr>
-                        <td colSpan={6} className="py-8 text-center text-slate-400">Chargement des données...</td>
-                      </tr>
-                    ) : filteredLeads.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="py-8 text-center text-slate-400">Aucun étudiant trouvé avec ces critères.</td>
-                      </tr>
-                    ) : (
-                      filteredLeads.map((item) => {
-                        const fullName = `${item.student_name || ''} ${item.student_family_name || ''}`.trim() || 'Étudiant';
-                        const subjectsText = getMatchedSubjects(item);
-                        const studentGrade = getStudentGrade(item);
-                        const dateValue = item.lead_date || item.created_at;
-
-                        const parsedDate = dateValue ? new Date(dateValue) : null;
-                        const isValidDate = parsedDate && !isNaN(parsedDate.getTime());
-                        const hasTime = isValidDate && (parsedDate.getHours() !== 0 || parsedDate.getMinutes() !== 0);
-
-                        return (
-                          <tr key={item.id} className={`transition-colors ${isDarkMode ? 'hover:bg-slate-800/40' : 'hover:bg-slate-50'}`}>
-                            <td className="py-4 px-6 font-bold flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-full bg-orange-500/10 text-orange-500 font-black flex items-center justify-center shrink-0">
-                                {fullName[0] || 'E'}
-                              </div>
-                              <div>
-                                <span className={isDarkMode ? 'text-slate-100' : 'text-slate-900'}>{fullName}</span>
-                                {item.student_ville && (
-                                  <p className="text-[10px] text-slate-400 font-normal">{item.student_ville}</p>
-                                )}
-                              </div>
-                            </td>
-                            <td className="py-4 px-6 font-medium">
-                              <span className="bg-orange-500/10 text-orange-500 px-2.5 py-1 rounded-lg border border-orange-500/20 font-semibold capitalize">
-                                {subjectsText}
-                              </span>
-                            </td>
-                            <td className="py-4 px-6 font-medium capitalize">
-                              {studentGrade ? (
-                                <span className={`px-2.5 py-1 rounded-lg border font-semibold ${isDarkMode ? 'bg-slate-800 text-slate-200 border-slate-700' : 'bg-slate-100 text-slate-700 border-slate-200'}`}>
-                                  {studentGrade}
-                                </span>
-                              ) : (
-                                '-'
-                              )}
-                            </td>
-                            <td className="py-4 px-6">
-                              {item.status === 'accepted' ? (
-                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
-                                  <CheckCircle2 className="w-3.5 h-3.5" />
-                                  <span>Engagé</span>
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black bg-amber-500/10 text-amber-500 border border-amber-500/20">
-                                  <Clock className="w-3.5 h-3.5" />
-                                  <span>En attente</span>
-                                </span>
-                              )}
-                            </td>
-                            
-                            <td className="py-4 px-6">
-                              {isValidDate ? (
-                                <div className="space-y-0.5">
-                                  <div className={`font-bold flex items-center gap-1.5 ${isDarkMode ? 'text-slate-200' : 'text-slate-900'}`}>
-                                    <Calendar className="w-3.5 h-3.5 text-orange-500 shrink-0" />
-                                    {parsedDate.toLocaleDateString('fr-FR', {
-                                      day: '2-digit',
-                                      month: '2-digit',
-                                      year: 'numeric'
-                                    })}
-                                  </div>
-                                  {hasTime && (
-                                    <div className={`text-[11px] font-medium flex items-center gap-1.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                                      <Clock className="w-3 h-3 text-orange-400 shrink-0" />
-                                      {parsedDate.toLocaleTimeString('fr-FR', {
-                                        hour: '2-digit',
-                                        minute: '2-digit'
-                                      })}
-                                    </div>
-                                  )}
-                                </div>
-                              ) : (
-                                <span className="text-slate-400">-</span>
-                              )}
-                            </td>
-
-                            <td className="py-4 px-6 text-right">
-                              <button
-                                onClick={() => setSelectedStudent(item)}
-                                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-orange-500/10 text-orange-500 font-bold hover:bg-orange-500 hover:text-white transition-all cursor-pointer shadow-sm"
-                              >
-                                <ExternalLink className="w-3.5 h-3.5" />
-                                <span>Voir la fiche</span>
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         </div>
-      </main>
+      </div>
 
-      {/* MODALE DU TABLEAU RÉSUMÉ DE L'ÉTUDIANT */}
+      {/* MODALE DE LA FICHE ÉTUDIANT */}
       {selectedStudent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <div className={`p-6 rounded-3xl border shadow-2xl max-w-md w-full space-y-6 relative ${

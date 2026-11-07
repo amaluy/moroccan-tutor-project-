@@ -6,13 +6,12 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import { 
-  Users, Calendar, 
-  X, Sun, Moon, LogOut, ChevronDown, User, Coins, PlusCircle, MessageSquare, 
-  LayoutGrid, ChevronsLeft, ChevronsRight, Trophy, FileText, GraduationCap, TrendingUp, BarChart3, TrendingDown, ArrowUpRight
+  Users, 
+  X, Sun, Moon, LogOut, ChevronDown, User, Coins, PlusCircle, 
+  LayoutGrid, ChevronsLeft, ChevronsRight, GraduationCap, BarChart3, ArrowUpRight, TrendingDown, Megaphone, CheckCircle2, Clock
 } from 'lucide-react';
 
 import GestionDemandeView from './gestion_demande/page';
-import MessagerieView from './messagerie/page';
 
 interface Professor {
   id: string | number;
@@ -37,13 +36,16 @@ export default function ProfDashboard() {
   const [isAvailable, setIsAvailable] = useState(true);
   const [loading, setLoading] = useState(true);
   
-  const [unreadCount, setUnreadCount] = useState(0);
+  const [acceptedCount, setAcceptedCount] = useState(0);
+  const [pendingCount, setPendingCount] = useState(0);
 
-  // ÉTATS DE NAVIGATION ET FILTRE TEMPOREL
-  const [activeTab, setActiveTab] = useState<'overview' | 'demandes' | 'messagerie'>('overview');
+  // NAVIGATION & SOUS-PAGES DEMANDES
+  const [activeTab, setActiveTab] = useState<'overview' | 'demandes' | 'publicites'>('overview');
+  const [demandeSubTab, setDemandeSubTab] = useState<'accepted' | 'pending'>('accepted');
+  const [demandesOpen, setDemandesOpen] = useState(true);
   const [timeRange, setTimeRange] = useState<'semaine' | 'mois' | 'annee'>('semaine');
 
-  // DONNÉES ANALYTIQUES POUR LE GRAPHIQUE ET LES COMPARAISONS
+  // ANALYTICS
   const [chartData, setChartData] = useState<any[]>([]);
   const [periodTotal, setPeriodTotal] = useState(0);
   const [growthPercentage, setGrowthPercentage] = useState('+14.2%');
@@ -120,17 +122,18 @@ export default function ProfDashboard() {
 
             const profEmailTarget = (prof.email || rawEmail || '').toLowerCase().trim();
             
-            // Récupération des leads pour le badge de notification des demandes
+            // Compteurs pour les sous-pages de Demandes
             const { data: leadsData } = await supabase
               .from('leads')
               .select('*')
               .or(`professor_email.eq.${profEmailTarget},professor_id.eq.${prof.id}`);
 
             if (leadsData) {
-              setUnreadCount(leadsData.filter((l: any) => l.is_read === false).length);
+              setAcceptedCount(leadsData.filter((l: any) => l.status === 'accepted').length);
+              setPendingCount(leadsData.filter((l: any) => l.status === 'pending').length);
             }
 
-            // RÉCUPÉRATION DES VUES DEPUIS SUPABASE (Table profile_views)
+            // RÉCUPÉRATION DES VUES DU PROFIL
             const { data: viewsData, error: viewsError } = await supabase
               .from('profile_views')
               .select('*')
@@ -247,7 +250,7 @@ export default function ProfDashboard() {
   return (
     <div className={`min-h-screen flex transition-colors duration-300 ${isDarkMode ? 'bg-[#0A0A0A] text-slate-100' : 'bg-[#F8FAFC] text-slate-900'}`}>
       
-      {/* SIDEBAR */}
+      {/* SIDEBAR AVEC SOUS-MENU DEMANDES */}
       {mobileOpen && <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setMobileOpen(false)} />}
       
       <aside
@@ -289,39 +292,86 @@ export default function ProfDashboard() {
             <span className={`flex-1 text-left ${collapsed ? 'lg:hidden' : ''}`}>Vue d&apos;ensemble</span>
           </button>
 
-          <button
-            onClick={() => { setActiveTab('demandes'); setMobileOpen(false); }}
-            className={`w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all cursor-pointer ${
-              collapsed ? 'lg:justify-center lg:px-0' : ''
-            } ${activeTab === 'demandes' ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20 font-bold' : 'text-slate-400 hover:bg-slate-800/80 hover:text-white'}`}
-          >
-            <span className="relative">
-              <Users className="size-[18px]" />
-              {unreadCount > 0 && collapsed && <span className="absolute -right-1 -top-1 hidden size-2 rounded-full bg-rose-500 lg:block" />}
-            </span>
-            <span className={`flex-1 text-left ${collapsed ? 'lg:hidden' : ''}`}>Demandes</span>
-            {unreadCount > 0 && !collapsed && (
-              <span className="rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-black text-white">
-                {unreadCount > 9 ? '9+' : unreadCount}
-              </span>
+          {/* GROUPE DEMANDES AVEC SOUS-NAVBAR INTEGRÉE */}
+          <div className="space-y-1">
+            <button
+              onClick={() => { 
+                setActiveTab('demandes'); 
+                setDemandesOpen(!demandesOpen);
+              }}
+              className={`w-full flex items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium transition-all cursor-pointer ${
+                collapsed ? 'lg:justify-center lg:px-0' : ''
+              } ${activeTab === 'demandes' ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20 font-bold' : 'text-slate-400 hover:bg-slate-800/80 hover:text-white'}`}
+            >
+              <div className="flex items-center gap-3">
+                <Users className="size-[18px]" />
+                <span className={`text-left ${collapsed ? 'lg:hidden' : ''}`}>Demandes</span>
+              </div>
+              {!collapsed && (
+                <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${demandesOpen ? 'rotate-180' : ''}`} />
+              )}
+            </button>
+
+            {/* SOUS-PAGES DANS LA NAVBAR LATÉRALE */}
+            {demandesOpen && !collapsed && (
+              <div className="pl-6 space-y-1 pt-1">
+                <button
+                  onClick={() => { 
+                    setActiveTab('demandes'); 
+                    setDemandeSubTab('accepted'); 
+                    setMobileOpen(false); 
+                  }}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    activeTab === 'demandes' && demandeSubTab === 'accepted' 
+                      ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' 
+                      : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Étudiants Acceptés</span>
+                  </div>
+                  <span className="bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full text-[10px]">
+                    {acceptedCount}
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => { 
+                    setActiveTab('demandes'); 
+                    setDemandeSubTab('pending'); 
+                    setMobileOpen(false); 
+                  }}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    activeTab === 'demandes' && demandeSubTab === 'pending' 
+                      ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' 
+                      : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Demandes en attente</span>
+                  </div>
+                  <span className="bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full text-[10px]">
+                    {pendingCount}
+                  </span>
+                </button>
+              </div>
             )}
-          </button>
+          </div>
 
           <button
-            onClick={() => { setActiveTab('messagerie'); setMobileOpen(false); }}
+            onClick={() => { setActiveTab('publicites'); setMobileOpen(false); }}
             className={`w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all cursor-pointer ${
               collapsed ? 'lg:justify-center lg:px-0' : ''
-            } ${activeTab === 'messagerie' ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20 font-bold' : 'text-slate-400 hover:bg-slate-800/80 hover:text-white'}`}
+            } ${activeTab === 'publicites' ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20 font-bold' : 'text-slate-400 hover:bg-slate-800/80 hover:text-white'}`}
           >
-            <MessageSquare className="size-[18px]" />
-            <span className={`flex-1 text-left ${collapsed ? 'lg:hidden' : ''}`}>Messagerie</span>
+            <Megaphone className="size-[18px]" />
+            <span className={`flex-1 text-left ${collapsed ? 'lg:hidden' : ''}`}>Gérer mes publicités</span>
           </button>
 
           {[
-            { href: '/prof/dashboard/disponibilites', label: 'Disponibilités', icon: Calendar },
             { href: '/prof/dashboard/credits', label: 'Leads et crédits', icon: Coins },
-            { href: '/prof/dashboard/competition', label: 'Compétition', icon: Trophy },
-            { href: '/prof/dashboard/reglementation', label: 'Réglementation', icon: FileText },
             { href: '/prof/profile', label: 'Mon profil', icon: User },
           ].map((n) => {
             const Icon = n.icon;
@@ -368,8 +418,8 @@ export default function ProfDashboard() {
               </button>
               <h2 className="text-base font-bold tracking-tight">
                 {activeTab === 'overview' && "Tableau de bord"}
-                {activeTab === 'demandes' && "Gestion des Demandes"}
-                {activeTab === 'messagerie' && "Messagerie"}
+                {activeTab === 'demandes' && `Gestion des Demandes (${demandeSubTab === 'accepted' ? 'Étudiants Acceptés' : 'En attente'})`}
+                {activeTab === 'publicites' && "Gérer mes Publicités"}
               </h2>
             </div>
 
@@ -463,7 +513,6 @@ export default function ProfDashboard() {
           
           {activeTab === 'overview' && (
             <>
-              {/* EN-TÊTE GRANDE ÉCRITURE ET NOM & PRÉNOM */}
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b pb-8 border-slate-200 dark:border-slate-800">
                 <div className="space-y-3">
                   <h1 className="text-3xl sm:text-4xl font-black tracking-tight capitalize">
@@ -486,7 +535,7 @@ export default function ProfDashboard() {
                 </div>
               </div>
 
-              {/* RAPPORT DE VISIBILITÉ DESIGN ULTRA-MODERN (SAAS STYLE) */}
+              {/* RAPPORT DE VISIBILITÉ */}
               <div className="w-full">
                 <div className={`rounded-3xl p-8 border transition-all duration-300 shadow-xl relative overflow-hidden backdrop-blur-xl ${
                   isDarkMode 
@@ -494,10 +543,8 @@ export default function ProfDashboard() {
                     : 'bg-white border-slate-200/90 shadow-slate-200/50 text-slate-900'
                 }`}>
                   
-                  {/* Effet lumineux de fond moderne */}
                   <div className="absolute top-0 right-0 w-96 h-96 bg-orange-500/5 rounded-full blur-3xl pointer-events-none" />
 
-                  {/* Top du widget : Titre et Sélecteurs de Période style Segmented Control */}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-100 dark:border-slate-800/60 relative z-10">
                     <div className="flex items-center gap-3.5">
                       <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 text-white flex items-center justify-center shadow-lg shadow-orange-500/25">
@@ -528,7 +575,6 @@ export default function ProfDashboard() {
                     </div>
                   </div>
 
-                  {/* Section des métriques clés */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-8 relative z-10">
                     <div className="flex flex-col justify-center">
                       <span className="text-xs font-semibold text-slate-400 tracking-wide uppercase mb-1">
@@ -562,7 +608,6 @@ export default function ProfDashboard() {
                     </div>
                   </div>
 
-                  {/* Graphique interactif moderne */}
                   <div className="pt-4 pb-2 relative z-10">
                     <div className="flex items-center justify-between mb-6">
                       <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
@@ -578,12 +623,10 @@ export default function ProfDashboard() {
                         const heightPercent = Math.max((item.views / maxBarValue) * 100, 12);
                         return (
                           <div key={idx} className="flex flex-col items-center gap-3 h-full justify-end group">
-                            {/* Bulle de valeur au survol */}
                             <span className="text-xs font-black text-orange-500 bg-orange-500/10 dark:bg-orange-500/20 px-2 py-0.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200 scale-90 group-hover:scale-100">
                               {item.views}
                             </span>
                             
-                            {/* Barre verticale élégante */}
                             <div className="w-full max-w-[48px] h-full flex items-end justify-center bg-slate-200/40 dark:bg-slate-800/40 rounded-2xl p-1">
                               <div 
                                 style={{ height: `${heightPercent}%` }}
@@ -591,7 +634,6 @@ export default function ProfDashboard() {
                               />
                             </div>
                             
-                            {/* Label en bas */}
                             <span className="text-xs font-bold text-slate-400 group-hover:text-orange-500 transition-colors truncate max-w-full">
                               {item.day}
                             </span>
@@ -607,7 +649,36 @@ export default function ProfDashboard() {
           )}
 
           {activeTab === 'demandes' && <GestionDemandeView />}
-          {activeTab === 'messagerie' && <MessagerieView />}
+
+          {activeTab === 'publicites' && (
+            <div className="w-full space-y-6">
+              <div className="border-b pb-6 border-slate-200 dark:border-slate-800">
+                <h1 className="text-2xl sm:text-3xl font-black tracking-tight">Gérer mes Publicités</h1>
+                <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium mt-1">
+                  Boostez votre visibilité auprès des élèves et des parents en mettant en avant votre profil sur ProfMaroc.
+                </p>
+              </div>
+
+              <div className={`p-8 rounded-3xl border ${isDarkMode ? 'bg-slate-900/60 border-slate-800 text-white' : 'bg-white border-slate-200 shadow-xs'}`}>
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="w-12 h-12 rounded-2xl bg-orange-500/10 text-orange-500 flex items-center justify-center font-bold">
+                    <Megaphone className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-black">Campagne de mise en avant active</h3>
+                    <p className="text-xs text-slate-400">Vos annonces publicitaires et options de sponsorisation de profil.</p>
+                  </div>
+                </div>
+
+                <div className={`p-6 rounded-2xl border text-center space-y-4 ${isDarkMode ? 'bg-slate-950/40 border-slate-800' : 'bg-slate-50 border-slate-100'}`}>
+                  <p className="text-sm font-bold text-slate-500 dark:text-slate-400">Aucune campagne publicitaire active pour le moment.</p>
+                  <button className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-2xl text-xs font-black shadow-lg shadow-orange-500/20 transition-transform hover:scale-105 cursor-pointer">
+                    Lancer une campagne publicitaire 🚀
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
         </main>
       </div>
