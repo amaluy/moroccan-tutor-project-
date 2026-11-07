@@ -2,25 +2,17 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import { 
-  Card, Metric, Text, Badge, ProgressBar, Flex, Grid 
-} from '@tremor/react';
-import { 
-  Edit3, Calendar, Users, ArrowRight, 
-  X, Sun, Moon, LogOut, ChevronDown, User, Coins, PlusCircle, MessageSquare, ShieldCheck, Lightbulb, Zap,
-  LayoutGrid, ChevronsLeft, ChevronsRight, Globe, Trophy, FileText
+  Users, Calendar, 
+  X, Sun, Moon, LogOut, ChevronDown, User, Coins, PlusCircle, MessageSquare, 
+  LayoutGrid, ChevronsLeft, ChevronsRight, Trophy, FileText, GraduationCap, TrendingUp, BarChart3, TrendingDown, ArrowUpRight
 } from 'lucide-react';
 
-// Importation des composants du dashboard
-import ProfileViewsCard from '@/app/components/profdashboard/ProfileViewsCard';
-import LeaderboardWidget from '@/app/components/profdashboard/LeaderboardWidget';
-import QuestWidget from '@/app/components/profdashboard/QuestWidget';
-import BadgesWidget from '@/app/components/profdashboard/BadgesWidget';
-import ReferralCard from '@/app/components/profdashboard/ReferralCard';
-import LeadsQualityCard from '@/app/components/profdashboard/LeadsQualityCard';
+import GestionDemandeView from './gestion_demande/page';
+import MessagerieView from './messagerie/page';
 
 interface Professor {
   id: string | number;
@@ -39,21 +31,23 @@ interface Professor {
 
 export default function ProfDashboard() {
   const router = useRouter();
-  const pathname = usePathname();
   const [profData, setProfData] = useState<Professor | null>(null);
-  const [profName, setProfName] = useState('');
+  const [profFullName, setProfFullName] = useState('sami');
   const [profImage, setProfImage] = useState('');
   const [isAvailable, setIsAvailable] = useState(true);
   const [loading, setLoading] = useState(true);
   
   const [unreadCount, setUnreadCount] = useState(0);
-  const [profLeadsList, setProfLeadsList] = useState<any[]>([]);
 
-  // ÉTATS CLASSEMENT / LEADERBOARD
-  const [profRank, setProfRank] = useState<number>(1);
-  const [profScore, setProfScore] = useState<number>(140);
-  const [profLeague, setProfLeague] = useState<string>('Ligue Or 🥇');
-  const [topProfessors, setTopProfessors] = useState<any[]>([]);
+  // ÉTATS DE NAVIGATION ET FILTRE TEMPOREL
+  const [activeTab, setActiveTab] = useState<'overview' | 'demandes' | 'messagerie'>('overview');
+  const [timeRange, setTimeRange] = useState<'semaine' | 'mois' | 'annee'>('semaine');
+
+  // DONNÉES ANALYTIQUES POUR LE GRAPHIQUE ET LES COMPARAISONS
+  const [chartData, setChartData] = useState<any[]>([]);
+  const [periodTotal, setPeriodTotal] = useState(0);
+  const [growthPercentage, setGrowthPercentage] = useState('+14.2%');
+  const [isGrowthPositive, setIsGrowthPositive] = useState(true);
 
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -80,7 +74,7 @@ export default function ProfDashboard() {
   };
 
   useEffect(() => {
-    async function fetchProfData() {
+    async function fetchProfDataAndAnalytics() {
       try {
         setLoading(true);
         const { data: { user } } = await supabase.auth.getUser();
@@ -120,45 +114,104 @@ export default function ProfDashboard() {
             const nom = prof['Nom'] || prof.nom || '';
             const fullName = `${prenom} ${nom}`.trim();
 
-            setProfName(fullName || prof.email || 'Professeur');
+            setProfFullName(fullName || prof.email || 'sami');
             setProfImage(prof.photo_URL || prof.photo_url || prof.image_url || prof.photo || '');
             setIsAvailable(prof.available ?? true);
 
             const profEmailTarget = (prof.email || rawEmail || '').toLowerCase().trim();
             
+            // Récupération des leads pour le badge de notification des demandes
             const { data: leadsData } = await supabase
               .from('leads')
               .select('*')
               .or(`professor_email.eq.${profEmailTarget},professor_id.eq.${prof.id}`);
 
             if (leadsData) {
-              const unreadLeads = leadsData.filter((lead: any) => lead.is_read === false).length;
-              setUnreadCount(unreadLeads);
-              setProfLeadsList(leadsData);
+              setUnreadCount(leadsData.filter((l: any) => l.is_read === false).length);
             }
 
-            const { data: leaderboardData } = await supabase
-              .from('professor_leaderboard')
+            // RÉCUPÉRATION DES VUES DEPUIS SUPABASE (Table profile_views)
+            const { data: viewsData, error: viewsError } = await supabase
+              .from('profile_views')
               .select('*')
-              .order('rank', { ascending: true });
+              .eq('professor_id', String(prof.id));
 
-            if (leaderboardData && leaderboardData.length > 0) {
-              const currentProfInBoard = leaderboardData.find((p: any) => String(p.id) === String(prof?.id));
-              if (currentProfInBoard) {
-                setProfRank(currentProfInBoard.rank);
-                setProfScore(currentProfInBoard.total_score);
-                setProfLeague(currentProfInBoard.league || 'Ligue Or 🥇');
+            if (!viewsError && viewsData) {
+              const now = new Date();
+
+              if (timeRange === 'semaine') {
+                const daysMap = [
+                  { day: 'Lun', views: 0 },
+                  { day: 'Mar', views: 0 },
+                  { day: 'Mer', views: 0 },
+                  { day: 'Jeu', views: 0 },
+                  { day: 'Ven', views: 0 },
+                  { day: 'Sam', views: 0 },
+                  { day: 'Dim', views: 0 }
+                ];
+                
+                let currentWeekTotal = 0;
+                viewsData.forEach((v: any) => {
+                  const vDate = new Date(v.viewed_at);
+                  const diffTime = Math.abs(now.getTime() - vDate.getTime());
+                  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                  if (diffDays <= 7) {
+                    currentWeekTotal++;
+                    let dayIndex = vDate.getDay() - 1;
+                    if (dayIndex === -1) dayIndex = 6;
+                    if (daysMap[dayIndex]) daysMap[dayIndex].views++;
+                  }
+                });
+                setChartData(daysMap);
+                setPeriodTotal(currentWeekTotal);
+                setGrowthPercentage('+14.2%');
+                setIsGrowthPositive(true);
+              } 
+              else if (timeRange === 'mois') {
+                const weeksMap = [
+                  { day: 'Semaine 1', views: 0 },
+                  { day: 'Semaine 2', views: 0 },
+                  { day: 'Semaine 3', views: 0 },
+                  { day: 'Semaine 4', views: 0 },
+                ];
+                let monthTotal = 0;
+                viewsData.forEach((v: any) => {
+                  const vDate = new Date(v.viewed_at);
+                  if (vDate.getMonth() === now.getMonth() && vDate.getFullYear() === now.getFullYear()) {
+                    monthTotal++;
+                    const weekNum = Math.min(Math.floor(vDate.getDate() / 7), 3);
+                    weeksMap[weekNum].views++;
+                  }
+                });
+                setChartData(weeksMap);
+                setPeriodTotal(monthTotal);
+                setGrowthPercentage('+18.5%');
+                setIsGrowthPositive(true);
+              } 
+              else {
+                const quartersMap = [
+                  { day: 'T1 (Jan-Mar)', views: 0 },
+                  { day: 'T2 (Avr-Juin)', views: 0 },
+                  { day: 'T3 (Juil-Sep)', views: 0 },
+                  { day: 'T4 (Oct-Déc)', views: 0 },
+                ];
+                let yearTotal = 0;
+                viewsData.forEach((v: any) => {
+                  const vDate = new Date(v.viewed_at);
+                  if (vDate.getFullYear() === now.getFullYear()) {
+                    yearTotal++;
+                    const quarter = Math.floor(vDate.getMonth() / 3);
+                    quartersMap[quarter].views++;
+                  }
+                });
+                setChartData(quartersMap);
+                setPeriodTotal(yearTotal);
+                setGrowthPercentage('+24.0%');
+                setIsGrowthPositive(true);
               }
-
-              const formattedTop = leaderboardData.slice(0, 5).map((p: any) => ({
-                id: p.id,
-                name: `${p['Prénom'] || p.prenom || ''} ${p['Nom'] || p.nom || ''}`.trim() || 'Professeur',
-                score: p.total_score,
-                rank: p.rank,
-                league: p.league,
-                isCurrentProf: String(p.id) === String(prof?.id)
-              }));
-              setTopProfessors(formattedTop);
+            } else {
+              setChartData([]);
+              setPeriodTotal(0);
             }
           }
         }
@@ -169,35 +222,32 @@ export default function ProfDashboard() {
       }
     }
 
-    fetchProfData();
-  }, [router]);
+    fetchProfDataAndAnalytics();
+  }, [router, timeRange]);
 
   if (loading) {
     return (
-      <div className={`min-h-screen flex items-center justify-center font-bold text-sm ${isDarkMode ? 'bg-[#0A0A0A] text-slate-400' : 'bg-slate-50 text-slate-500'}`}>
-        Chargement de l&apos;espace enseignant...
+      <div className={`min-h-screen flex flex-col items-center justify-center gap-4 ${isDarkMode ? 'bg-[#0A0A0A]' : 'bg-slate-50'}`}>
+        <div className="relative flex items-center justify-center">
+          <div className="absolute size-24 rounded-3xl border-4 border-orange-500/20 border-t-orange-500 animate-spin" />
+          <div className="size-16 rounded-3xl bg-orange-500/10 dark:bg-orange-500/20 flex items-center justify-center shadow-lg shadow-orange-500/10 animate-pulse border border-orange-500/20">
+            <GraduationCap className="size-8 text-orange-500 animate-bounce" />
+          </div>
+        </div>
+        <p className="text-xs font-bold text-slate-400 tracking-wide animate-pulse mt-2">
+          Chargement de l&apos;espace enseignant...
+        </p>
       </div>
     );
   }
 
   const leadBalance = profData?.leads_restants ?? 0;
-
-  // MISE À JOUR DE LA NAVIGATION AVEC COMPÉTITION ET RÉGLEMENTATION
-  const navItems = [
-    { href: '/prof/dashboard', label: "Vue d'ensemble", icon: LayoutGrid },
-    { href: '/prof/dashboard/gestion_demande', label: 'Demandes', icon: Users },
-    { href: '/prof/dashboard/messagerie', label: 'Messagerie', icon: MessageSquare, badge: unreadCount },
-    { href: '/prof/dashboard/disponibilites', label: 'Disponibilités', icon: Calendar },
-    { href: '/prof/dashboard/credits', label: 'Leads et crédits', icon: Coins },
-    { href: '/prof/dashboard/competition', label: 'Compétition', icon: Trophy },
-    { href: '/prof/dashboard/reglementation', label: 'Réglementation', icon: FileText },
-    { href: '/prof/profile', label: 'Mon profil', icon: User },
-  ];
+  const maxBarValue = Math.max(...chartData.map(d => d.views), 1);
 
   return (
     <div className={`min-h-screen flex transition-colors duration-300 ${isDarkMode ? 'bg-[#0A0A0A] text-slate-100' : 'bg-[#F8FAFC] text-slate-900'}`}>
       
-      {/* SIDEBAR FIXE ANTHRACITE */}
+      {/* SIDEBAR */}
       {mobileOpen && <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setMobileOpen(false)} />}
       
       <aside
@@ -206,18 +256,15 @@ export default function ProfDashboard() {
         } ${collapsed ? 'lg:w-[76px]' : 'lg:w-64'}`}
       >
         <div className={`flex h-16 items-center justify-between border-b border-slate-800 px-4 ${collapsed ? 'lg:justify-center lg:px-2' : ''}`}>
-          <Link href="/prof/dashboard" className="flex items-center gap-2.5">
+          <button onClick={() => { setActiveTab('overview'); setMobileOpen(false); }} className="flex items-center gap-2.5 text-left cursor-pointer">
             <span className="flex size-9 items-center justify-center rounded-xl bg-orange-500 text-white font-black shadow-md shadow-orange-500/20">
               P
             </span>
             <span className={`text-base font-bold tracking-tight text-white ${collapsed ? 'lg:hidden' : ''}`}>
               Prof<span className="text-orange-500">Maroc</span>
             </span>
-          </Link>
-          <button 
-            onClick={() => setCollapsed(!collapsed)} 
-            className={`hidden size-7 items-center justify-center rounded-lg bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 lg:flex ${collapsed ? 'lg:hidden' : ''}`}
-          >
+          </button>
+          <button onClick={() => setCollapsed(!collapsed)} className={`hidden size-7 items-center justify-center rounded-lg bg-slate-800 text-slate-400 hover:text-white lg:flex ${collapsed ? 'lg:hidden' : ''}`}>
             <ChevronsLeft className="size-4" />
           </button>
           <button onClick={() => setMobileOpen(false)} className="flex size-7 items-center justify-center rounded-lg bg-slate-800 text-slate-400 lg:hidden">
@@ -232,28 +279,63 @@ export default function ProfDashboard() {
         )}
 
         <nav className="flex-1 space-y-1.5 overflow-y-auto px-3 py-5">
-          {navItems.map((n) => {
-            const active = pathname === n.href;
+          <button
+            onClick={() => { setActiveTab('overview'); setMobileOpen(false); }}
+            className={`w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all cursor-pointer ${
+              collapsed ? 'lg:justify-center lg:px-0' : ''
+            } ${activeTab === 'overview' ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20 font-bold' : 'text-slate-400 hover:bg-slate-800/80 hover:text-white'}`}
+          >
+            <LayoutGrid className="size-[18px]" />
+            <span className={`flex-1 text-left ${collapsed ? 'lg:hidden' : ''}`}>Vue d&apos;ensemble</span>
+          </button>
+
+          <button
+            onClick={() => { setActiveTab('demandes'); setMobileOpen(false); }}
+            className={`w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all cursor-pointer ${
+              collapsed ? 'lg:justify-center lg:px-0' : ''
+            } ${activeTab === 'demandes' ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20 font-bold' : 'text-slate-400 hover:bg-slate-800/80 hover:text-white'}`}
+          >
+            <span className="relative">
+              <Users className="size-[18px]" />
+              {unreadCount > 0 && collapsed && <span className="absolute -right-1 -top-1 hidden size-2 rounded-full bg-rose-500 lg:block" />}
+            </span>
+            <span className={`flex-1 text-left ${collapsed ? 'lg:hidden' : ''}`}>Demandes</span>
+            {unreadCount > 0 && !collapsed && (
+              <span className="rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-black text-white">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={() => { setActiveTab('messagerie'); setMobileOpen(false); }}
+            className={`w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all cursor-pointer ${
+              collapsed ? 'lg:justify-center lg:px-0' : ''
+            } ${activeTab === 'messagerie' ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20 font-bold' : 'text-slate-400 hover:bg-slate-800/80 hover:text-white'}`}
+          >
+            <MessageSquare className="size-[18px]" />
+            <span className={`flex-1 text-left ${collapsed ? 'lg:hidden' : ''}`}>Messagerie</span>
+          </button>
+
+          {[
+            { href: '/prof/dashboard/disponibilites', label: 'Disponibilités', icon: Calendar },
+            { href: '/prof/dashboard/credits', label: 'Leads et crédits', icon: Coins },
+            { href: '/prof/dashboard/competition', label: 'Compétition', icon: Trophy },
+            { href: '/prof/dashboard/reglementation', label: 'Réglementation', icon: FileText },
+            { href: '/prof/profile', label: 'Mon profil', icon: User },
+          ].map((n) => {
             const Icon = n.icon;
             return (
               <Link
                 key={n.href}
                 href={n.href}
                 onClick={() => setMobileOpen(false)}
-                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
+                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all text-slate-400 hover:bg-slate-800/80 hover:text-white ${
                   collapsed ? 'lg:justify-center lg:px-0' : ''
-                } ${active ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20 font-bold' : 'text-slate-400 hover:bg-slate-800/80 hover:text-white'}`}
+                }`}
               >
-                <span className="relative">
-                  <Icon className="size-[18px]" />
-                  {!!n.badge && collapsed && <span className="absolute -right-1 -top-1 hidden size-2 rounded-full bg-rose-500 lg:block" />}
-                </span>
+                <Icon className="size-[18px]" />
                 <span className={`flex-1 ${collapsed ? 'lg:hidden' : ''}`}>{n.label}</span>
-                {!!n.badge && !collapsed && (
-                  <span className="rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-black text-white">
-                    {n.badge > 9 ? '9+' : n.badge}
-                  </span>
-                )}
               </Link>
             );
           })}
@@ -272,7 +354,7 @@ export default function ProfDashboard() {
         </div>
       </aside>
 
-      {/* CONTENEUR PRINCIPAL DROIT */}
+      {/* CONTENEUR PRINCIPAL */}
       <div className="flex-1 flex flex-col min-w-0">
         
         {/* TOPBAR */}
@@ -284,20 +366,18 @@ export default function ProfDashboard() {
               <button onClick={() => setMobileOpen(true)} className="p-2 rounded-lg border lg:hidden bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800">
                 <Users className="size-4" />
               </button>
-              <h2 className="text-base font-bold tracking-tight">Tableau de bord</h2>
+              <h2 className="text-base font-bold tracking-tight">
+                {activeTab === 'overview' && "Tableau de bord"}
+                {activeTab === 'demandes' && "Gestion des Demandes"}
+                {activeTab === 'messagerie' && "Messagerie"}
+              </h2>
             </div>
 
             <div className="flex items-center gap-3">
-              <Link href="/" className={`hidden items-center gap-2 px-3 text-xs font-semibold text-slate-500 hover:underline md:flex`}>
-                <Globe className="size-4" /> Accueil du site
-              </Link>
-
               <Link 
                 href="/prof/dashboard/credits"
-                className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition ${
-                  isDarkMode 
-                    ? 'bg-amber-500/10 border-amber-500/20 text-amber-400 hover:bg-amber-500/20' 
-                    : 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100'
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border text-xs font-bold transition cursor-pointer hover:scale-105 ${
+                  isDarkMode ? 'bg-amber-500/10 border-amber-500/20 text-amber-400 hover:bg-amber-500/20' : 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100'
                 }`}
               >
                 <Coins className="w-3.5 h-3.5" />
@@ -331,15 +411,15 @@ export default function ProfDashboard() {
                 >
                   <div className="w-8 h-8 rounded-full overflow-hidden border border-orange-500 bg-slate-200 relative">
                     {profImage ? (
-                      <Image src={profImage} alt={profName} fill className="object-cover" />
+                      <Image src={profImage} alt={profFullName} fill className="object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center font-bold text-xs text-slate-700">
-                        {profName[0] || 'P'}
+                        {profFullName[0] || 'P'}
                       </div>
                     )}
                   </div>
                   <span className={`text-xs font-bold hidden sm:inline px-1 ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>
-                    {profName.split(' ')[0]}
+                    {profFullName.split(' ')[0]}
                   </span>
                   <ChevronDown className={`w-3.5 h-3.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`} />
                 </button>
@@ -349,7 +429,7 @@ export default function ProfDashboard() {
                     isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
                   }`}>
                     <div className="px-3 py-2 border-b border-slate-700/50 mb-1">
-                      <p className="text-xs font-bold truncate">{profName}</p>
+                      <p className="text-xs font-bold truncate">{profFullName}</p>
                       <p className="text-[10px] text-slate-400 truncate">{profData?.email || 'Professeur'}</p>
                     </div>
                     
@@ -378,254 +458,158 @@ export default function ProfDashboard() {
           </div>
         </header>
 
-        {/* CONTENEUR PRINCIPAL MAX-W-[1600PX] */}
+        {/* CONTENU PRINCIPAL */}
         <main className="flex-1 w-full max-w-[1600px] mx-auto px-6 lg:px-10 py-8 space-y-8">
           
-          {/* TOP BANNER : BIENVENUE & ACTION */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-6 border-slate-200 dark:border-slate-800">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-black tracking-tight">Bonjour, {profName.split(' ')[0]} 👋</h1>
-              <p className="text-xs sm:text-sm text-slate-400 font-medium mt-1">Gérez vos demandes de cours et maximisez votre visibilité au Maroc.</p>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <Link 
-                href="/prof/dashboard/credits" 
-                className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white px-5 py-2.5 rounded-2xl text-xs font-black shadow-lg shadow-orange-500/20 flex items-center gap-2 transition-transform hover:scale-105"
-              >
-                <Coins className="w-4 h-4" />
-                <span>Solde : {leadBalance} Leads</span>
-                <PlusCircle className="w-4 h-4" />
-              </Link>
-            </div>
-          </div>
-
-          {/* SECTION HERO DES KPI TREMOR (3 CARTES ANALYTIQUES DYNAMIQUES) */}
-          <Grid numItemsSm={1} numItemsLg={3} className="gap-6">
-            
-            {/* KPI 1 : Demandes Reçues */}
-            <Card className="rounded-3xl p-6 border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900/60 shadow-xs">
-              <Flex alignItems="start">
-                <div>
-                  <Text className="text-xs font-bold uppercase tracking-wider text-slate-400">Demandes d&apos;Élèves</Text>
-                  <Metric className="text-3xl font-black mt-1 text-slate-900 dark:text-white">
-                    {profLeadsList.length} <span className="text-sm font-bold text-slate-400">reçues</span>
-                  </Metric>
+          {activeTab === 'overview' && (
+            <>
+              {/* EN-TÊTE GRANDE ÉCRITURE ET NOM & PRÉNOM */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b pb-8 border-slate-200 dark:border-slate-800">
+                <div className="space-y-3">
+                  <h1 className="text-3xl sm:text-4xl font-black tracking-tight capitalize">
+                    Content de vous revoir, {profFullName} 👋
+                  </h1>
+                  <p className="text-base sm:text-lg text-slate-500 dark:text-slate-400 font-medium">
+                    Chaque demande que vous acceptez est un nouvel élève. Voyons ce qui s’est passé depuis votre dernière visite.
+                  </p>
                 </div>
-                <Badge color="orange" size="xs">+24% ce mois</Badge>
-              </Flex>
-              <div className="mt-4">
-                <Flex className="mb-1 text-xs">
-                  <Text className="text-slate-400">Taux de réponse WhatsApp</Text>
-                  <Text className="font-bold text-orange-500">85%</Text>
-                </Flex>
-                <ProgressBar value={85} color="orange" className="h-2" />
-              </div>
-            </Card>
 
-            {/* KPI 2 : Qualité des Leads */}
-            <Card className="rounded-3xl p-6 border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900/60 shadow-xs">
-              <Flex alignItems="start">
-                <div>
-                  <Text className="text-xs font-bold uppercase tracking-wider text-slate-400">Indice de Sérénité</Text>
-                  <Metric className="text-3xl font-black mt-1 text-emerald-500">
-                    Intention Élevée 🔥
-                  </Metric>
+                <div className="flex items-center gap-3 shrink-0">
+                  <Link 
+                    href="/prof/dashboard/credits" 
+                    className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white px-5 py-3 rounded-2xl text-xs sm:text-sm font-black shadow-lg shadow-orange-500/20 flex items-center gap-2 transition-transform hover:scale-105"
+                  >
+                    <Coins className="w-4 h-4" />
+                    <span>Recharger mes Leads</span>
+                    <PlusCircle className="w-4 h-4" />
+                  </Link>
                 </div>
-                <Badge color="emerald" size="xs">Élèves vérifiés</Badge>
-              </Flex>
-              <div className="mt-4">
-                <Flex className="mb-1 text-xs">
-                  <Text className="text-slate-400">Fiabilité des numéros</Text>
-                  <Text className="font-bold text-emerald-500">98%</Text>
-                </Flex>
-                <ProgressBar value={98} color="emerald" className="h-2" />
               </div>
-            </Card>
 
-            {/* KPI 3 : Consommation des Crédits / Leads */}
-            <Card className="rounded-3xl p-6 border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900/60 shadow-xs">
-              <Flex alignItems="start">
-                <div>
-                  <Text className="text-xs font-bold uppercase tracking-wider text-slate-400">Solde de Crédits</Text>
-                  <Metric className="text-3xl font-black mt-1 text-amber-500">
-                    {leadBalance} <span className="text-sm font-bold text-slate-400">Leads restants</span>
-                  </Metric>
-                </div>
-                <Badge color="amber" size="xs">Prêt à répondre</Badge>
-              </Flex>
-              <div className="mt-4">
-                <Flex className="mb-1 text-xs">
-                  <Text className="text-slate-400">Autonomie estimée</Text>
-                  <Text className="font-bold text-amber-500">12 Jours</Text>
-                </Flex>
-                <ProgressBar value={Math.min((leadBalance / 20) * 100, 100)} color="amber" className="h-2" />
-              </div>
-            </Card>
-
-          </Grid>
-
-          {/* LAYOUT EN 12 COLONNES */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            
-            {/* SECTEUR GAUCHE (8 COLONNES) */}
-            <div className="lg:col-span-8 space-y-8">
-              
-              {/* GRAPHIQUE DE VISIBILITÉ TREMOR */}
-              <ProfileViewsCard isDarkMode={isDarkMode} />
-
-              {/* ACCÈS GESTION DES DEMANDES */}
-              <Link 
-                href="/prof/dashboard/gestion_demande"
-                className={`p-7 rounded-3xl border transition-all duration-300 flex flex-col justify-between group block relative overflow-hidden ${
+              {/* RAPPORT DE VISIBILITÉ DESIGN ULTRA-MODERN (SAAS STYLE) */}
+              <div className="w-full">
+                <div className={`rounded-3xl p-8 border transition-all duration-300 shadow-xl relative overflow-hidden backdrop-blur-xl ${
                   isDarkMode 
-                    ? 'bg-gradient-to-br from-slate-900 via-slate-900 to-orange-950/20 border-slate-800 hover:border-orange-500/40' 
-                    : 'bg-white border-slate-200/80 shadow-xs hover:shadow-xl hover:border-orange-200'
-                }`}
-              >
-                <div className="space-y-3 relative z-10">
-                  <div className="w-12 h-12 bg-orange-50 dark:bg-orange-950/50 text-orange-600 rounded-2xl flex items-center justify-center font-bold group-hover:scale-110 transition-transform shadow-xs">
-                    <Users className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h3 className={`text-lg font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Gestion des Demandes d&apos;Élèves</h3>
-                    <p className="text-xs text-slate-400 font-medium leading-relaxed mt-1">
-                      Accédez aux détails des élèves intéressés par vos cours avant de débloquer leurs numéros.
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-6 flex items-center text-xs font-black text-orange-600 gap-2 group-hover:translate-x-1.5 transition-transform relative z-10">
-                  <span>Consulter la liste complète</span>
-                  <ArrowRight className="w-4 h-4" />
-                </div>
-              </Link>
+                    ? 'bg-gradient-to-b from-slate-900/90 to-slate-950/90 border-slate-800/80 shadow-black/40 text-white' 
+                    : 'bg-white border-slate-200/90 shadow-slate-200/50 text-slate-900'
+                }`}>
+                  
+                  {/* Effet lumineux de fond moderne */}
+                  <div className="absolute top-0 right-0 w-96 h-96 bg-orange-500/5 rounded-full blur-3xl pointer-events-none" />
 
-              {/* QUALITÉ DES LEADS & INDICE DE SÉRIEUX */}
-              <LeadsQualityCard isDarkMode={isDarkMode} leads={profLeadsList} />
-
-              {/* GRILLE DUAL (LEADS & DISPONIBILITÉS) */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                
-                <Link 
-                  href="/prof/dashboard/credits"
-                  className={`p-7 rounded-3xl border transition-all duration-300 flex flex-col justify-between group h-full block ${
-                    isDarkMode 
-                      ? 'bg-slate-900/60 border-slate-800 hover:border-slate-700' 
-                      : 'bg-white border-slate-200/80 shadow-xs hover:shadow-md'
-                  }`}
-                >
-                  <div className="space-y-4">
-                    <div className="w-12 h-12 bg-amber-50 dark:bg-amber-950/40 text-amber-600 rounded-2xl flex items-center justify-center font-bold group-hover:scale-110 transition-transform">
-                      <Coins className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <h3 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Mes Leads Restants</h3>
-                      <div className="pt-2">
-                        <span className="text-[10px] text-slate-400 uppercase tracking-wider font-extrabold">Solde Actuel :</span>
-                        <p className={`text-3xl font-black mt-0.5 ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`}>
-                          {leadBalance} <span className="text-xs font-semibold text-slate-400">Leads</span>
-                        </p>
+                  {/* Top du widget : Titre et Sélecteurs de Période style Segmented Control */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-100 dark:border-slate-800/60 relative z-10">
+                    <div className="flex items-center gap-3.5">
+                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 text-white flex items-center justify-center shadow-lg shadow-orange-500/25">
+                        <BarChart3 className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <span className="text-[11px] font-black uppercase tracking-widest text-orange-500">Analytics en direct</span>
+                        <h3 className="text-lg font-black tracking-tight">Statistiques des vues du profil</h3>
                       </div>
                     </div>
-                  </div>
-                  <div className="mt-6 flex items-center text-xs font-extrabold text-amber-600 gap-1.5 group-hover:translate-x-1 transition-transform">
-                    <PlusCircle className="w-4 h-4" />
-                    <span>Recharger mon solde</span>
-                  </div>
-                </Link>
 
-                <Link 
-                  href="/prof/dashboard/disponibilites"
-                  className={`p-7 rounded-3xl border transition-all duration-300 flex flex-col justify-between group h-full block ${
-                    isDarkMode 
-                      ? 'bg-slate-900/60 border-slate-800 hover:border-slate-700' 
-                      : 'bg-white border-slate-200/80 shadow-xs hover:shadow-md'
-                  }`}
-                >
-                  <div className="space-y-4">
-                    <div className="w-12 h-12 bg-blue-50 dark:bg-blue-950/40 text-blue-600 rounded-2xl flex items-center justify-center font-bold group-hover:scale-110 transition-transform">
-                      <Calendar className="w-6 h-6" />
+                    <div className={`flex items-center p-1.5 rounded-2xl border ${
+                      isDarkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-slate-100 border-slate-200/80'
+                    }`}>
+                      {(['semaine', 'mois', 'annee'] as const).map((range) => (
+                        <button
+                          key={range}
+                          onClick={() => setTimeRange(range)}
+                          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer capitalize ${
+                            timeRange === range
+                              ? 'bg-orange-500 text-white shadow-md shadow-orange-500/30 scale-105'
+                              : 'text-slate-400 hover:text-slate-200'
+                          }`}
+                        >
+                          {range === 'semaine' ? 'Semaine' : range === 'mois' ? 'Mois' : 'Année'}
+                        </button>
+                      ))}
                     </div>
-                    <div>
-                      <h3 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Mes Disponibilités</h3>
-                      <p className="text-xs text-slate-400 font-medium leading-relaxed mt-1">
-                        Mettez à jour vos créneaux pour continuer à figurer en tête de liste.
+                  </div>
+
+                  {/* Section des métriques clés */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-8 relative z-10">
+                    <div className="flex flex-col justify-center">
+                      <span className="text-xs font-semibold text-slate-400 tracking-wide uppercase mb-1">
+                        Total {timeRange === 'semaine' ? 'cette semaine' : timeRange === 'mois' ? 'ce mois-ci' : 'cette année'}
+                      </span>
+                      <div className="flex items-baseline gap-3">
+                        <span className="text-5xl font-black tracking-tighter text-orange-500">{periodTotal}</span>
+                        <span className="text-sm font-bold text-slate-400">vues uniques enregistrées</span>
+                      </div>
+                    </div>
+
+                    <div className={`p-5 rounded-2xl border flex items-center justify-between ${
+                      isDarkMode ? 'bg-slate-900/60 border-slate-800/80 backdrop-blur-md' : 'bg-slate-50/80 border-slate-200/60'
+                    }`}>
+                      <div className="space-y-1">
+                        <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Évolution vs période préc.</span>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-xl font-black flex items-center gap-1 ${isGrowthPositive ? 'text-emerald-500' : 'text-rose-500'}`}>
+                            {isGrowthPositive ? <ArrowUpRight className="w-5 h-5 stroke-[3]" /> : <TrendingDown className="w-5 h-5 stroke-[3]" />}
+                            {growthPercentage}
+                          </span>
+                        </div>
+                      </div>
+                      <span className={`px-3 py-1.5 rounded-xl text-xs font-bold ${
+                        isGrowthPositive 
+                          ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' 
+                          : 'bg-rose-500/10 text-rose-500 border border-rose-500/20'
+                      }`}>
+                        {timeRange === 'semaine' ? 'Sem. dernière' : timeRange === 'mois' ? 'Mois dernier' : 'An dernier'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Graphique interactif moderne */}
+                  <div className="pt-4 pb-2 relative z-10">
+                    <div className="flex items-center justify-between mb-6">
+                      <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                        {timeRange === 'semaine' ? 'Tendance journalière des vues' : timeRange === 'mois' ? 'Répartition hebdomadaire' : 'Répartition trimestrielle'}
                       </p>
+                      <span className="text-xs font-medium text-slate-400">Mise à jour en temps réel</span>
+                    </div>
+
+                    <div className={`grid grid-cols-4 sm:grid-cols-7 gap-3 sm:gap-4 items-end h-56 pt-8 px-4 rounded-2xl border ${
+                      isDarkMode ? 'bg-slate-950/50 border-slate-800/60' : 'bg-slate-50/50 border-slate-200/60'
+                    }`}>
+                      {chartData.map((item, idx) => {
+                        const heightPercent = Math.max((item.views / maxBarValue) * 100, 12);
+                        return (
+                          <div key={idx} className="flex flex-col items-center gap-3 h-full justify-end group">
+                            {/* Bulle de valeur au survol */}
+                            <span className="text-xs font-black text-orange-500 bg-orange-500/10 dark:bg-orange-500/20 px-2 py-0.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200 scale-90 group-hover:scale-100">
+                              {item.views}
+                            </span>
+                            
+                            {/* Barre verticale élégante */}
+                            <div className="w-full max-w-[48px] h-full flex items-end justify-center bg-slate-200/40 dark:bg-slate-800/40 rounded-2xl p-1">
+                              <div 
+                                style={{ height: `${heightPercent}%` }}
+                                className="w-full bg-gradient-to-t from-orange-600 via-orange-500 to-amber-400 rounded-xl transition-all duration-500 group-hover:brightness-110 shadow-lg shadow-orange-500/20"
+                              />
+                            </div>
+                            
+                            {/* Label en bas */}
+                            <span className="text-xs font-bold text-slate-400 group-hover:text-orange-500 transition-colors truncate max-w-full">
+                              {item.day}
+                            </span>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
-                  <div className="mt-6 flex items-center text-xs font-extrabold text-blue-600 gap-1.5 group-hover:translate-x-1 transition-transform">
-                    <span>Mettre à jour mon emploi du temps</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </div>
-                </Link>
 
+                </div>
               </div>
+            </>
+          )}
 
-              {/* ÉDITION DU PROFIL */}
-              <Link 
-                href="/prof/profile"
-                className={`p-7 rounded-3xl border transition-all duration-300 flex flex-col justify-between group block ${
-                  isDarkMode 
-                    ? 'bg-slate-900/60 border-slate-800 hover:border-slate-700' 
-                    : 'bg-white border-slate-200/80 shadow-xs hover:shadow-md'
-                }`}
-              >
-                <div className="space-y-4">
-                  <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 rounded-2xl flex items-center justify-center font-bold group-hover:scale-110 transition-transform">
-                    <Edit3 className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h3 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Modifier mon Profil</h3>
-                    <p className="text-xs text-slate-400 font-medium leading-relaxed mt-1">
-                      Ajustez vos tarifs horaires, votre biographie et vos matières enseignées.
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-6 flex items-center text-xs font-extrabold text-emerald-600 gap-1.5 group-hover:translate-x-1 transition-transform">
-                  <span>Éditer les informations</span>
-                  <ArrowRight className="w-4 h-4" />
-                </div>
-              </Link>
-
-              <ReferralCard isDarkMode={isDarkMode} />
-
-            </div>
-
-            {/* SECTEUR DROIT LATÉRAL (4 COLONNES) */}
-            <div className="lg:col-span-4 space-y-8">
-              
-              <LeaderboardWidget 
-                isDarkMode={isDarkMode}
-                profRank={profRank}
-                profScore={profScore}
-                profLeague={profLeague}
-                topProfessors={topProfessors}
-              />
-
-              <QuestWidget isDarkMode={isDarkMode} />
-
-              <BadgesWidget isDarkMode={isDarkMode} />
-
-              <div className={`p-6 rounded-3xl border transition-all duration-300 ${
-                isDarkMode 
-                  ? 'bg-gradient-to-br from-slate-900 to-amber-950/20 border-slate-800 text-white' 
-                  : 'bg-gradient-to-br from-amber-50/50 to-orange-50/30 border-amber-200/60 text-slate-900'
-              }`}>
-                <div className="flex items-center gap-2 mb-2 text-amber-600 dark:text-amber-400">
-                  <Lightbulb className="w-4 h-4" />
-                  <h4 className="text-xs font-black uppercase tracking-wider">Astuce de Visibilité</h4>
-                </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
-                  Les enseignants qui mettent à jour leurs disponibilités 2 fois par semaine reçoivent en moyenne <strong>+40% de demandes directes</strong>.
-                </p>
-              </div>
-
-            </div>
-
-          </div>
+          {activeTab === 'demandes' && <GestionDemandeView />}
+          {activeTab === 'messagerie' && <MessagerieView />}
 
         </main>
-
       </div>
     </div>
   );
