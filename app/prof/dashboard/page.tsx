@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
@@ -8,7 +8,8 @@ import {
   Users, X, Sun, Moon, LogOut, ChevronDown, User, Coins, Plus, Minus,
   LayoutGrid, ChevronsLeft, ChevronsRight, ArrowUpRight, ArrowDownRight, Megaphone,
   CheckCircle2, Clock, Menu, MapPin, BookOpen, Check, Copy, Share2, ExternalLink,
-  MessageCircle, Scissors, Flame, ChevronRight, Eye, Inbox
+  MessageCircle, Scissors, Flame, ChevronRight, Eye, Inbox,
+  Heart, Trash2, Power, Tag, Info, Loader2
 } from 'lucide-react';
 
 import GestionDemandeView from './gestion_demande/page';
@@ -21,6 +22,8 @@ const LEADS_PER_PACK = 10;               // leads inclus dans une recharge (À A
 const LOW_LEADS_THRESHOLD = 3;           // alerte crédits bas
 const HOURS_PER_MONTH = 4;               // heures/mois estimées par élève (estimation)
 const SUPPORT_WHATSAPP = '212600000000'; // ⚠️ REMPLACER par votre numéro WhatsApp (format international, sans +)
+const MAX_ACTIVE_PROMOS = 3;             // promotions actives max par prof
+const BOOST_CAP = 50;                    // plafond du bonus de classement
 
 /* ------------------------------------------------------------------ */
 /*  TYPES                                                              */
@@ -45,6 +48,16 @@ interface Lead {
   status?: string;
   created_at?: string;
   [key: string]: any;
+}
+interface Promo {
+  id: string;
+  title: string;
+  body: string;
+  discount_percent: number | null;
+  ends_at: string;
+  is_active: boolean;
+  likes_count: number;
+  created_at: string;
 }
 type Tab = 'overview' | 'demandes' | 'credits' | 'publicites';
 type Range = 'semaine' | 'mois' | 'annee';
@@ -132,14 +145,18 @@ const topCounts = (items: string[], n = 3) => {
 
 const fmt = (n: number) => n.toLocaleString('fr-FR');
 
+const inDays = (n: number) => new Date(Date.now() + n * DAY).toISOString().slice(0, 10);
+const isLivePromo = (p: Promo) => p.is_active && new Date(p.ends_at).getTime() > Date.now();
+
 /* ------------------------------------------------------------------ */
 /*  STYLES GLOBAUX (cahier à lignes)                                   */
+/*  Palette : bleu (action) + ambre (accent) + rouge (alerte/stylo)    */
 /* ------------------------------------------------------------------ */
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Hanken+Grotesk:wght@400;500;600;700&family=Caveat:wght@500;700&display=swap');
 
-.pm-light{--paper:#F8FAFF;--rule:#E1E7F7;--sheet:#FFFFFF;--edge:#D6DEF3;--ink:#0F1A3B;--muted:#5A6788;--blue:#2446D1;--onblue:#FFFFFF;--red:#DF3A3F;--hl:rgba(255,224,102,.85);--green:#12915F;--side:#0F1B3D;--shadow:rgba(16,27,60,.30);--margin:rgba(223,58,63,.5);--hole:#0F1B3D}
-.pm-dark{--paper:#0A0F20;--rule:#161E3C;--sheet:#111933;--edge:#222C52;--ink:#E8ECFF;--muted:#8C98BE;--blue:#7D96FF;--onblue:#0A0F20;--red:#FF6B70;--hl:rgba(255,224,102,.28);--green:#3DDC97;--side:#050816;--shadow:rgba(0,0,0,.8);--margin:rgba(255,107,112,.35);--hole:#050816}
+.pm-light{--paper:#FDF8F3;--rule:#F3E7DB;--sheet:#FFFFFF;--edge:#EBDCCD;--ink:#0B1220;--muted:#6B6259;--blue:#F04A00;--onblue:#FFFFFF;--red:#D6204A;--accent:#FF6A1F;--accent-ink:#C23D00;--hl:rgba(255,106,31,.28);--green:#0E9F6E;--side:#0B1220;--shadow:rgba(60,30,10,.25);--margin:rgba(240,74,0,.35);--hole:#0B1220}
+.pm-dark{--paper:#140F0B;--rule:#251D16;--sheet:#1C1611;--edge:#35291F;--ink:#F8F0E8;--muted:#AA9B8D;--blue:#FF7A33;--onblue:#1A0E05;--red:#FF6B8A;--accent:#FF7A33;--accent-ink:#FF9A5C;--hl:rgba(255,122,51,.25);--green:#3DDC97;--side:#0A0807;--shadow:rgba(0,0,0,.8);--margin:rgba(255,122,51,.3);--hole:#0A0807}
 
 .pm{font-family:'Hanken Grotesk',system-ui,sans-serif;color:var(--ink);background:var(--paper)}
 .pm *{box-sizing:border-box}
@@ -164,6 +181,7 @@ const CSS = `
 .pm-btn-green{background:var(--green);color:#fff}
 .pm-btn-ghost{background:var(--sheet);color:var(--ink);border:1px solid var(--edge)}
 .pm-btn-ghost:hover{border-color:var(--blue)}
+.pm-input{width:100%;border:1px solid var(--edge);border-radius:6px;padding:.625rem .75rem;font-size:.875rem;background:var(--paper);color:var(--ink)}
 .pm-dots{background-image:linear-gradient(to right,var(--edge) 50%,transparent 0);background-size:6px 1px;background-repeat:repeat-x;background-position:bottom}
 @keyframes pm-draw{to{stroke-dashoffset:0}}
 .pm-draw{stroke-dasharray:400;stroke-dashoffset:400;animation:pm-draw 1.1s .35s ease-out forwards}
@@ -186,7 +204,9 @@ function Delta({ text, dir }: { text: string; dir: 'up' | 'down' | 'flat' }) {
 function Tickets({ n, low, size = 'md' }: { n: number; low?: boolean; size?: 'sm' | 'md' }) {
   const total = Math.min(Math.max(LEADS_PER_PACK, Math.ceil(n / LEADS_PER_PACK) * LEADS_PER_PACK), 40);
   const filled = Math.min(n, total);
-  const color = low ? 'var(--red)' : 'var(--blue)';
+  // Petits tickets (sidebar marine) : ambre. Grands tickets (feuille claire) : bleu.
+  const color = low ? 'var(--red)' : size === 'sm' ? 'var(--accent)' : 'var(--blue)';
+  const cut = size === 'sm' ? 'var(--side)' : 'var(--sheet)';
   const w = size === 'sm' ? 12 : 22;
   const h = size === 'sm' ? 18 : 32;
   const notch = size === 'sm' ? 2 : 3.5;
@@ -199,9 +219,9 @@ function Tickets({ n, low, size = 'md' }: { n: number; low?: boolean; size?: 'sm
             key={i}
             style={{
               width: w, height: h, borderRadius: 3,
-              border: on ? 'none' : '1.5px dashed var(--edge)',
+              border: on ? 'none' : size === 'sm' ? '1.5px dashed rgba(255,255,255,.25)' : '1.5px dashed var(--edge)',
               background: on
-                ? `radial-gradient(circle at 0 50%, var(--sheet) ${notch}px, transparent ${notch + 0.5}px), radial-gradient(circle at 100% 50%, var(--sheet) ${notch}px, transparent ${notch + 0.5}px), ${color}`
+                ? `radial-gradient(circle at 0 50%, ${cut} ${notch}px, transparent ${notch + 0.5}px), radial-gradient(circle at 100% 50%, ${cut} ${notch}px, transparent ${notch + 0.5}px), ${color}`
                 : 'transparent',
             }}
           />
@@ -269,7 +289,7 @@ function AreaChart({ data, labelEvery }: { data: Point[]; labelEvery: number }) 
         })}
         <path d={area} fill="url(#pmViews)" />
         <path d={line('views')} fill="none" style={{ stroke: 'var(--blue)' }} strokeWidth="2.75" strokeLinecap="round" />
-        <path d={line('leads')} fill="none" style={{ stroke: 'var(--red)' }} strokeWidth="2.5" strokeLinecap="round" strokeDasharray="1 7" />
+        <path d={line('leads')} fill="none" style={{ stroke: 'var(--ink)' }} strokeWidth="2.5" strokeLinecap="round" strokeDasharray="1 7" />
         {data.map((d, i) => (i % labelEvery === 0 || i === n - 1) ? (
           <text key={i} x={x(i)} y={H - 8} textAnchor="middle" fontSize="11" fontWeight="600" style={{ fill: 'var(--muted)' }}>{d.label}</text>
         ) : null)}
@@ -277,7 +297,7 @@ function AreaChart({ data, labelEvery }: { data: Point[]; labelEvery: number }) 
           <g>
             <line x1={x(hover)} x2={x(hover)} y1={pt} y2={base} style={{ stroke: 'var(--blue)' }} strokeOpacity="0.35" />
             <circle cx={x(hover)} cy={y(data[hover].views)} r="5" style={{ fill: 'var(--blue)', stroke: 'var(--sheet)' }} strokeWidth="2.5" />
-            <circle cx={x(hover)} cy={y(data[hover].leads)} r="5" style={{ fill: 'var(--red)', stroke: 'var(--sheet)' }} strokeWidth="2.5" />
+            <circle cx={x(hover)} cy={y(data[hover].leads)} r="5" style={{ fill: 'var(--ink)', stroke: 'var(--sheet)' }} strokeWidth="2.5" />
           </g>
         )}
         {data.map((_, i) => {
@@ -290,7 +310,7 @@ function AreaChart({ data, labelEvery }: { data: Point[]; labelEvery: number }) 
           style={{ left: `${Math.min(Math.max((x(hover) / W) * 100, 12), 88)}%` }}>
           <p className="font-bold mb-1">{data[hover].label}</p>
           <p className="flex items-center gap-1.5 font-semibold"><span className="size-2 rounded-full" style={{ background: 'var(--blue)' }} />{data[hover].views} vue(s)</p>
-          <p className="flex items-center gap-1.5 font-semibold"><span className="size-2 rounded-full" style={{ background: 'var(--red)' }} />{data[hover].leads} demande(s)</p>
+          <p className="flex items-center gap-1.5 font-semibold"><span className="size-2 rounded-full" style={{ background: 'var(--ink)' }} />{data[hover].leads} demande(s)</p>
         </div>
       )}
     </div>
@@ -313,6 +333,199 @@ function RoiNote(props: { tarif: number; breakEvenHours: number; monthlyPerStude
       <p>1 élève × {HOURS_PER_MONTH} h = {fmt(monthlyPerStudent)} MAD</p>
       <p>soit <span className="pm-hl">×{roiMultiple}</span> le prix d&apos;un lead</p>
     </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  PROMOTIONS : le prof écrit, les parents aiment (pas de commentaires)*/
+/*  Chaque like d'une promo ACTIVE donne un bonus de classement.       */
+/*  (nécessite les tables SQL promotions + promotion_likes)            */
+/* ------------------------------------------------------------------ */
+function PromoManager({ profId }: { profId: string | number }) {
+  const [promos, setPromos] = useState<Promo[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+  const [discount, setDiscount] = useState('');
+  const [endDate, setEndDate] = useState(inDays(7));
+
+  const load = useCallback(async () => {
+    const { data } = await supabase
+      .from('promotions')
+      .select('*')
+      .eq('professor_id', String(profId))
+      .order('created_at', { ascending: false });
+    setPromos((data as Promo[]) || []);
+    setLoading(false);
+  }, [profId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const live = promos.filter(isLivePromo);
+  const boost = Math.min(live.reduce((a, p) => a + p.likes_count, 0), BOOST_CAP);
+  const totalLikes = promos.reduce((a, p) => a + p.likes_count, 0);
+  const canCreate = live.length < MAX_ACTIVE_PROMOS;
+
+  const create = async () => {
+    setError('');
+    if (title.trim().length < 3) return setError('Le titre doit contenir au moins 3 caractères.');
+    if (body.trim().length < 10) return setError('Décrivez votre promotion en au moins 10 caractères.');
+    const d = Number(discount);
+    if (discount && (!Number.isFinite(d) || d < 1 || d > 90)) return setError('La réduction doit être entre 1 et 90 %.');
+
+    setSaving(true);
+    const { error: err } = await supabase.from('promotions').insert({
+      professor_id: String(profId),
+      title: title.trim(),
+      body: body.trim(),
+      discount_percent: discount ? d : null,
+      ends_at: new Date(`${endDate}T23:59:59`).toISOString(),
+    });
+    setSaving(false);
+    if (err) return setError(err.message);
+    setTitle(''); setBody(''); setDiscount(''); setEndDate(inDays(7));
+    load();
+  };
+
+  const toggle = async (p: Promo) => {
+    setError('');
+    const { error: err } = await supabase.from('promotions').update({ is_active: !p.is_active }).eq('id', p.id);
+    if (err) return setError(err.message);
+    load();
+  };
+
+  const remove = async (p: Promo) => {
+    if (!confirm('Supprimer cette promotion ? Ses likes seront perdus.')) return;
+    await supabase.from('promotions').delete().eq('id', p.id);
+    load();
+  };
+
+  const st = 'pm-display text-[22px] font-bold leading-8';
+
+  return (
+    <section className="space-y-6">
+      <div className="pm-sheet grid grid-cols-1 sm:grid-cols-3 overflow-hidden">
+        {[
+          { label: 'Promotions actives', value: `${live.length}/${MAX_ACTIVE_PROMOS}`, hint: '' },
+          { label: 'Likes reçus (total)', value: String(totalLikes), hint: '' },
+          { label: 'Bonus de classement', value: `+${boost}`, hint: `plafonné à ${BOOST_CAP}` },
+        ].map((s, i) => (
+          <div key={s.label} className={`p-5 sm:p-6 border-[var(--edge)] ${i < 2 ? 'border-b sm:border-b-0 sm:border-r' : ''}`}>
+            <p className="text-sm font-semibold pm-muted">{s.label}</p>
+            <p className="pm-display pm-num text-4xl font-extrabold leading-none mt-3" style={i === 2 ? { color: 'var(--accent-ink)' } : undefined}>{s.value}</p>
+            {s.hint && <p className="text-xs pm-muted mt-2">{s.hint}</p>}
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+        {/* Formulaire */}
+        <div className="pm-sheet xl:col-span-5 p-6">
+          <h3 className={st}>Nouvelle promotion</h3>
+          <p className="text-sm pm-muted mt-1">Elle s&apos;affiche sur votre profil public. Chaque like d&apos;un parent vous fait monter dans la liste des professeurs.</p>
+
+          <div className="mt-5 space-y-4">
+            <label className="block">
+              <span className="text-sm font-bold">Titre</span>
+              <input className="pm-input mt-1.5" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={80} placeholder="Ex : Pack révision du Bac" />
+            </label>
+
+            <label className="block">
+              <span className="flex justify-between text-sm font-bold">Description <span className="pm-muted font-medium pm-num">{body.length}/280</span></span>
+              <textarea className="pm-input mt-1.5 resize-none" value={body} onChange={(e) => setBody(e.target.value)} maxLength={280} rows={4}
+                placeholder="Ex : -20 % sur le 1er mois pour toute inscription avant le 30." />
+            </label>
+
+            <div className="grid grid-cols-2 gap-3">
+              <label className="block">
+                <span className="text-sm font-bold">Réduction (%)</span>
+                <input className="pm-input mt-1.5" value={discount} onChange={(e) => setDiscount(e.target.value.replace(/\D/g, '').slice(0, 2))} inputMode="numeric" placeholder="Optionnel" />
+              </label>
+              <label className="block">
+                <span className="text-sm font-bold">Valable jusqu&apos;au</span>
+                <input className="pm-input mt-1.5" type="date" value={endDate} min={inDays(1)} max={inDays(90)} onChange={(e) => setEndDate(e.target.value)} />
+              </label>
+            </div>
+
+            {error && <p className="text-sm font-semibold" style={{ color: 'var(--red)' }}>{error}</p>}
+
+            <button onClick={create} disabled={saving || !canCreate} className="pm-btn pm-btn-blue w-full py-3 text-sm disabled:opacity-50 disabled:cursor-not-allowed">
+              {saving ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}Publier la promotion
+            </button>
+            {!canCreate && <p className="text-xs pm-muted text-center">Vous avez déjà {MAX_ACTIVE_PROMOS} promotions actives. Désactivez-en une pour en publier une nouvelle.</p>}
+          </div>
+
+          <div className="mt-6 rounded-md p-4 flex gap-3 text-xs leading-relaxed" style={{ background: 'var(--rule)' }}>
+            <Info className="size-4 shrink-0 mt-0.5" />
+            <p>Les parents peuvent <b>aimer</b> une promotion, mais <b>les commentaires sont interdits</b>. Le bonus disparaît quand la promotion expire ou est désactivée.</p>
+          </div>
+        </div>
+
+        {/* Liste */}
+        <div className="pm-sheet xl:col-span-7 p-6">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <h3 className={st}>Mes promotions</h3>
+            {boost > 0 && (
+              <span className="flex items-center gap-1.5 text-xs font-bold" style={{ color: 'var(--accent-ink)' }}>
+                <Flame className="size-4" />Bonus de visibilité : +{boost}
+              </span>
+            )}
+          </div>
+
+          {loading ? (
+            <div className="py-10 grid place-items-center"><Loader2 className="size-5 animate-spin pm-muted" /></div>
+          ) : promos.length === 0 ? (
+            <div className="py-10 text-center space-y-2">
+              <p className="font-bold">Aucune promotion pour l&apos;instant</p>
+              <p className="text-sm pm-muted">Publiez votre première offre : chaque like vous fait monter dans la liste.</p>
+            </div>
+          ) : (
+            <ul className="mt-3 divide-y divide-[var(--edge)]">
+              {promos.map((p) => {
+                const isLive = isLivePromo(p);
+                const expired = new Date(p.ends_at).getTime() <= Date.now();
+                return (
+                  <li key={p.id} className="py-4 flex gap-4" style={{ opacity: isLive ? 1 : 0.6 }}>
+                    <div className="shrink-0 w-14 text-center">
+                      <Heart className="size-6 mx-auto" style={{ color: 'var(--red)', fill: p.likes_count > 0 ? 'var(--red)' : 'none' }} />
+                      <p className="pm-display pm-num text-xl font-bold leading-none mt-1">{p.likes_count}</p>
+                      <p className="text-[10px] pm-muted">likes</p>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm font-bold">{p.title}</p>
+                        {p.discount_percent && (
+                          <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-bold" style={{ background: 'var(--hl)' }}>
+                            <Tag className="size-3" />-{p.discount_percent}%
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm pm-muted mt-1 leading-relaxed">{p.body}</p>
+                      <p className="text-[11px] mt-2 font-semibold" style={{ color: isLive ? 'var(--green)' : 'var(--muted)' }}>
+                        {expired ? 'Expirée' : !p.is_active ? 'Désactivée' : 'Active'} · jusqu&apos;au {new Date(p.ends_at).toLocaleDateString('fr-FR')}
+                      </p>
+                    </div>
+                    <div className="flex flex-col gap-1.5 shrink-0">
+                      {!expired && (
+                        <button onClick={() => toggle(p)} aria-label={p.is_active ? 'Désactiver' : 'Activer'} title={p.is_active ? 'Désactiver' : 'Activer'} className="pm-btn pm-btn-ghost size-8">
+                          <Power className="size-3.5" />
+                        </button>
+                      )}
+                      <button onClick={() => remove(p)} aria-label="Supprimer" title="Supprimer" className="pm-btn pm-btn-ghost size-8" style={{ color: 'var(--red)' }}>
+                        <Trash2 className="size-3.5" />
+                      </button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -596,7 +809,7 @@ export default function ProfDashboard() {
   const navCls = (active: boolean) =>
     `relative w-full flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-semibold transition-colors cursor-pointer ${collapsed ? 'lg:justify-center lg:px-0' : ''} ${
       active ? 'bg-white/10 text-white' : 'text-slate-300/80 hover:bg-white/5 hover:text-white'}`;
-  const bar = (active: boolean) => active ? <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded-full" style={{ background: '#FFE066' }} /> : null;
+  const bar = (active: boolean) => active ? <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded-full" style={{ background: 'var(--accent)' }} /> : null;
 
   const statusInfo = (s?: string) =>
     isAccepted(s) ? { t: 'Accepté', c: 'var(--green)' } : isPending(s) ? { t: 'À traiter', c: 'var(--blue)' } : { t: 'Refusé', c: 'var(--red)' };
@@ -622,7 +835,7 @@ export default function ProfDashboard() {
         style={{ background: 'var(--side)' }}>
         <div className={`flex h-16 items-center justify-between px-4 ${collapsed ? 'lg:justify-center lg:px-2' : ''}`}>
           <button onClick={() => goTo('overview')} className="flex items-center gap-2.5 text-left cursor-pointer">
-            <span className="flex size-9 items-center justify-center rounded-md text-white font-extrabold pm-display" style={{ background: '#FF7A1A' }}>P</span>
+            <span className="flex size-9 items-center justify-center rounded-md font-extrabold pm-display" style={{ background: '#F04A00', color: '#FFFFFF' }}>P</span>
             <span className={`pm-display text-lg font-bold tracking-tight text-white ${collapsed ? 'lg:hidden' : ''}`}>ProfMaroc</span>
           </button>
           <button onClick={() => setCollapsed(!collapsed)} aria-label="Réduire le menu" className={`hidden size-7 items-center justify-center rounded-md bg-white/10 text-slate-300 hover:text-white lg:flex ${collapsed ? 'lg:hidden' : ''}`}>
@@ -661,7 +874,7 @@ export default function ProfDashboard() {
               <span className="flex items-center gap-3">
                 <span className="relative">
                   <Users className="size-[18px]" />
-                  {stats.pendingAll > 0 && <span className="absolute -top-1 -right-1 size-2 rounded-full ring-2" style={{ background: '#FFE066', ['--tw-ring-color' as any]: 'var(--side)' }} />}
+                  {stats.pendingAll > 0 && <span className="absolute -top-1 -right-1 size-2 rounded-full ring-2" style={{ background: 'var(--accent)', ['--tw-ring-color' as any]: 'var(--side)' }} />}
                 </span>
                 <span className={collapsed ? 'lg:hidden' : ''}>Demandes</span>
               </span>
@@ -680,7 +893,7 @@ export default function ProfDashboard() {
                     <button key={s.key} onClick={() => { setActiveTab('demandes'); setDemandeSubTab(s.key); setMobileOpen(false); }}
                       className={`w-full flex items-center justify-between rounded-md px-3 py-2 text-xs font-semibold transition-colors cursor-pointer ${active ? 'bg-white/10 text-white' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>
                       <span className="flex items-center gap-2"><Icon className="size-3.5" />{s.label}</span>
-                      <span className="pm-num text-[11px] font-bold" style={{ color: s.key === 'pending' && s.n > 0 ? '#FFE066' : undefined }}>{s.n}</span>
+                      <span className="pm-num text-[11px] font-bold" style={{ color: s.key === 'pending' && s.n > 0 ? 'var(--accent)' : undefined }}>{s.n}</span>
                     </button>
                   );
                 })}
@@ -840,7 +1053,7 @@ export default function ProfDashboard() {
                       <h3 className={sectionTitle}>Vues et demandes</h3>
                       <div className="flex items-center gap-4 text-xs font-semibold">
                         <span className="flex items-center gap-1.5"><span className="h-0.5 w-5 rounded" style={{ background: 'var(--blue)' }} />Vues</span>
-                        <span className="flex items-center gap-1.5"><span className="w-5 border-t-2 border-dotted" style={{ borderColor: 'var(--red)' }} />Demandes</span>
+                        <span className="flex items-center gap-1.5"><span className="w-5 border-t-2 border-dotted" style={{ borderColor: 'var(--ink)' }} />Demandes</span>
                       </div>
                     </div>
                     {stats.views === 0 && stats.leadsIn === 0 ? (
@@ -992,7 +1205,7 @@ export default function ProfDashboard() {
                             ))}
                           </div>
                         </div>
-                        <p className="mt-3 flex items-center gap-2 text-sm font-semibold"><Flame className="size-4" style={{ color: 'var(--red)' }} />Meilleur moment : le {WEEKDAYS_FULL[stats.best.d]}, entre {SLOTS[stats.best.s]}.</p>
+                        <p className="mt-3 flex items-center gap-2 text-sm font-semibold"><Flame className="size-4" style={{ color: 'var(--accent-ink)' }} />Meilleur moment : le {WEEKDAYS_FULL[stats.best.d]}, entre {SLOTS[stats.best.s]}.</p>
                       </>
                     )}
                   </div>
@@ -1136,8 +1349,11 @@ export default function ProfDashboard() {
               <>
                 <section>
                   <h1 className="pm-display text-[40px] sm:text-5xl font-extrabold leading-[1.05]">Gérer mes publicités</h1>
-                  <p className="mt-3 text-[17px] max-w-xl">Faites circuler votre lien : plus de visiteurs, plus de demandes d&apos;élèves.</p>
+                  <p className="mt-3 text-[17px] max-w-xl">Publiez vos promotions : chaque like des parents vous fait monter dans la liste des professeurs. Les commentaires sont interdits.</p>
                 </section>
+
+                {/* PROMOTIONS (likes uniquement) */}
+                {profData && <PromoManager profId={profData.id} />}
 
                 <section className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
                   <div className="xl:col-span-4">
@@ -1156,7 +1372,7 @@ export default function ProfDashboard() {
                       </div>
                       <div className="p-4 flex items-center justify-between">
                         <div><p className="text-sm font-bold">{subjectName}</p><p className="pm-display pm-num text-lg font-bold">{tarif} MAD<span className="text-xs font-medium pm-muted">/h</span></p></div>
-                        <span className="text-xs font-bold" style={{ color: 'var(--red)' }}>1er cours offert</span>
+                        <span className="text-xs font-bold" style={{ color: 'var(--accent-ink)' }}>1er cours offert</span>
                       </div>
                     </div>
                     {completeness.score < 100 && (
