@@ -1,18 +1,30 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
-import { 
-  Users, 
-  X, Sun, Moon, LogOut, ChevronDown, User, Coins, PlusCircle, 
-  LayoutGrid, ChevronsLeft, ChevronsRight, GraduationCap, BarChart3, ArrowUpRight, TrendingDown, Megaphone, CheckCircle2, Clock
+import {
+  Users, X, Sun, Moon, LogOut, ChevronDown, User, Coins, Plus, Minus,
+  LayoutGrid, ChevronsLeft, ChevronsRight, ArrowUpRight, ArrowDownRight, Megaphone,
+  CheckCircle2, Clock, Menu, MapPin, BookOpen, Check, Copy, Share2, ExternalLink,
+  MessageCircle, Scissors, Flame, ChevronRight, Eye, Inbox
 } from 'lucide-react';
 
 import GestionDemandeView from './gestion_demande/page';
 
+/* ------------------------------------------------------------------ */
+/*  CONFIG — à ajuster                                                 */
+/* ------------------------------------------------------------------ */
+const PACK_PRICE_DH = 100;               // prix d'une recharge
+const LEADS_PER_PACK = 10;               // leads inclus dans une recharge (À ADAPTER)
+const LOW_LEADS_THRESHOLD = 3;           // alerte crédits bas
+const HOURS_PER_MONTH = 4;               // heures/mois estimées par élève (estimation)
+const SUPPORT_WHATSAPP = '212600000000'; // ⚠️ REMPLACER par votre numéro WhatsApp (format international, sans +)
+
+/* ------------------------------------------------------------------ */
+/*  TYPES                                                              */
+/* ------------------------------------------------------------------ */
 interface Professor {
   id: string | number;
   email?: string;
@@ -26,47 +38,339 @@ interface Professor {
   photo?: string;
   available?: boolean;
   leads_restants?: number;
+  [key: string]: any;
+}
+interface Lead {
+  id?: string | number;
+  status?: string;
+  created_at?: string;
+  [key: string]: any;
+}
+type Tab = 'overview' | 'demandes' | 'credits' | 'publicites';
+type Range = 'semaine' | 'mois' | 'annee';
+type Bucket = { label: string; start: number; end: number };
+type Point = { label: string; views: number; leads: number };
+
+/* ------------------------------------------------------------------ */
+/*  HELPERS                                                            */
+/* ------------------------------------------------------------------ */
+const DAY = 86_400_000;
+const WEEKDAYS = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+const WEEKDAYS_FULL = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+const MONTHS = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'];
+const SLOTS = ['0-4h', '4-8h', '8-12h', '12-16h', '16-20h', '20-24h'];
+
+const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+
+function buildBuckets(range: Range, now: Date): Bucket[] {
+  const today = startOfDay(now);
+  if (range === 'semaine' || range === 'mois') {
+    const n = range === 'semaine' ? 7 : 30;
+    return Array.from({ length: n }, (_, k) => {
+      const i = n - 1 - k;
+      const start = today - i * DAY;
+      const d = new Date(start);
+      return { label: range === 'semaine' ? WEEKDAYS[d.getDay()] : `${d.getDate()}/${d.getMonth() + 1}`, start, end: start + DAY };
+    });
+  }
+  return Array.from({ length: 12 }, (_, k) => {
+    const i = 11 - k;
+    const start = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const end = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+    return { label: MONTHS[start.getMonth()], start: start.getTime(), end: end.getTime() };
+  });
 }
 
+const countIn = (times: number[], start: number, end: number) =>
+  times.reduce((a, t) => (t >= start && t < end ? a + 1 : a), 0);
+
+const toTimes = (rows: any[], field: string) =>
+  rows.map((r) => new Date(r[field]).getTime()).filter((t) => Number.isFinite(t));
+
+function delta(cur: number, prev: number): { text: string; dir: 'up' | 'down' | 'flat' } {
+  if (prev === 0 && cur === 0) return { text: '0%', dir: 'flat' };
+  if (prev === 0) return { text: 'Nouveau', dir: 'up' };
+  const pct = ((cur - prev) / prev) * 100;
+  if (Math.abs(pct) < 0.5) return { text: '0%', dir: 'flat' };
+  return { text: `${pct > 0 ? '+' : ''}${pct.toFixed(1)}%`, dir: pct > 0 ? 'up' : 'down' };
+}
+
+const niceMax = (v: number) => {
+  if (v <= 4) return 4;
+  const pow = Math.pow(10, Math.floor(Math.log10(v)));
+  const n = v / pow;
+  return (n <= 2 ? 2 : n <= 5 ? 5 : 10) * pow;
+};
+
+const pick = (o: Record<string, any>, keys: string[]) => {
+  for (const k of keys) if (o[k] !== undefined && o[k] !== null && o[k] !== '') return o[k];
+  return '';
+};
+
+const isAccepted = (s?: string) => (s || '').toLowerCase() === 'accepted';
+const isPending = (s?: string) => (s || '').toLowerCase() === 'pending';
+
+const timeAgo = (iso?: string) => {
+  if (!iso) return '';
+  const diff = Date.now() - new Date(iso).getTime();
+  if (!Number.isFinite(diff)) return '';
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return "à l'instant";
+  if (m < 60) return `il y a ${m} min`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `il y a ${h} h`;
+  const d = Math.floor(h / 24);
+  if (d < 30) return `il y a ${d} j`;
+  return new Date(iso).toLocaleDateString('fr-FR');
+};
+
+const topCounts = (items: string[], n = 3) => {
+  const map = new Map<string, number>();
+  items.filter(Boolean).forEach((i) => map.set(i.trim(), (map.get(i.trim()) || 0) + 1));
+  return [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, n);
+};
+
+const fmt = (n: number) => n.toLocaleString('fr-FR');
+
+/* ------------------------------------------------------------------ */
+/*  STYLES GLOBAUX (cahier à lignes)                                   */
+/* ------------------------------------------------------------------ */
+const CSS = `
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Hanken+Grotesk:wght@400;500;600;700&family=Caveat:wght@500;700&display=swap');
+
+.pm-light{--paper:#F8FAFF;--rule:#E1E7F7;--sheet:#FFFFFF;--edge:#D6DEF3;--ink:#0F1A3B;--muted:#5A6788;--blue:#2446D1;--onblue:#FFFFFF;--red:#DF3A3F;--hl:rgba(255,224,102,.85);--green:#12915F;--side:#0F1B3D;--shadow:rgba(16,27,60,.30);--margin:rgba(223,58,63,.5);--hole:#0F1B3D}
+.pm-dark{--paper:#0A0F20;--rule:#161E3C;--sheet:#111933;--edge:#222C52;--ink:#E8ECFF;--muted:#8C98BE;--blue:#7D96FF;--onblue:#0A0F20;--red:#FF6B70;--hl:rgba(255,224,102,.28);--green:#3DDC97;--side:#050816;--shadow:rgba(0,0,0,.8);--margin:rgba(255,107,112,.35);--hole:#050816}
+
+.pm{font-family:'Hanken Grotesk',system-ui,sans-serif;color:var(--ink);background:var(--paper)}
+.pm *{box-sizing:border-box}
+.pm :focus-visible{outline:2px solid var(--blue);outline-offset:2px;border-radius:4px}
+.pm-display{font-family:'Bricolage Grotesque','Hanken Grotesk',sans-serif;font-variation-settings:'opsz' 60;letter-spacing:-.025em}
+.pm-hand{font-family:'Caveat',cursive}
+.pm-num{font-variant-numeric:tabular-nums}
+.pm-muted{color:var(--muted)}
+.pm-paper{position:relative;background-color:var(--paper);background-image:linear-gradient(to bottom,transparent 31px,var(--rule) 31px);background-size:100% 32px}
+@media(min-width:1024px){
+  .pm-paper::before{content:'';position:absolute;top:0;bottom:0;left:76px;width:2px;background:var(--margin);pointer-events:none}
+  .pm-paper::after{content:'';position:absolute;top:0;bottom:0;left:0;width:34px;background-image:radial-gradient(circle at 17px 32px,var(--hole) 8px,transparent 9px);background-size:34px 72px;pointer-events:none}
+}
+.pm-sheet{background:var(--sheet);border:1px solid var(--edge);border-radius:6px;box-shadow:0 1px 0 var(--edge),0 18px 30px -22px var(--shadow)}
+.pm-edge{border-color:var(--edge)}
+.pm-hl{background:linear-gradient(transparent 58%,var(--hl) 58% 94%,transparent 94%);padding:0 .15em}
+.pm-btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;border-radius:6px;font-weight:700;cursor:pointer;transition:transform .15s,box-shadow .15s,background-color .15s}
+.pm-btn:hover{transform:translateY(-1px)}
+.pm-btn:active{transform:translateY(0)}
+.pm-btn-blue{background:var(--blue);color:var(--onblue);box-shadow:0 8px 18px -10px var(--blue)}
+.pm-btn-red{background:var(--red);color:#fff}
+.pm-btn-green{background:var(--green);color:#fff}
+.pm-btn-ghost{background:var(--sheet);color:var(--ink);border:1px solid var(--edge)}
+.pm-btn-ghost:hover{border-color:var(--blue)}
+.pm-dots{background-image:linear-gradient(to right,var(--edge) 50%,transparent 0);background-size:6px 1px;background-repeat:repeat-x;background-position:bottom}
+@keyframes pm-draw{to{stroke-dashoffset:0}}
+.pm-draw{stroke-dasharray:400;stroke-dashoffset:400;animation:pm-draw 1.1s .35s ease-out forwards}
+@media(prefers-reduced-motion:reduce){.pm-draw{animation:none;stroke-dashoffset:0}.pm-btn{transition:none}}
+`;
+
+/* ------------------------------------------------------------------ */
+/*  PETITS COMPOSANTS                                                  */
+/* ------------------------------------------------------------------ */
+function Delta({ text, dir }: { text: string; dir: 'up' | 'down' | 'flat' }) {
+  const Icon = dir === 'up' ? ArrowUpRight : dir === 'down' ? ArrowDownRight : Minus;
+  const color = dir === 'up' ? 'var(--green)' : dir === 'down' ? 'var(--red)' : 'var(--muted)';
+  return (
+    <span className="inline-flex items-center gap-0.5 text-xs font-bold" style={{ color }}>
+      <Icon className="size-3.5 stroke-[2.5]" />{text}
+    </span>
+  );
+}
+
+function Tickets({ n, low, size = 'md' }: { n: number; low?: boolean; size?: 'sm' | 'md' }) {
+  const total = Math.min(Math.max(LEADS_PER_PACK, Math.ceil(n / LEADS_PER_PACK) * LEADS_PER_PACK), 40);
+  const filled = Math.min(n, total);
+  const color = low ? 'var(--red)' : 'var(--blue)';
+  const w = size === 'sm' ? 12 : 22;
+  const h = size === 'sm' ? 18 : 32;
+  const notch = size === 'sm' ? 2 : 3.5;
+  return (
+    <div className="flex flex-wrap gap-1.5" role="img" aria-label={`${n} leads restants`}>
+      {Array.from({ length: size === 'sm' ? Math.min(total, 10) : total }, (_, i) => {
+        const on = i < (size === 'sm' ? Math.min(filled, 10) : filled);
+        return (
+          <span
+            key={i}
+            style={{
+              width: w, height: h, borderRadius: 3,
+              border: on ? 'none' : '1.5px dashed var(--edge)',
+              background: on
+                ? `radial-gradient(circle at 0 50%, var(--sheet) ${notch}px, transparent ${notch + 0.5}px), radial-gradient(circle at 100% 50%, var(--sheet) ${notch}px, transparent ${notch + 0.5}px), ${color}`
+                : 'transparent',
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+function Grade({ score20, comment, note }: { score20: number; comment: string; note: string }) {
+  return (
+    <Link href="/prof/profile" aria-label={`Note du profil : ${score20} sur 20. Modifier mon profil`} className="group flex items-center gap-4 sm:gap-5 self-start">
+      <div className="relative shrink-0 w-[150px] h-[104px] -rotate-3 transition-transform group-hover:rotate-0">
+        <svg viewBox="0 0 160 100" className="absolute inset-0 w-full h-full" fill="none" aria-hidden>
+          <path className="pm-draw" pathLength={400} d="M82 8 C130 5 155 28 150 52 C145 78 108 95 68 92 C26 89 5 66 12 41 C18 17 54 9 96 12"
+            style={{ stroke: 'var(--red)' }} strokeWidth="3.5" strokeLinecap="round" />
+        </svg>
+        <div className="pm-hand absolute inset-0 flex items-baseline justify-center pt-5 font-bold" style={{ color: 'var(--red)' }}>
+          <span className="text-[62px] leading-[64px]">{score20}</span>
+          <span className="text-3xl">/20</span>
+        </div>
+      </div>
+      <div className="pm-hand max-w-[210px] leading-6" style={{ color: 'var(--red)' }}>
+        <p className="text-[26px] font-bold leading-7">{comment}</p>
+        <p className="text-xl">{note}</p>
+      </div>
+    </Link>
+  );
+}
+
+function AreaChart({ data, labelEvery }: { data: Point[]; labelEvery: number }) {
+  const [hover, setHover] = useState<number | null>(null);
+  const W = 640, H = 260, pl = 34, pr = 12, pt = 16, pb = 30;
+  const n = data.length;
+  const maxY = niceMax(Math.max(...data.map((d) => Math.max(d.views, d.leads)), 1));
+  const x = (i: number) => pl + (n === 1 ? 0 : (i * (W - pl - pr)) / (n - 1));
+  const y = (v: number) => pt + (1 - v / maxY) * (H - pt - pb);
+  const base = H - pb;
+  const line = (key: 'views' | 'leads') => {
+    let d = `M ${x(0)} ${y(data[0]?.[key] ?? 0)}`;
+    for (let i = 1; i < n; i++) {
+      const cx = (x(i - 1) + x(i)) / 2;
+      d += ` C ${cx} ${y(data[i - 1][key])} ${cx} ${y(data[i][key])} ${x(i)} ${y(data[i][key])}`;
+    }
+    return d;
+  };
+  const area = `${line('views')} L ${x(n - 1)} ${base} L ${x(0)} ${base} Z`;
+  return (
+    <div className="relative">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" onMouseLeave={() => setHover(null)} role="img" aria-label="Courbe des vues et des demandes">
+        <defs>
+          <linearGradient id="pmViews" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" style={{ stopColor: 'var(--blue)', stopOpacity: 0.22 }} />
+            <stop offset="100%" style={{ stopColor: 'var(--blue)', stopOpacity: 0 }} />
+          </linearGradient>
+        </defs>
+        {[0, 0.25, 0.5, 0.75, 1].map((g) => {
+          const yy = pt + g * (H - pt - pb);
+          return (
+            <g key={g}>
+              <line x1={pl} x2={W - pr} y1={yy} y2={yy} style={{ stroke: 'var(--edge)' }} strokeDasharray="2 5" />
+              <text x={pl - 8} y={yy + 4} textAnchor="end" fontSize="11" fontWeight="600" style={{ fill: 'var(--muted)' }}>{Math.round(maxY * (1 - g))}</text>
+            </g>
+          );
+        })}
+        <path d={area} fill="url(#pmViews)" />
+        <path d={line('views')} fill="none" style={{ stroke: 'var(--blue)' }} strokeWidth="2.75" strokeLinecap="round" />
+        <path d={line('leads')} fill="none" style={{ stroke: 'var(--red)' }} strokeWidth="2.5" strokeLinecap="round" strokeDasharray="1 7" />
+        {data.map((d, i) => (i % labelEvery === 0 || i === n - 1) ? (
+          <text key={i} x={x(i)} y={H - 8} textAnchor="middle" fontSize="11" fontWeight="600" style={{ fill: 'var(--muted)' }}>{d.label}</text>
+        ) : null)}
+        {hover !== null && (
+          <g>
+            <line x1={x(hover)} x2={x(hover)} y1={pt} y2={base} style={{ stroke: 'var(--blue)' }} strokeOpacity="0.35" />
+            <circle cx={x(hover)} cy={y(data[hover].views)} r="5" style={{ fill: 'var(--blue)', stroke: 'var(--sheet)' }} strokeWidth="2.5" />
+            <circle cx={x(hover)} cy={y(data[hover].leads)} r="5" style={{ fill: 'var(--red)', stroke: 'var(--sheet)' }} strokeWidth="2.5" />
+          </g>
+        )}
+        {data.map((_, i) => {
+          const w = n === 1 ? W : (W - pl - pr) / (n - 1);
+          return <rect key={i} x={x(i) - w / 2} y={pt} width={w} height={H - pt - pb} fill="transparent" onMouseEnter={() => setHover(i)} onTouchStart={() => setHover(i)} />;
+        })}
+      </svg>
+      {hover !== null && (
+        <div className="pm-sheet pointer-events-none absolute -top-2 z-10 -translate-x-1/2 px-3 py-2 text-xs"
+          style={{ left: `${Math.min(Math.max((x(hover) / W) * 100, 12), 88)}%` }}>
+          <p className="font-bold mb-1">{data[hover].label}</p>
+          <p className="flex items-center gap-1.5 font-semibold"><span className="size-2 rounded-full" style={{ background: 'var(--blue)' }} />{data[hover].views} vue(s)</p>
+          <p className="flex items-center gap-1.5 font-semibold"><span className="size-2 rounded-full" style={{ background: 'var(--red)' }} />{data[hover].leads} demande(s)</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RoiNote(props: { tarif: number; breakEvenHours: number; monthlyPerStudent: number; roiMultiple: number }) {
+  const { tarif, breakEvenHours, monthlyPerStudent, roiMultiple } = props;
+  if (tarif <= 0) {
+    return (
+      <p className="text-sm pm-muted leading-relaxed">
+        Indiquez votre tarif horaire dans <Link href="/prof/profile" className="font-bold underline" style={{ color: 'var(--blue)' }}>votre profil</Link> pour voir combien rapporte chaque lead.
+      </p>
+    );
+  }
+  return (
+    <div className="pm-hand text-[26px] leading-8" style={{ color: 'var(--blue)' }}>
+      <p>1 recharge = {PACK_PRICE_DH} DH</p>
+      <p>{PACK_PRICE_DH} ÷ {tarif} DH/h = <span className="pm-hl">{String(breakEvenHours).replace('.', ',')} h</span> de cours</p>
+      <p>1 élève × {HOURS_PER_MONTH} h = {fmt(monthlyPerStudent)} MAD</p>
+      <p>soit <span className="pm-hl">×{roiMultiple}</span> le prix d&apos;un lead</p>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  PAGE                                                               */
+/* ------------------------------------------------------------------ */
 export default function ProfDashboard() {
   const router = useRouter();
   const [profData, setProfData] = useState<Professor | null>(null);
-  const [profFullName, setProfFullName] = useState('sami');
+  const [profFullName, setProfFullName] = useState('Professeur');
   const [profImage, setProfImage] = useState('');
   const [isAvailable, setIsAvailable] = useState(true);
   const [loading, setLoading] = useState(true);
-  
-  const [acceptedCount, setAcceptedCount] = useState(0);
-  const [pendingCount, setPendingCount] = useState(0);
 
-  // NAVIGATION & SOUS-PAGES DEMANDES
-  const [activeTab, setActiveTab] = useState<'overview' | 'demandes' | 'publicites'>('overview');
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [viewTimes, setViewTimes] = useState<number[]>([]);
+
+  const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [demandeSubTab, setDemandeSubTab] = useState<'accepted' | 'pending'>('accepted');
   const [demandesOpen, setDemandesOpen] = useState(true);
-  const [timeRange, setTimeRange] = useState<'semaine' | 'mois' | 'annee'>('semaine');
-
-  // ANALYTICS
-  const [chartData, setChartData] = useState<any[]>([]);
-  const [periodTotal, setPeriodTotal] = useState(0);
-  const [growthPercentage, setGrowthPercentage] = useState('+14.2%');
-  const [isGrowthPositive, setIsGrowthPositive] = useState(true);
+  const [timeRange, setTimeRange] = useState<Range>('semaine');
 
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('prof_theme') === 'dark';
-    }
-    return false;
-  });
-
+  const [isDarkMode, setIsDarkMode] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
 
+  const [packQty, setPackQty] = useState(1);
+  const [goal, setGoal] = useState(5);
+  const [copied, setCopied] = useState('');
+  const [origin, setOrigin] = useState('');
+
+  const dark = isDarkMode;
+  const theme = dark ? 'pm-dark' : 'pm-light';
+
+  useEffect(() => {
+    try { setIsDarkMode(localStorage.getItem('prof_theme') === 'dark'); } catch {}
+    setOrigin(window.location.origin);
+  }, []);
+
+  useEffect(() => {
+    if (!profData) return;
+    try {
+      const g = Number(localStorage.getItem(`prof_goal_${profData.id}`));
+      if (g > 0) setGoal(g);
+    } catch {}
+  }, [profData]);
+
+  const changeGoal = (v: number) => {
+    const next = Math.min(Math.max(v, 1), 50);
+    setGoal(next);
+    try { if (profData) localStorage.setItem(`prof_goal_${profData.id}`, String(next)); } catch {}
+  };
+
   const toggleTheme = () => {
-    const nextMode = !isDarkMode;
-    setIsDarkMode(nextMode);
-    localStorage.setItem('prof_theme', nextMode ? 'dark' : 'light');
+    const next = !isDarkMode;
+    setIsDarkMode(next);
+    try { localStorage.setItem('prof_theme', next ? 'dark' : 'light'); } catch {}
   };
 
   const handleLogout = async () => {
@@ -75,432 +379,384 @@ export default function ProfDashboard() {
     router.push('/connexion');
   };
 
+  const toggleAvailability = async () => {
+    if (!profData) return;
+    const next = !isAvailable;
+    setIsAvailable(next);
+    const { error } = await supabase.from('professors').update({ available: next }).eq('id', profData.id);
+    if (error) setIsAvailable(!next);
+  };
+
+  const copy = async (key: string, text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(key);
+      setTimeout(() => setCopied(''), 1800);
+    } catch {}
+  };
+
+  const goTo = (tab: Tab) => { setActiveTab(tab); setMobileOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+
+  /* ---------------------------- CHARGEMENT ---------------------------- */
   useEffect(() => {
-    async function fetchProfDataAndAnalytics() {
+    let alive = true;
+    async function load() {
       try {
         setLoading(true);
         const { data: { user } } = await supabase.auth.getUser();
+        const rawEmail =
+          user?.email || localStorage.getItem('professor_email') || localStorage.getItem('profEmail') ||
+          localStorage.getItem('user_email') || localStorage.getItem('email');
+        const storedId = localStorage.getItem('professor_id') || localStorage.getItem('user_id');
 
-        const rawEmail = 
-          user?.email || 
-          localStorage.getItem('professor_email') || 
-          localStorage.getItem('profEmail') || 
-          localStorage.getItem('user_email') || 
-          localStorage.getItem('email');
+        if (!rawEmail && !storedId) { router.push('/connexion'); return; }
 
-        const storedId = 
-          localStorage.getItem('professor_id') || 
-          localStorage.getItem('user_id');
-
-        if (!rawEmail && !storedId) {
-          router.push('/connexion');
-          return;
+        let prof: Professor | null = null;
+        if (storedId) {
+          const { data } = await supabase.from('professors').select('*').eq('id', storedId).maybeSingle();
+          prof = (data as Professor) || null;
         }
-
-        const response = await supabase.from('professors').select('*');
-        const allProfs = response.data as Professor[] | null;
-
-        if (allProfs) {
-          let prof: Professor | undefined = undefined;
-          if (storedId) {
-            prof = allProfs.find((p) => String(p.id) === String(storedId));
-          }
-          if (!prof && rawEmail) {
-            const cleanTarget = rawEmail.toLowerCase().trim();
-            prof = allProfs.find((p) => p.email && p.email.toLowerCase().trim() === cleanTarget);
-          }
-
-          if (prof) {
-            setProfData(prof);
-            const prenom = prof['Prénom'] || prof.prenom || '';
-            const nom = prof['Nom'] || prof.nom || '';
-            const fullName = `${prenom} ${nom}`.trim();
-
-            setProfFullName(fullName || prof.email || 'sami');
-            setProfImage(prof.photo_URL || prof.photo_url || prof.image_url || prof.photo || '');
-            setIsAvailable(prof.available ?? true);
-
-            const profEmailTarget = (prof.email || rawEmail || '').toLowerCase().trim();
-            
-            // Compteurs pour les sous-pages de Demandes
-            const { data: leadsData } = await supabase
-              .from('leads')
-              .select('*')
-              .or(`professor_email.eq.${profEmailTarget},professor_id.eq.${prof.id}`);
-
-            if (leadsData) {
-              setAcceptedCount(leadsData.filter((l: any) => l.status === 'accepted').length);
-              setPendingCount(leadsData.filter((l: any) => l.status === 'pending').length);
-            }
-
-            // RÉCUPÉRATION DES VUES DU PROFIL
-            const { data: viewsData, error: viewsError } = await supabase
-              .from('profile_views')
-              .select('*')
-              .eq('professor_id', String(prof.id));
-
-            if (!viewsError && viewsData) {
-              const now = new Date();
-
-              if (timeRange === 'semaine') {
-                const daysMap = [
-                  { day: 'Lun', views: 0 },
-                  { day: 'Mar', views: 0 },
-                  { day: 'Mer', views: 0 },
-                  { day: 'Jeu', views: 0 },
-                  { day: 'Ven', views: 0 },
-                  { day: 'Sam', views: 0 },
-                  { day: 'Dim', views: 0 }
-                ];
-                
-                let currentWeekTotal = 0;
-                viewsData.forEach((v: any) => {
-                  const vDate = new Date(v.viewed_at);
-                  const diffTime = Math.abs(now.getTime() - vDate.getTime());
-                  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                  if (diffDays <= 7) {
-                    currentWeekTotal++;
-                    let dayIndex = vDate.getDay() - 1;
-                    if (dayIndex === -1) dayIndex = 6;
-                    if (daysMap[dayIndex]) daysMap[dayIndex].views++;
-                  }
-                });
-                setChartData(daysMap);
-                setPeriodTotal(currentWeekTotal);
-                setGrowthPercentage('+14.2%');
-                setIsGrowthPositive(true);
-              } 
-              else if (timeRange === 'mois') {
-                const weeksMap = [
-                  { day: 'Semaine 1', views: 0 },
-                  { day: 'Semaine 2', views: 0 },
-                  { day: 'Semaine 3', views: 0 },
-                  { day: 'Semaine 4', views: 0 },
-                ];
-                let monthTotal = 0;
-                viewsData.forEach((v: any) => {
-                  const vDate = new Date(v.viewed_at);
-                  if (vDate.getMonth() === now.getMonth() && vDate.getFullYear() === now.getFullYear()) {
-                    monthTotal++;
-                    const weekNum = Math.min(Math.floor(vDate.getDate() / 7), 3);
-                    weeksMap[weekNum].views++;
-                  }
-                });
-                setChartData(weeksMap);
-                setPeriodTotal(monthTotal);
-                setGrowthPercentage('+18.5%');
-                setIsGrowthPositive(true);
-              } 
-              else {
-                const quartersMap = [
-                  { day: 'T1 (Jan-Mar)', views: 0 },
-                  { day: 'T2 (Avr-Juin)', views: 0 },
-                  { day: 'T3 (Juil-Sep)', views: 0 },
-                  { day: 'T4 (Oct-Déc)', views: 0 },
-                ];
-                let yearTotal = 0;
-                viewsData.forEach((v: any) => {
-                  const vDate = new Date(v.viewed_at);
-                  if (vDate.getFullYear() === now.getFullYear()) {
-                    yearTotal++;
-                    const quarter = Math.floor(vDate.getMonth() / 3);
-                    quartersMap[quarter].views++;
-                  }
-                });
-                setChartData(quartersMap);
-                setPeriodTotal(yearTotal);
-                setGrowthPercentage('+24.0%');
-                setIsGrowthPositive(true);
-              }
-            } else {
-              setChartData([]);
-              setPeriodTotal(0);
-            }
-          }
+        if (!prof && rawEmail) {
+          const { data } = await supabase.from('professors').select('*').ilike('email', rawEmail.trim()).limit(1).maybeSingle();
+          prof = (data as Professor) || null;
         }
+        if (!prof || !alive) return;
+
+        setProfData(prof);
+        const fullName = `${prof['Prénom'] || prof.prenom || ''} ${prof['Nom'] || prof.nom || ''}`.trim();
+        setProfFullName(fullName || prof.email || 'Professeur');
+        setProfImage(prof.photo_URL || prof.photo_url || prof.image_url || prof.photo || '');
+        setIsAvailable(prof.available ?? true);
+
+        const email = (prof.email || rawEmail || '').toLowerCase().trim();
+        const [leadsRes, viewsRes] = await Promise.all([
+          supabase.from('leads').select('*').or(`professor_email.eq.${email},professor_id.eq.${prof.id}`),
+          supabase.from('profile_views').select('viewed_at').eq('professor_id', String(prof.id))
+            .gte('viewed_at', new Date(Date.now() - 800 * DAY).toISOString()),
+        ]);
+        if (!alive) return;
+        setLeads((leadsRes.data as Lead[]) || []);
+        setViewTimes(toTimes(viewsRes.data || [], 'viewed_at'));
       } catch (err) {
-        console.error("Erreur dashboard:", err);
+        console.error('Erreur dashboard:', err);
       } finally {
-        setLoading(false);
+        if (alive) setLoading(false);
       }
     }
+    load();
+    return () => { alive = false; };
+  }, [router]);
 
-    fetchProfDataAndAnalytics();
-  }, [router, timeRange]);
+  /* ---------------------------- CALCULS ---------------------------- */
+  const stats = useMemo(() => {
+    const now = new Date();
+    const buckets = buildBuckets(timeRange, now);
+    const from = buckets[0].start;
+    const to = buckets[buckets.length - 1].end;
+    const prevFrom = from - (to - from);
 
+    const leadTimes = toTimes(leads, 'created_at');
+    const acceptedTimes = toTimes(leads.filter((l) => isAccepted(l.status)), 'created_at');
+
+    const points: Point[] = buckets.map((b) => ({
+      label: b.label, views: countIn(viewTimes, b.start, b.end), leads: countIn(leadTimes, b.start, b.end),
+    }));
+
+    const views = countIn(viewTimes, from, to);
+    const prevViews = countIn(viewTimes, prevFrom, from);
+    const leadsIn = countIn(leadTimes, from, to);
+    const prevLeadsIn = countIn(leadTimes, prevFrom, from);
+    const acceptedIn = countIn(acceptedTimes, from, to);
+
+    const acceptedAll = leads.filter((l) => isAccepted(l.status)).length;
+    const pendingAll = leads.filter((l) => isPending(l.status)).length;
+    const refusedAll = leads.length - acceptedAll - pendingAll;
+    const decided = acceptedAll + refusedAll;
+    const acceptRate = decided > 0 ? Math.round((acceptedAll / decided) * 100) : 0;
+    const conv = views > 0 ? (leadsIn / views) * 100 : 0;
+
+    const today = startOfDay(now);
+    const leads30 = countIn(leadTimes, today - 29 * DAY, today + DAY);
+    const perDay = leads30 / 30;
+
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+    const acceptedThisMonth = countIn(acceptedTimes, monthStart, today + DAY);
+
+    const heat: number[][] = Array.from({ length: 7 }, () => Array(6).fill(0));
+    let heatTotal = 0;
+    viewTimes.forEach((t) => {
+      if (t < today - 90 * DAY) return;
+      const d = new Date(t);
+      heat[d.getDay()][Math.floor(d.getHours() / 4)]++;
+      heatTotal++;
+    });
+    let best = { d: 0, s: 0, v: 0 };
+    heat.forEach((row, d) => row.forEach((v, s) => { if (v > best.v) best = { d, s, v }; }));
+
+    const pendingSorted = leads
+      .filter((l) => isPending(l.status))
+      .sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
+
+    return {
+      points, views, prevViews, leadsIn, prevLeadsIn, acceptedIn, acceptedAll, pendingAll, refusedAll,
+      acceptRate, conv, perDay, leads30, acceptedThisMonth, heat, heatTotal, best,
+      pendingSorted, oldestPending: pendingSorted[0],
+      topSubjects: topCounts(leads.map((l) => String(pick(l, ['subject', 'matiere'])))),
+      topCities: topCounts(leads.map((l) => String(pick(l, ['city', 'ville'])))),
+      viewsDelta: delta(views, prevViews), leadsDelta: delta(leadsIn, prevLeadsIn),
+    };
+  }, [leads, viewTimes, timeRange]);
+
+  const leadBalance = Number(profData?.leads_restants ?? 0);
+  const isLow = leadBalance <= LOW_LEADS_THRESHOLD;
+  const autonomyDays = stats.perDay > 0 ? Math.floor(leadBalance / stats.perDay) : null;
+
+  const tarif = Number(profData ? pick(profData, ['tarif', 'price']) : 0) || 0;
+  const subjectName = String(profData ? pick(profData, ['matiere', 'subject']) : '') || 'Soutien scolaire';
+  const cityName = String(profData ? pick(profData, ['ville', 'city']) : '') || 'Maroc';
+  const costPerLead = PACK_PRICE_DH / LEADS_PER_PACK;
+  const monthlyPerStudent = tarif * HOURS_PER_MONTH;
+  const roiMultiple = costPerLead > 0 && monthlyPerStudent > 0 ? Math.round(monthlyPerStudent / costPerLead) : 0;
+  const breakEvenHours = tarif > 0 ? Math.ceil((PACK_PRICE_DH / tarif) * 10) / 10 : 0;
+
+  const missingLeads = Math.max(0, stats.leads30 - leadBalance);
+  const suggestedPacks = Math.max(1, Math.ceil(missingLeads / LEADS_PER_PACK));
+  const publicUrl = profData ? `${origin}/professeurs/${profData.id}` : '';
+
+  const completeness = useMemo(() => {
+    if (!profData) return { score: 0, missing: [] as string[] };
+    const checks: [string, boolean][] = [
+      ['Photo de profil', !!profImage],
+      ['Description', !!pick(profData, ['bio', 'description', 'about', 'presentation'])],
+      ['Matière enseignée', !!pick(profData, ['matiere', 'subject'])],
+      ['Niveau enseigné', !!pick(profData, ['niveau', 'level'])],
+      ['Ville', !!pick(profData, ['ville', 'city'])],
+      ['Tarif horaire', tarif > 0],
+      ['Lieu des cours', !!pick(profData, ['lieu', 'location'])],
+      ['Numéro de téléphone', !!pick(profData, ['telephone', 'phone', 'tel', 'whatsapp'])],
+    ];
+    const done = checks.filter(([, ok]) => ok).length;
+    return { score: Math.round((done / checks.length) * 100), missing: checks.filter(([, ok]) => !ok).map(([l]) => l) };
+  }, [profData, profImage, tarif]);
+
+  const score20 = Math.round((completeness.score / 100) * 20);
+  const gradeComment = score20 >= 18 ? 'Excellent !' : score20 >= 15 ? 'Bien.' : score20 >= 10 ? 'Peut mieux faire.' : 'Profil à compléter.';
+  const gradeNote = completeness.missing[0] ? `Ajoutez : ${completeness.missing[0].toLowerCase()}` : 'Profil complet, bravo !';
+
+  const queue = useMemo(() => {
+    if (stats.pendingSorted.length > 0) return { rows: stats.pendingSorted.slice(0, 5), pending: true };
+    const recent = [...leads].sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()).slice(0, 5);
+    return { rows: recent, pending: false };
+  }, [leads, stats.pendingSorted]);
+
+  const todo = useMemo(() => {
+    if (!isAvailable) return 'Vous êtes indisponible : les élèves ne peuvent pas vous contacter. Réactivez-vous en haut de page.';
+    if (stats.oldestPending) return `Une demande attend votre réponse depuis ${timeAgo(stats.oldestPending.created_at).replace('il y a ', '')}.`;
+    if (completeness.missing[0]) return `Pour inspirer confiance, ajoutez : ${completeness.missing[0].toLowerCase()}.`;
+    if (stats.heatTotal > 0) return `Vos visiteurs viennent surtout le ${WEEKDAYS_FULL[stats.best.d]} entre ${SLOTS[stats.best.s]}. Soyez joignable à ce moment.`;
+    return 'Partagez votre lien de profil pour recevoir vos prochaines demandes.';
+  }, [isAvailable, stats, completeness]);
+
+  /* ---------------------------- CHARGEMENT UI ---------------------------- */
   if (loading) {
     return (
-      <div className={`min-h-screen flex flex-col items-center justify-center gap-4 ${isDarkMode ? 'bg-[#0A0A0A]' : 'bg-slate-50'}`}>
-        <div className="relative flex items-center justify-center">
-          <div className="absolute size-24 rounded-3xl border-4 border-orange-500/20 border-t-orange-500 animate-spin" />
-          <div className="size-16 rounded-3xl bg-orange-500/10 dark:bg-orange-500/20 flex items-center justify-center shadow-lg shadow-orange-500/10 animate-pulse border border-orange-500/20">
-            <GraduationCap className="size-8 text-orange-500 animate-bounce" />
+      <div className={`pm ${theme} min-h-screen flex flex-col items-center justify-center gap-5`}>
+        <style dangerouslySetInnerHTML={{ __html: CSS }} />
+        <div className="pm-sheet px-8 py-6 flex flex-col items-center gap-4">
+          <div className="pm-hand text-3xl" style={{ color: 'var(--red)' }}>Préparation de votre carnet…</div>
+          <div className="w-52 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--rule)' }}>
+            <div className="h-full w-1/3 rounded-full animate-pulse" style={{ background: 'var(--blue)' }} />
           </div>
         </div>
-        <p className="text-xs font-bold text-slate-400 tracking-wide animate-pulse mt-2">
-          Chargement de l&apos;espace enseignant...
-        </p>
       </div>
     );
   }
 
-  const leadBalance = profData?.leads_restants ?? 0;
-  const maxBarValue = Math.max(...chartData.map(d => d.views), 1);
+  const rangeLabel = timeRange === 'semaine' ? '7 derniers jours' : timeRange === 'mois' ? '30 derniers jours' : '12 derniers mois';
+  const prevLabel = timeRange === 'semaine' ? 'sem. préc.' : timeRange === 'mois' ? 'mois préc.' : 'année préc.';
+  const labelEvery = timeRange === 'mois' ? 5 : 1;
+  const firstName = profFullName.split(' ')[0];
+  const todayLabel = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+  const todayCap = todayLabel.charAt(0).toUpperCase() + todayLabel.slice(1);
+
+  const orderMsg = `Bonjour ProfMaroc, je souhaite recharger mes leads.\n\nProfesseur : ${profFullName}\nEmail : ${profData?.email || ''}\nRéférence : ${profData?.id}\nQuantité : ${packQty} recharge(s) = ${packQty * LEADS_PER_PACK} leads\nMontant : ${packQty * PACK_PRICE_DH} DH`;
+  const orderUrl = `https://wa.me/${SUPPORT_WHATSAPP}?text=${encodeURIComponent(orderMsg)}`;
+
+  const shareText = `Je donne des cours de ${subjectName} à ${cityName}${tarif ? ` (${tarif} MAD/h)` : ''}. Retrouvez mon profil vérifié sur ProfMaroc : ${publicUrl}`;
+  const bioText = `${subjectName} • ${cityName} • 1er cours offert ${publicUrl}`;
+  const waShareUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+  const fbShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(publicUrl)}`;
+
+  const tabTitle =
+    activeTab === 'overview' ? 'Tableau de bord'
+    : activeTab === 'demandes' ? `Demandes · ${demandeSubTab === 'accepted' ? 'élèves acceptés' : 'en attente'}`
+    : activeTab === 'credits' ? 'Leads et crédits'
+    : 'Gérer mes publicités';
+
+  const navCls = (active: boolean) =>
+    `relative w-full flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-semibold transition-colors cursor-pointer ${collapsed ? 'lg:justify-center lg:px-0' : ''} ${
+      active ? 'bg-white/10 text-white' : 'text-slate-300/80 hover:bg-white/5 hover:text-white'}`;
+  const bar = (active: boolean) => active ? <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded-full" style={{ background: '#FFE066' }} /> : null;
+
+  const statusInfo = (s?: string) =>
+    isAccepted(s) ? { t: 'Accepté', c: 'var(--green)' } : isPending(s) ? { t: 'À traiter', c: 'var(--blue)' } : { t: 'Refusé', c: 'var(--red)' };
+
+  const maxFunnel = Math.max(stats.views, 1);
+  const funnelRows = [
+    { label: 'Ont vu votre profil', value: stats.views, icon: Eye },
+    { label: 'Vous ont écrit', value: stats.leadsIn, icon: Inbox },
+    { label: 'Acceptés', value: stats.acceptedIn, icon: CheckCircle2 },
+  ];
+
+  const sectionTitle = 'pm-display text-[22px] font-bold leading-8';
 
   return (
-    <div className={`min-h-screen flex transition-colors duration-300 ${isDarkMode ? 'bg-[#0A0A0A] text-slate-100' : 'bg-[#F8FAFC] text-slate-900'}`}>
-      
-      {/* SIDEBAR AVEC SOUS-MENU DEMANDES */}
+    <div className={`pm ${theme} min-h-screen flex transition-colors duration-300`}>
+      <style dangerouslySetInnerHTML={{ __html: CSS }} />
+
+      {/* ============================ SIDEBAR ============================ */}
       {mobileOpen && <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setMobileOpen(false)} />}
-      
-      <aside
-        className={`fixed inset-y-0 left-0 z-50 flex flex-col bg-slate-900 border-r border-slate-800 text-slate-200 transition-all duration-200 lg:sticky lg:top-0 lg:h-screen ${
-          mobileOpen ? 'translate-x-0 w-64' : '-translate-x-full lg:translate-x-0'
-        } ${collapsed ? 'lg:w-[76px]' : 'lg:w-64'}`}
-      >
-        <div className={`flex h-16 items-center justify-between border-b border-slate-800 px-4 ${collapsed ? 'lg:justify-center lg:px-2' : ''}`}>
-          <button onClick={() => { setActiveTab('overview'); setMobileOpen(false); }} className="flex items-center gap-2.5 text-left cursor-pointer">
-            <span className="flex size-9 items-center justify-center rounded-xl bg-orange-500 text-white font-black shadow-md shadow-orange-500/20">
-              P
-            </span>
-            <span className={`text-base font-bold tracking-tight text-white ${collapsed ? 'lg:hidden' : ''}`}>
-              Prof<span className="text-orange-500">Maroc</span>
-            </span>
+
+      <aside className={`fixed inset-y-0 left-0 z-50 flex flex-col text-slate-200 transition-all duration-200 lg:sticky lg:top-0 lg:h-screen ${
+        mobileOpen ? 'translate-x-0 w-64' : '-translate-x-full lg:translate-x-0'} ${collapsed ? 'lg:w-[76px]' : 'lg:w-[260px]'}`}
+        style={{ background: 'var(--side)' }}>
+        <div className={`flex h-16 items-center justify-between px-4 ${collapsed ? 'lg:justify-center lg:px-2' : ''}`}>
+          <button onClick={() => goTo('overview')} className="flex items-center gap-2.5 text-left cursor-pointer">
+            <span className="flex size-9 items-center justify-center rounded-md text-white font-extrabold pm-display" style={{ background: '#FF7A1A' }}>P</span>
+            <span className={`pm-display text-lg font-bold tracking-tight text-white ${collapsed ? 'lg:hidden' : ''}`}>ProfMaroc</span>
           </button>
-          <button onClick={() => setCollapsed(!collapsed)} className={`hidden size-7 items-center justify-center rounded-lg bg-slate-800 text-slate-400 hover:text-white lg:flex ${collapsed ? 'lg:hidden' : ''}`}>
+          <button onClick={() => setCollapsed(!collapsed)} aria-label="Réduire le menu" className={`hidden size-7 items-center justify-center rounded-md bg-white/10 text-slate-300 hover:text-white lg:flex ${collapsed ? 'lg:hidden' : ''}`}>
             <ChevronsLeft className="size-4" />
           </button>
-          <button onClick={() => setMobileOpen(false)} className="flex size-7 items-center justify-center rounded-lg bg-slate-800 text-slate-400 lg:hidden">
-            <X className="size-4" />
-          </button>
+          <button onClick={() => setMobileOpen(false)} aria-label="Fermer le menu" className="flex size-7 items-center justify-center rounded-md bg-white/10 text-slate-300 lg:hidden"><X className="size-4" /></button>
         </div>
 
         {collapsed && (
-          <button onClick={() => setCollapsed(false)} className="mx-auto mt-3 hidden size-8 items-center justify-center rounded-lg bg-slate-800 text-slate-400 hover:text-white lg:flex">
+          <button onClick={() => setCollapsed(false)} aria-label="Ouvrir le menu" className="mx-auto mt-2 hidden size-8 items-center justify-center rounded-md bg-white/10 text-slate-300 hover:text-white lg:flex">
             <ChevronsRight className="size-4" />
           </button>
         )}
 
-        <nav className="flex-1 space-y-1.5 overflow-y-auto px-3 py-5">
-          <button
-            onClick={() => { setActiveTab('overview'); setMobileOpen(false); }}
-            className={`w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all cursor-pointer ${
-              collapsed ? 'lg:justify-center lg:px-0' : ''
-            } ${activeTab === 'overview' ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20 font-bold' : 'text-slate-400 hover:bg-slate-800/80 hover:text-white'}`}
-          >
-            <LayoutGrid className="size-[18px]" />
+        {!collapsed && (
+          <button onClick={() => goTo('credits')} className="mx-3 mt-3 text-left rounded-md p-3 cursor-pointer transition-colors hover:bg-white/10" style={{ background: 'rgba(255,255,255,.06)' }}>
+            <div className="flex items-end justify-between">
+              <span className="text-xs font-semibold text-slate-300">Mes leads</span>
+              <span className="pm-display pm-num text-2xl font-bold text-white leading-none">{leadBalance}</span>
+            </div>
+            <div className="mt-2.5"><Tickets n={leadBalance} low={isLow} size="sm" /></div>
+            <p className="mt-2 text-[11px] text-slate-400">{isLow ? 'Solde bas : recharger' : 'Voir mon solde'}</p>
+          </button>
+        )}
+
+        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-5">
+          <button onClick={() => goTo('overview')} className={navCls(activeTab === 'overview')}>
+            {bar(activeTab === 'overview')}<LayoutGrid className="size-[18px]" />
             <span className={`flex-1 text-left ${collapsed ? 'lg:hidden' : ''}`}>Vue d&apos;ensemble</span>
           </button>
 
-          {/* GROUPE DEMANDES AVEC SOUS-NAVBAR INTEGRÉE */}
-          <div className="space-y-1">
-            <button
-              onClick={() => { 
-                setActiveTab('demandes'); 
-                setDemandesOpen(!demandesOpen);
-              }}
-              className={`w-full flex items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium transition-all cursor-pointer ${
-                collapsed ? 'lg:justify-center lg:px-0' : ''
-              } ${activeTab === 'demandes' ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20 font-bold' : 'text-slate-400 hover:bg-slate-800/80 hover:text-white'}`}
-            >
-              <div className="flex items-center gap-3">
-                <Users className="size-[18px]" />
-                <span className={`text-left ${collapsed ? 'lg:hidden' : ''}`}>Demandes</span>
-              </div>
-              {!collapsed && (
-                <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${demandesOpen ? 'rotate-180' : ''}`} />
-              )}
+          <div>
+            <button onClick={() => { setActiveTab('demandes'); setDemandesOpen(!demandesOpen); }}
+              className={`${navCls(activeTab === 'demandes')} justify-between`}>
+              {bar(activeTab === 'demandes')}
+              <span className="flex items-center gap-3">
+                <span className="relative">
+                  <Users className="size-[18px]" />
+                  {stats.pendingAll > 0 && <span className="absolute -top-1 -right-1 size-2 rounded-full ring-2" style={{ background: '#FFE066', ['--tw-ring-color' as any]: 'var(--side)' }} />}
+                </span>
+                <span className={collapsed ? 'lg:hidden' : ''}>Demandes</span>
+              </span>
+              {!collapsed && <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${demandesOpen ? 'rotate-180' : ''}`} />}
             </button>
 
-            {/* SOUS-PAGES DANS LA NAVBAR LATÉRALE */}
             {demandesOpen && !collapsed && (
-              <div className="pl-6 space-y-1 pt-1">
-                <button
-                  onClick={() => { 
-                    setActiveTab('demandes'); 
-                    setDemandeSubTab('accepted'); 
-                    setMobileOpen(false); 
-                  }}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                    activeTab === 'demandes' && demandeSubTab === 'accepted' 
-                      ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' 
-                      : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Étudiants Acceptés</span>
-                  </div>
-                  <span className="bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full text-[10px]">
-                    {acceptedCount}
-                  </span>
-                </button>
-
-                <button
-                  onClick={() => { 
-                    setActiveTab('demandes'); 
-                    setDemandeSubTab('pending'); 
-                    setMobileOpen(false); 
-                  }}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                    activeTab === 'demandes' && demandeSubTab === 'pending' 
-                      ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' 
-                      : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-3.5 h-3.5 text-amber-400" />
-                    <span>Demandes en attente</span>
-                  </div>
-                  <span className="bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full text-[10px]">
-                    {pendingCount}
-                  </span>
-                </button>
+              <div className="ml-5 mt-1 space-y-0.5 border-l border-white/10 pl-3">
+                {([
+                  { key: 'accepted', label: 'Étudiants acceptés', icon: CheckCircle2, n: stats.acceptedAll },
+                  { key: 'pending', label: 'Demandes en attente', icon: Clock, n: stats.pendingAll },
+                ] as const).map((s) => {
+                  const Icon = s.icon;
+                  const active = activeTab === 'demandes' && demandeSubTab === s.key;
+                  return (
+                    <button key={s.key} onClick={() => { setActiveTab('demandes'); setDemandeSubTab(s.key); setMobileOpen(false); }}
+                      className={`w-full flex items-center justify-between rounded-md px-3 py-2 text-xs font-semibold transition-colors cursor-pointer ${active ? 'bg-white/10 text-white' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>
+                      <span className="flex items-center gap-2"><Icon className="size-3.5" />{s.label}</span>
+                      <span className="pm-num text-[11px] font-bold" style={{ color: s.key === 'pending' && s.n > 0 ? '#FFE066' : undefined }}>{s.n}</span>
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
 
-          <button
-            onClick={() => { setActiveTab('publicites'); setMobileOpen(false); }}
-            className={`w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all cursor-pointer ${
-              collapsed ? 'lg:justify-center lg:px-0' : ''
-            } ${activeTab === 'publicites' ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20 font-bold' : 'text-slate-400 hover:bg-slate-800/80 hover:text-white'}`}
-          >
-            <Megaphone className="size-[18px]" />
+          <button onClick={() => goTo('credits')} className={navCls(activeTab === 'credits')}>
+            {bar(activeTab === 'credits')}<Coins className="size-[18px]" />
+            <span className={`flex-1 text-left ${collapsed ? 'lg:hidden' : ''}`}>Leads et crédits</span>
+          </button>
+
+          <button onClick={() => goTo('publicites')} className={navCls(activeTab === 'publicites')}>
+            {bar(activeTab === 'publicites')}<Megaphone className="size-[18px]" />
             <span className={`flex-1 text-left ${collapsed ? 'lg:hidden' : ''}`}>Gérer mes publicités</span>
           </button>
 
-          {[
-            { href: '/prof/dashboard/credits', label: 'Leads et crédits', icon: Coins },
-            { href: '/prof/profile', label: 'Mon profil', icon: User },
-          ].map((n) => {
-            const Icon = n.icon;
-            return (
-              <Link
-                key={n.href}
-                href={n.href}
-                onClick={() => setMobileOpen(false)}
-                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all text-slate-400 hover:bg-slate-800/80 hover:text-white ${
-                  collapsed ? 'lg:justify-center lg:px-0' : ''
-                }`}
-              >
-                <Icon className="size-[18px]" />
-                <span className={`flex-1 ${collapsed ? 'lg:hidden' : ''}`}>{n.label}</span>
-              </Link>
-            );
-          })}
+          <Link href="/prof/profile" onClick={() => setMobileOpen(false)} className={navCls(false)}>
+            <User className="size-[18px]" />
+            <span className={`flex-1 ${collapsed ? 'lg:hidden' : ''}`}>Mon profil</span>
+          </Link>
         </nav>
 
-        <div className="border-t border-slate-800 p-3">
-          <button
-            onClick={handleLogout}
-            className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-rose-400 transition-colors hover:bg-rose-500/10 cursor-pointer ${
-              collapsed ? 'lg:justify-center lg:px-0' : ''
-            }`}
-          >
-            <LogOut className="size-[18px]" />
-            <span className={collapsed ? 'lg:hidden' : ''}>Déconnexion</span>
+        <div className="border-t border-white/10 p-3">
+          <button onClick={handleLogout} className={`flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm font-semibold text-rose-300 transition-colors hover:bg-rose-500/10 cursor-pointer ${collapsed ? 'lg:justify-center lg:px-0' : ''}`}>
+            <LogOut className="size-[18px]" /><span className={collapsed ? 'lg:hidden' : ''}>Déconnexion</span>
           </button>
         </div>
       </aside>
 
-      {/* CONTENEUR PRINCIPAL */}
+      {/* ============================ MAIN ============================ */}
       <div className="flex-1 flex flex-col min-w-0">
-        
-        {/* TOPBAR */}
-        <header className={`sticky top-0 z-40 border-b transition-colors duration-300 ${
-          isDarkMode ? 'bg-[#0A0A0A]/90 border-slate-800 backdrop-blur-md' : 'bg-white/90 border-slate-200 backdrop-blur-md'
-        }`}>
-          <div className="max-w-[1600px] mx-auto px-6 lg:px-10 py-3.5 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <button onClick={() => setMobileOpen(true)} className="p-2 rounded-lg border lg:hidden bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-                <Users className="size-4" />
-              </button>
-              <h2 className="text-base font-bold tracking-tight">
-                {activeTab === 'overview' && "Tableau de bord"}
-                {activeTab === 'demandes' && `Gestion des Demandes (${demandeSubTab === 'accepted' ? 'Étudiants Acceptés' : 'En attente'})`}
-                {activeTab === 'publicites' && "Gérer mes Publicités"}
-              </h2>
+        <header className="sticky top-0 z-40 border-b pm-edge backdrop-blur-md" style={{ background: 'color-mix(in srgb, var(--paper) 92%, transparent)' }}>
+          <div className="max-w-[1500px] mx-auto px-4 sm:px-6 lg:pl-[104px] lg:pr-10 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-3 min-w-0">
+              <button onClick={() => setMobileOpen(true)} aria-label="Ouvrir le menu" className="pm-btn pm-btn-ghost size-9 lg:hidden"><Menu className="size-4" /></button>
+              <h2 className="pm-display text-lg font-bold truncate">{tabTitle}</h2>
             </div>
 
-            <div className="flex items-center gap-3">
-              <Link 
-                href="/prof/dashboard/credits"
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border text-xs font-bold transition cursor-pointer hover:scale-105 ${
-                  isDarkMode ? 'bg-amber-500/10 border-amber-500/20 text-amber-400 hover:bg-amber-500/20' : 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100'
-                }`}
-              >
-                <Coins className="w-3.5 h-3.5" />
-                <span>{leadBalance} Leads</span>
-              </Link>
-
-              <button
-                onClick={() => setIsAvailable(!isAvailable)}
-                className={`p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-center ${
-                  isDarkMode ? 'bg-slate-900 border-slate-700' : 'bg-slate-50 border-slate-200'
-                }`}
-              >
-                <div className={`w-3.5 h-3.5 rounded-full ${isAvailable ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
+            <div className="flex items-center gap-2 sm:gap-2.5">
+              <button onClick={() => goTo('credits')} className="pm-btn pm-btn-ghost px-3 py-1.5 text-xs" style={isLow ? { color: 'var(--red)', borderColor: 'var(--red)' } : undefined}>
+                <Coins className="size-3.5" /><span className="pm-num">{leadBalance} leads</span>
               </button>
 
-              <button
-                onClick={toggleTheme}
-                className={`p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-center ${
-                  isDarkMode ? 'bg-slate-900 text-amber-400 border-slate-700' : 'bg-slate-50 text-slate-700 border-slate-200'
-                }`}
-              >
-                {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              <button onClick={toggleAvailability} aria-pressed={isAvailable}
+                title={isAvailable ? 'Visible : cliquez pour passer indisponible' : 'Masqué : cliquez pour redevenir disponible'}
+                className="pm-btn pm-btn-ghost px-3 py-1.5 text-xs">
+                <span className="size-2.5 rounded-full" style={{ background: isAvailable ? 'var(--green)' : 'var(--red)' }} />
+                <span className="hidden md:inline">{isAvailable ? 'Disponible' : 'Indisponible'}</span>
+              </button>
+
+              <button onClick={toggleTheme} aria-label={dark ? 'Passer en thème clair' : 'Passer en thème sombre'} className="pm-btn pm-btn-ghost size-9">
+                {dark ? <Sun className="size-4" /> : <Moon className="size-4" />}
               </button>
 
               <div className="relative">
-                <button
-                  onClick={() => setShowProfileMenu(!showProfileMenu)}
-                  className={`flex items-center gap-2.5 p-1.5 rounded-xl border transition cursor-pointer ${
-                    isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
-                  }`}
-                >
-                  <div className="w-8 h-8 rounded-full overflow-hidden border border-orange-500 bg-slate-200 relative">
+                <button onClick={() => setShowProfileMenu(!showProfileMenu)} className="pm-btn pm-btn-ghost gap-2 p-1 pr-2.5">
+                  <span className="size-8 rounded-full overflow-hidden grid place-items-center text-xs font-bold" style={{ background: 'var(--rule)' }}>
                     {profImage ? (
-                      <Image src={profImage} alt={profFullName} fill className="object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center font-bold text-xs text-slate-700">
-                        {profFullName[0] || 'P'}
-                      </div>
-                    )}
-                  </div>
-                  <span className={`text-xs font-bold hidden sm:inline px-1 ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>
-                    {profFullName.split(' ')[0]}
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={profImage} alt="" className="w-full h-full object-cover" />
+                    ) : (profFullName[0] || 'P').toUpperCase()}
                   </span>
-                  <ChevronDown className={`w-3.5 h-3.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`} />
+                  <span className="text-xs font-bold hidden sm:inline">{firstName}</span>
+                  <ChevronDown className="size-3.5 pm-muted" />
                 </button>
 
                 {showProfileMenu && (
-                  <div className={`absolute right-0 mt-2 w-56 rounded-2xl border shadow-xl p-2 z-50 transition-all ${
-                    isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
-                  }`}>
-                    <div className="px-3 py-2 border-b border-slate-700/50 mb-1">
+                  <div className="pm-sheet absolute right-0 mt-2 w-60 p-2 z-50">
+                    <div className="px-3 py-2 border-b pm-edge mb-1">
                       <p className="text-xs font-bold truncate">{profFullName}</p>
-                      <p className="text-[10px] text-slate-400 truncate">{profData?.email || 'Professeur'}</p>
+                      <p className="text-[11px] pm-muted truncate">{profData?.email || 'Professeur'}</p>
                     </div>
-                    
-                    <Link 
-                      href="/prof/profile"
-                      onClick={() => setShowProfileMenu(false)}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition ${
-                        isDarkMode ? 'hover:bg-slate-800 text-slate-300' : 'hover:bg-slate-100 text-slate-700'
-                      }`}
-                    >
-                      <User className="w-4 h-4 text-orange-500" />
-                      <span>Mon Profil</span>
-                    </Link>
-
-                    <button
-                      onClick={handleLogout}
-                      className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-rose-500 hover:bg-rose-500/10 transition cursor-pointer mt-1"
-                    >
-                      <LogOut className="w-4 h-4" />
-                      <span>Se déconnecter</span>
-                    </button>
+                    <Link href="/prof/profile" onClick={() => setShowProfileMenu(false)} className="flex items-center gap-2 px-3 py-2 rounded-md text-xs font-semibold hover:bg-[var(--rule)]"><User className="size-4" />Mon profil</Link>
+                    {profData && <Link href={`/professeurs/${profData.id}`} onClick={() => setShowProfileMenu(false)} className="flex items-center gap-2 px-3 py-2 rounded-md text-xs font-semibold hover:bg-[var(--rule)]"><ExternalLink className="size-4" />Voir mon profil public</Link>}
+                    <button onClick={handleLogout} className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-xs font-semibold cursor-pointer hover:bg-[var(--rule)]" style={{ color: 'var(--red)' }}><LogOut className="size-4" />Se déconnecter</button>
                   </div>
                 )}
               </div>
@@ -508,178 +764,457 @@ export default function ProfDashboard() {
           </div>
         </header>
 
-        {/* CONTENU PRINCIPAL */}
-        <main className="flex-1 w-full max-w-[1600px] mx-auto px-6 lg:px-10 py-8 space-y-8">
-          
-          {activeTab === 'overview' && (
-            <>
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b pb-8 border-slate-200 dark:border-slate-800">
-                <div className="space-y-3">
-                  <h1 className="text-3xl sm:text-4xl font-black tracking-tight capitalize">
-                    Content de vous revoir, {profFullName} 👋
-                  </h1>
-                  <p className="text-base sm:text-lg text-slate-500 dark:text-slate-400 font-medium">
-                    Chaque demande que vous acceptez est un nouvel élève. Voyons ce qui s’est passé depuis votre dernière visite.
-                  </p>
-                </div>
+        <main className="pm-paper flex-1">
+          <div className="relative z-10 max-w-[1500px] mx-auto px-4 sm:px-6 lg:pl-[104px] lg:pr-10 py-10 space-y-12">
 
-                <div className="flex items-center gap-3 shrink-0">
-                  <Link 
-                    href="/prof/dashboard/credits" 
-                    className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white px-5 py-3 rounded-2xl text-xs sm:text-sm font-black shadow-lg shadow-orange-500/20 flex items-center gap-2 transition-transform hover:scale-105"
-                  >
-                    <Coins className="w-4 h-4" />
-                    <span>Recharger mes Leads</span>
-                    <PlusCircle className="w-4 h-4" />
-                  </Link>
-                </div>
-              </div>
-
-              {/* RAPPORT DE VISIBILITÉ */}
-              <div className="w-full">
-                <div className={`rounded-3xl p-8 border transition-all duration-300 shadow-xl relative overflow-hidden backdrop-blur-xl ${
-                  isDarkMode 
-                    ? 'bg-gradient-to-b from-slate-900/90 to-slate-950/90 border-slate-800/80 shadow-black/40 text-white' 
-                    : 'bg-white border-slate-200/90 shadow-slate-200/50 text-slate-900'
-                }`}>
-                  
-                  <div className="absolute top-0 right-0 w-96 h-96 bg-orange-500/5 rounded-full blur-3xl pointer-events-none" />
-
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-100 dark:border-slate-800/60 relative z-10">
-                    <div className="flex items-center gap-3.5">
-                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 text-white flex items-center justify-center shadow-lg shadow-orange-500/25">
-                        <BarChart3 className="w-6 h-6" />
-                      </div>
-                      <div>
-                        <span className="text-[11px] font-black uppercase tracking-widest text-orange-500">Analytics en direct</span>
-                        <h3 className="text-lg font-black tracking-tight">Statistiques des vues du profil</h3>
-                      </div>
+            {/* ===================== VUE D'ENSEMBLE ===================== */}
+            {activeTab === 'overview' && (
+              <>
+                {/* HERO */}
+                <section className="flex flex-col lg:flex-row lg:items-start justify-between gap-8">
+                  <div className="min-w-0 max-w-2xl">
+                    <p className="text-sm font-semibold pm-muted">{todayCap}</p>
+                    <h1 className="pm-display text-[40px] sm:text-[52px] font-extrabold leading-[1.05] mt-1">Bonjour {firstName}</h1>
+                    <p className="mt-4 text-[17px] leading-7">
+                      <span className="pm-hl font-semibold">{todo}</span>
+                    </p>
+                    <div className="mt-6 flex flex-wrap gap-3">
+                      <button onClick={() => goTo('credits')} className="pm-btn pm-btn-blue px-5 py-3 text-sm"><Coins className="size-4" />Recharger mes leads</button>
+                      {profData && <Link href={`/professeurs/${profData.id}`} className="pm-btn pm-btn-ghost px-5 py-3 text-sm"><ExternalLink className="size-4" />Voir mon profil public</Link>}
                     </div>
+                  </div>
+                  <Grade score20={score20} comment={gradeComment} note={gradeNote} />
+                </section>
 
-                    <div className={`flex items-center p-1.5 rounded-2xl border ${
-                      isDarkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-slate-100 border-slate-200/80'
-                    }`}>
-                      {(['semaine', 'mois', 'annee'] as const).map((range) => (
-                        <button
-                          key={range}
-                          onClick={() => setTimeRange(range)}
-                          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer capitalize ${
-                            timeRange === range
-                              ? 'bg-orange-500 text-white shadow-md shadow-orange-500/30 scale-105'
-                              : 'text-slate-400 hover:text-slate-200'
-                          }`}
-                        >
-                          {range === 'semaine' ? 'Semaine' : range === 'mois' ? 'Mois' : 'Année'}
+                {isLow && (
+                  <section className="pm-sheet flex flex-col sm:flex-row sm:items-center gap-4 p-5" style={{ borderLeft: '4px solid var(--red)' }}>
+                    <div className="flex-1">
+                      <p className="font-bold">{leadBalance === 0 ? "Vous n'avez plus de leads." : `Il vous reste ${leadBalance} lead${leadBalance > 1 ? 's' : ''}.`}</p>
+                      <p className="text-sm pm-muted">Sans leads, vous ne voyez plus les nouvelles demandes d&apos;élèves.</p>
+                    </div>
+                    <button onClick={() => goTo('credits')} className="pm-btn pm-btn-red px-5 py-2.5 text-sm">Recharger pour {PACK_PRICE_DH} DH</button>
+                  </section>
+                )}
+
+                {/* RELEVÉ DE CHIFFRES */}
+                <section>
+                  <div className="flex items-end justify-between flex-wrap gap-3 mb-4">
+                    <h3 className={sectionTitle}>Votre activité sur les {rangeLabel}</h3>
+                    <div className="flex items-center gap-1" role="tablist" aria-label="Période">
+                      {(['semaine', 'mois', 'annee'] as const).map((r) => (
+                        <button key={r} role="tab" aria-selected={timeRange === r} onClick={() => setTimeRange(r)}
+                          className={`px-3.5 py-1.5 rounded-md text-sm font-bold cursor-pointer transition-colors ${timeRange === r ? 'pm-sheet' : 'pm-muted hover:text-[var(--ink)]'}`}>
+                          {r === 'semaine' ? 'Semaine' : r === 'mois' ? 'Mois' : 'Année'}
                         </button>
                       ))}
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-8 relative z-10">
-                    <div className="flex flex-col justify-center">
-                      <span className="text-xs font-semibold text-slate-400 tracking-wide uppercase mb-1">
-                        Total {timeRange === 'semaine' ? 'cette semaine' : timeRange === 'mois' ? 'ce mois-ci' : 'cette année'}
-                      </span>
-                      <div className="flex items-baseline gap-3">
-                        <span className="text-5xl font-black tracking-tighter text-orange-500">{periodTotal}</span>
-                        <span className="text-sm font-bold text-slate-400">vues uniques enregistrées</span>
+                  <div className="pm-sheet grid grid-cols-2 lg:grid-cols-4 overflow-hidden">
+                    {[
+                      { k: 'leads', label: 'Leads restants', value: leadBalance, sub: autonomyDays !== null ? `environ ${autonomyDays} jour${autonomyDays > 1 ? 's' : ''} d'autonomie` : 'Aucune demande récente', color: isLow ? 'var(--red)' : undefined, onClick: () => goTo('credits') },
+                      { k: 'views', label: 'Vues du profil', value: stats.views, sub: `contre ${stats.prevViews} (${prevLabel})`, badge: <Delta {...stats.viewsDelta} /> },
+                      { k: 'req', label: 'Demandes reçues', value: stats.leadsIn, sub: `contre ${stats.prevLeadsIn} (${prevLabel})`, badge: <Delta {...stats.leadsDelta} />, onClick: () => { setDemandeSubTab(stats.pendingAll > 0 ? 'pending' : 'accepted'); goTo('demandes'); } },
+                      { k: 'rate', label: "Taux d'acceptation", value: `${stats.acceptRate}%`, sub: `${stats.acceptedAll} accepté(s), ${stats.refusedAll} refusé(s)` },
+                    ].map((c, i) => {
+                      const Tag: any = c.onClick ? 'button' : 'div';
+                      return (
+                        <Tag key={c.k} onClick={c.onClick}
+                          className={`text-left p-5 sm:p-6 border-[var(--edge)] ${i % 2 === 0 ? 'border-r' : ''} ${i < 2 ? 'border-b lg:border-b-0' : ''} ${i < 3 ? 'lg:border-r' : 'lg:border-r-0'} ${c.onClick ? 'cursor-pointer transition-colors hover:bg-[var(--rule)]/50' : ''}`}>
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-sm font-semibold pm-muted">{c.label}</p>
+                            {c.badge}
+                          </div>
+                          <p className="pm-display pm-num text-[44px] sm:text-5xl font-extrabold leading-none mt-3" style={{ color: c.color }}>{c.value}</p>
+                          <p className="text-xs pm-muted mt-2">{c.sub}</p>
+                        </Tag>
+                      );
+                    })}
+                  </div>
+                </section>
+
+                {/* COURBE + TICKETS */}
+                <section className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+                  <div className="pm-sheet xl:col-span-8 p-6">
+                    <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+                      <h3 className={sectionTitle}>Vues et demandes</h3>
+                      <div className="flex items-center gap-4 text-xs font-semibold">
+                        <span className="flex items-center gap-1.5"><span className="h-0.5 w-5 rounded" style={{ background: 'var(--blue)' }} />Vues</span>
+                        <span className="flex items-center gap-1.5"><span className="w-5 border-t-2 border-dotted" style={{ borderColor: 'var(--red)' }} />Demandes</span>
                       </div>
                     </div>
-
-                    <div className={`p-5 rounded-2xl border flex items-center justify-between ${
-                      isDarkMode ? 'bg-slate-900/60 border-slate-800/80 backdrop-blur-md' : 'bg-slate-50/80 border-slate-200/60'
-                    }`}>
-                      <div className="space-y-1">
-                        <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Évolution vs période préc.</span>
-                        <div className="flex items-center gap-2">
-                          <span className={`text-xl font-black flex items-center gap-1 ${isGrowthPositive ? 'text-emerald-500' : 'text-rose-500'}`}>
-                            {isGrowthPositive ? <ArrowUpRight className="w-5 h-5 stroke-[3]" /> : <TrendingDown className="w-5 h-5 stroke-[3]" />}
-                            {growthPercentage}
-                          </span>
+                    {stats.views === 0 && stats.leadsIn === 0 ? (
+                      <div className="h-56 grid place-items-center text-center px-4 rounded-md border border-dashed pm-edge">
+                        <div className="space-y-3">
+                          <p className="font-bold">Aucune activité sur cette période</p>
+                          <p className="text-sm pm-muted">Vos premières visites arrivent dès que votre lien circule.</p>
+                          <button onClick={() => goTo('publicites')} className="pm-btn pm-btn-blue px-4 py-2 text-xs">Partager mon profil</button>
                         </div>
                       </div>
-                      <span className={`px-3 py-1.5 rounded-xl text-xs font-bold ${
-                        isGrowthPositive 
-                          ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' 
-                          : 'bg-rose-500/10 text-rose-500 border border-rose-500/20'
-                      }`}>
-                        {timeRange === 'semaine' ? 'Sem. dernière' : timeRange === 'mois' ? 'Mois dernier' : 'An dernier'}
-                      </span>
-                    </div>
+                    ) : <AreaChart data={stats.points} labelEvery={labelEvery} />}
                   </div>
 
-                  <div className="pt-4 pb-2 relative z-10">
-                    <div className="flex items-center justify-between mb-6">
-                      <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                        {timeRange === 'semaine' ? 'Tendance journalière des vues' : timeRange === 'mois' ? 'Répartition hebdomadaire' : 'Répartition trimestrielle'}
-                      </p>
-                      <span className="text-xs font-medium text-slate-400">Mise à jour en temps réel</span>
+                  <div className="pm-sheet xl:col-span-4 p-6 flex flex-col">
+                    <h3 className={sectionTitle}>Mon carnet de leads</h3>
+                    <p className="pm-display pm-num text-7xl font-extrabold leading-none mt-4" style={{ color: isLow ? 'var(--red)' : undefined }}>{leadBalance}</p>
+                    <p className="text-sm pm-muted mt-1">leads restants, 1 lead = 1 demande d&apos;élève</p>
+                    <div className="mt-5"><Tickets n={leadBalance} low={isLow} /></div>
+                    <p className="mt-5 text-xs pm-muted">{PACK_PRICE_DH} DH pour {LEADS_PER_PACK} leads, soit {fmt(costPerLead)} DH la demande.</p>
+                    <button onClick={() => goTo('credits')} className="pm-btn pm-btn-blue mt-auto w-full py-3 text-sm self-end" style={{ marginTop: 24 }}>Recharger mes leads</button>
+                  </div>
+                </section>
+
+                {/* FILE DES DEMANDES + ENTONNOIR */}
+                <section className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+                  <div className="pm-sheet xl:col-span-7 p-6">
+                    <div className="flex items-center justify-between gap-3">
+                      <h3 className={sectionTitle}>{queue.pending ? 'Demandes à traiter' : 'Dernières demandes'}</h3>
+                      {stats.pendingAll > 0 && <span className="text-xs font-bold pm-num" style={{ color: 'var(--blue)' }}>{stats.pendingAll} en attente</span>}
                     </div>
 
-                    <div className={`grid grid-cols-4 sm:grid-cols-7 gap-3 sm:gap-4 items-end h-56 pt-8 px-4 rounded-2xl border ${
-                      isDarkMode ? 'bg-slate-950/50 border-slate-800/60' : 'bg-slate-50/50 border-slate-200/60'
-                    }`}>
-                      {chartData.map((item, idx) => {
-                        const heightPercent = Math.max((item.views / maxBarValue) * 100, 12);
+                    {queue.rows.length === 0 ? (
+                      <div className="py-10 text-center space-y-3">
+                        <p className="font-bold">Aucune demande pour l&apos;instant</p>
+                        <p className="text-sm pm-muted">Partagez votre profil dans les groupes de parents pour recevoir vos premières demandes.</p>
+                        <button onClick={() => goTo('publicites')} className="pm-btn pm-btn-ghost px-4 py-2 text-xs">Partager mon profil</button>
+                      </div>
+                    ) : (
+                      <ul className="mt-3 divide-y divide-[var(--edge)]">
+                        {queue.rows.map((l, i) => {
+                          const name = String(pick(l, ['student_name', 'nom_eleve', 'full_name', 'name', 'nom', 'parent_name']) || 'Élève');
+                          const subj = String(pick(l, ['subject', 'matiere']) || '');
+                          const city = String(pick(l, ['city', 'ville']) || '');
+                          const st = statusInfo(l.status);
+                          const old = isPending(l.status) && l.created_at && Date.now() - new Date(l.created_at).getTime() > DAY;
+                          return (
+                            <li key={l.id ?? i} className="flex items-center gap-3 py-3.5">
+                              <span className="size-10 shrink-0 rounded-full grid place-items-center font-bold text-sm" style={{ background: 'var(--rule)' }}>{name[0]?.toUpperCase()}</span>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-bold truncate">{name}</p>
+                                <p className="text-xs pm-muted flex flex-wrap items-center gap-x-3">
+                                  {subj && <span className="inline-flex items-center gap-1"><BookOpen className="size-3" />{subj}</span>}
+                                  {city && <span className="inline-flex items-center gap-1"><MapPin className="size-3" />{city}</span>}
+                                </p>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <p className="text-xs font-bold" style={{ color: st.c }}>{st.t}</p>
+                                <p className="text-[11px]" style={{ color: old ? 'var(--red)' : 'var(--muted)' }}>{timeAgo(l.created_at)}</p>
+                              </div>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                    {queue.rows.length > 0 && (
+                      <button onClick={() => { setDemandeSubTab(stats.pendingAll > 0 ? 'pending' : 'accepted'); goTo('demandes'); }} className="pm-btn pm-btn-blue mt-4 px-5 py-2.5 text-sm">
+                        {stats.pendingAll > 0 ? 'Répondre aux demandes' : 'Gérer mes demandes'}<ChevronRight className="size-4" />
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="pm-sheet xl:col-span-5 p-6">
+                    <h3 className={sectionTitle}>Du visiteur à l&apos;élève</h3>
+                    <p className="text-sm pm-muted">Sur les {rangeLabel}</p>
+                    <ul className="mt-5 space-y-5">
+                      {funnelRows.map((f, i) => {
+                        const Icon = f.icon;
+                        const prev = i > 0 ? funnelRows[i - 1].value : 0;
+                        const rate = i > 0 && prev > 0 ? Math.round((f.value / prev) * 100) : null;
                         return (
-                          <div key={idx} className="flex flex-col items-center gap-3 h-full justify-end group">
-                            <span className="text-xs font-black text-orange-500 bg-orange-500/10 dark:bg-orange-500/20 px-2 py-0.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200 scale-90 group-hover:scale-100">
-                              {item.views}
-                            </span>
-                            
-                            <div className="w-full max-w-[48px] h-full flex items-end justify-center bg-slate-200/40 dark:bg-slate-800/40 rounded-2xl p-1">
-                              <div 
-                                style={{ height: `${heightPercent}%` }}
-                                className="w-full bg-gradient-to-t from-orange-600 via-orange-500 to-amber-400 rounded-xl transition-all duration-500 group-hover:brightness-110 shadow-lg shadow-orange-500/20"
-                              />
+                          <li key={f.label}>
+                            <div className="flex items-baseline justify-between gap-2 mb-1.5">
+                              <span className="flex items-center gap-2 text-sm font-semibold"><Icon className="size-4 pm-muted" />{f.label}</span>
+                              <span className="flex items-baseline gap-2">
+                                {rate !== null && <span className="text-xs pm-muted">{rate}% du palier précédent</span>}
+                                <span className="pm-display pm-num text-2xl font-bold">{f.value}</span>
+                              </span>
                             </div>
-                            
-                            <span className="text-xs font-bold text-slate-400 group-hover:text-orange-500 transition-colors truncate max-w-full">
-                              {item.day}
-                            </span>
-                          </div>
+                            <div className="h-2.5 rounded-sm overflow-hidden" style={{ background: 'var(--rule)' }}>
+                              <div className="h-full rounded-sm transition-all duration-700" style={{ width: `${Math.max((f.value / maxFunnel) * 100, f.value > 0 ? 3 : 0)}%`, background: i === 2 ? 'var(--green)' : 'var(--blue)', opacity: i === 1 ? 0.7 : 1 }} />
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                    <p className="mt-6 text-sm">Sur 100 visiteurs, <span className="pm-hl font-bold pm-num">{stats.conv.toFixed(1)}</span> vous écrivent.</p>
+                  </div>
+                </section>
+
+                {/* OBJECTIF + HORAIRES */}
+                <section className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+                  <div className="pm-sheet xl:col-span-4 p-6">
+                    <div className="flex items-center justify-between">
+                      <h3 className={sectionTitle}>Objectif du mois</h3>
+                      <div className="flex gap-1">
+                        <button onClick={() => changeGoal(goal - 1)} aria-label="Réduire l'objectif" className="pm-btn pm-btn-ghost size-8"><Minus className="size-3.5" /></button>
+                        <button onClick={() => changeGoal(goal + 1)} aria-label="Augmenter l'objectif" className="pm-btn pm-btn-ghost size-8"><Plus className="size-3.5" /></button>
+                      </div>
+                    </div>
+                    <p className="mt-3 pm-display pm-num text-5xl font-extrabold leading-none">{stats.acceptedThisMonth}<span className="text-2xl pm-muted font-bold"> sur {goal}</span></p>
+                    <p className="text-sm pm-muted mt-1">nouveaux élèves acceptés ce mois-ci</p>
+                    <div className="mt-5 flex flex-wrap gap-2" role="img" aria-label={`${stats.acceptedThisMonth} élèves sur ${goal}`}>
+                      {Array.from({ length: Math.min(goal, 20) }, (_, i) => {
+                        const done = i < stats.acceptedThisMonth;
+                        return (
+                          <span key={i} className="size-8 rounded-[4px] grid place-items-center" style={{ border: `2px solid ${done ? 'var(--green)' : 'var(--edge)'}` }}>
+                            {done && <Check className="size-5 stroke-[3]" style={{ color: 'var(--green)' }} />}
+                          </span>
                         );
                       })}
                     </div>
+                    {stats.acceptedThisMonth >= goal && <p className="pm-hand text-2xl mt-4" style={{ color: 'var(--green)' }}>Objectif atteint, bravo !</p>}
                   </div>
 
-                </div>
-              </div>
-            </>
-          )}
-
-          {activeTab === 'demandes' && <GestionDemandeView />}
-
-          {activeTab === 'publicites' && (
-            <div className="w-full space-y-6">
-              <div className="border-b pb-6 border-slate-200 dark:border-slate-800">
-                <h1 className="text-2xl sm:text-3xl font-black tracking-tight">Gérer mes Publicités</h1>
-                <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium mt-1">
-                  Boostez votre visibilité auprès des élèves et des parents en mettant en avant votre profil sur ProfMaroc.
-                </p>
-              </div>
-
-              <div className={`p-8 rounded-3xl border ${isDarkMode ? 'bg-slate-900/60 border-slate-800 text-white' : 'bg-white border-slate-200 shadow-xs'}`}>
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="w-12 h-12 rounded-2xl bg-orange-500/10 text-orange-500 flex items-center justify-center font-bold">
-                    <Megaphone className="w-6 h-6" />
+                  <div className="pm-sheet xl:col-span-8 p-6">
+                    <h3 className={sectionTitle}>Quand vos visiteurs viennent</h3>
+                    <p className="text-sm pm-muted">Vues par jour et par créneau, sur 90 jours</p>
+                    {stats.heatTotal === 0 ? (
+                      <div className="mt-4 rounded-md border border-dashed pm-edge py-10 text-center text-sm font-semibold pm-muted">Pas encore assez de visites pour dégager des horaires.</div>
+                    ) : (
+                      <>
+                        <div className="mt-4 overflow-x-auto">
+                          <div className="min-w-[440px]">
+                            <div className="grid grid-cols-[48px_repeat(6,1fr)] gap-1.5 text-[11px] font-semibold pm-muted mb-1.5">
+                              <span />{SLOTS.map((s) => <span key={s} className="text-center">{s}</span>)}
+                            </div>
+                            {[1, 2, 3, 4, 5, 6, 0].map((d) => (
+                              <div key={d} className="grid grid-cols-[48px_repeat(6,1fr)] gap-1.5 mb-1.5 items-center">
+                                <span className="text-xs font-semibold pm-muted">{WEEKDAYS[d]}</span>
+                                {stats.heat[d].map((v, s) => {
+                                  const pct = v === 0 ? 0 : Math.round(18 + 82 * (v / Math.max(stats.best.v, 1)));
+                                  return (
+                                    <div key={s} title={`${WEEKDAYS_FULL[d]} ${SLOTS[s]} : ${v} vue(s)`}
+                                      className="h-8 rounded-[4px] grid place-items-center text-[11px] font-bold pm-num"
+                                      style={{ background: v === 0 ? 'var(--rule)' : `color-mix(in srgb, var(--blue) ${pct}%, transparent)`, color: v === 0 ? 'transparent' : pct > 55 ? 'var(--onblue)' : 'var(--ink)' }}>{v}</div>
+                                  );
+                                })}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        <p className="mt-3 flex items-center gap-2 text-sm font-semibold"><Flame className="size-4" style={{ color: 'var(--red)' }} />Meilleur moment : le {WEEKDAYS_FULL[stats.best.d]}, entre {SLOTS[stats.best.s]}.</p>
+                      </>
+                    )}
                   </div>
-                  <div>
-                    <h3 className="text-lg font-black">Campagne de mise en avant active</h3>
-                    <p className="text-xs text-slate-400">Vos annonces publicitaires et options de sponsorisation de profil.</p>
+                </section>
+
+                {/* DEMANDES / CALCUL / PROFIL */}
+                <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <div className="pm-sheet p-6">
+                    <h3 className={sectionTitle}>Ce que demandent les élèves</h3>
+                    {stats.topSubjects.length === 0 && stats.topCities.length === 0 ? (
+                      <p className="mt-3 text-sm pm-muted">Les matières et villes les plus demandées apparaîtront avec vos premières demandes.</p>
+                    ) : (
+                      <div className="mt-4 space-y-5">
+                        {[{ title: 'Matières', rows: stats.topSubjects }, { title: 'Villes', rows: stats.topCities }].map((g) => g.rows.length > 0 && (
+                          <div key={g.title}>
+                            <p className="text-sm font-bold mb-2">{g.title}</p>
+                            <div className="space-y-2">
+                              {g.rows.map(([label, n]) => (
+                                <div key={label}>
+                                  <div className="flex justify-between text-xs font-semibold mb-1"><span className="truncate">{label}</span><span className="pm-num">{n}</span></div>
+                                  <div className="h-2 rounded-sm overflow-hidden" style={{ background: 'var(--rule)' }}>
+                                    <div className="h-full rounded-sm" style={{ width: `${(n / g.rows[0][1]) * 100}%`, background: 'var(--blue)' }} />
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                </div>
 
-                <div className={`p-6 rounded-2xl border text-center space-y-4 ${isDarkMode ? 'bg-slate-950/40 border-slate-800' : 'bg-slate-50 border-slate-100'}`}>
-                  <p className="text-sm font-bold text-slate-500 dark:text-slate-400">Aucune campagne publicitaire active pour le moment.</p>
-                  <button className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-2xl text-xs font-black shadow-lg shadow-orange-500/20 transition-transform hover:scale-105 cursor-pointer">
-                    Lancer une campagne publicitaire 🚀
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+                  <div className="pm-sheet p-6">
+                    <h3 className={sectionTitle}>Ce que rapporte un lead</h3>
+                    <div className="mt-3"><RoiNote tarif={tarif} breakEvenHours={breakEvenHours} monthlyPerStudent={monthlyPerStudent} roiMultiple={roiMultiple} /></div>
+                    {tarif > 0 && <p className="text-[11px] pm-muted mt-3">Estimation indicative, sur la base de {HOURS_PER_MONTH} h de cours par mois.</p>}
+                  </div>
 
+                  <div className="pm-sheet p-6">
+                    <h3 className={sectionTitle}>Pour améliorer votre note</h3>
+                    {completeness.missing.length === 0 ? (
+                      <p className="mt-3 text-sm pm-muted">Votre profil est complet. Il inspire confiance aux parents.</p>
+                    ) : (
+                      <ul className="mt-3 space-y-1.5">
+                        {completeness.missing.slice(0, 5).map((m) => (
+                          <li key={m}>
+                            <Link href="/prof/profile" className="flex items-center justify-between rounded-md border pm-edge px-3 py-2.5 text-sm font-semibold transition-colors hover:border-[var(--blue)]">
+                              {m}<ChevronRight className="size-4 pm-muted" />
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </section>
+              </>
+            )}
+
+            {/* ===================== DEMANDES ===================== */}
+            {activeTab === 'demandes' && <GestionDemandeView />}
+
+            {/* ===================== LEADS ET CRÉDITS ===================== */}
+            {activeTab === 'credits' && (
+              <>
+                <section>
+                  <h1 className="pm-display text-[40px] sm:text-5xl font-extrabold leading-[1.05]">Leads et crédits</h1>
+                  <p className="mt-3 text-[17px] max-w-xl">Chaque lead ouvre une demande d&apos;élève. Rechargez en une minute, sans quitter votre tableau de bord.</p>
+                </section>
+
+                <section className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+                  <div className="pm-sheet xl:col-span-5 p-7">
+                    <h3 className={sectionTitle}>Votre solde</h3>
+                    <p className="pm-display pm-num text-[88px] font-extrabold leading-none mt-3" style={{ color: isLow ? 'var(--red)' : undefined }}>{leadBalance}</p>
+                    <p className="text-sm pm-muted mt-1">leads disponibles</p>
+                    <div className="mt-5"><Tickets n={leadBalance} low={isLow} /></div>
+                    {isLow && <p className="mt-5 text-sm font-semibold" style={{ color: 'var(--red)' }}>Solde bas : rechargez pour continuer à recevoir des demandes.</p>}
+                    <dl className="mt-6 text-sm">
+                      {[
+                        ['Demandes reçues (30 jours)', String(stats.leads30)],
+                        ['Autonomie estimée', autonomyDays !== null ? `${autonomyDays} jour(s)` : 'non calculable'],
+                        ['Prix d’un lead', `${fmt(costPerLead)} DH`],
+                      ].map(([k, v]) => (
+                        <div key={k} className="flex items-baseline justify-between gap-3 py-2 pm-dots">
+                          <dt className="pm-muted">{k}</dt><dd className="font-bold pm-num">{v}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  </div>
+
+                  <div className="pm-sheet xl:col-span-7 p-7">
+                    <div className="flex items-center justify-between">
+                      <h3 className={sectionTitle}>Bon de recharge</h3>
+                      <Scissors className="size-4 pm-muted" aria-hidden />
+                    </div>
+                    <div className="mt-4 border-t-2 border-dashed pm-edge pt-5">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                          <p className="font-bold">Pack de {LEADS_PER_PACK} leads</p>
+                          <p className="text-sm pm-muted">{PACK_PRICE_DH} DH le pack</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <button onClick={() => setPackQty(Math.max(1, packQty - 1))} aria-label="Retirer un pack" className="pm-btn pm-btn-ghost size-10"><Minus className="size-4" /></button>
+                          <span className="pm-display pm-num w-10 text-center text-3xl font-bold" aria-live="polite">{packQty}</span>
+                          <button onClick={() => setPackQty(Math.min(10, packQty + 1))} aria-label="Ajouter un pack" className="pm-btn pm-btn-ghost size-10"><Plus className="size-4" /></button>
+                        </div>
+                      </div>
+
+                      <div className="mt-6 grid grid-cols-2 gap-6">
+                        <div><p className="text-sm pm-muted">Vous recevez</p><p className="pm-display pm-num text-4xl font-extrabold" style={{ color: 'var(--green)' }}>+{packQty * LEADS_PER_PACK}</p><p className="text-xs pm-muted">leads</p></div>
+                        <div><p className="text-sm pm-muted">Total à payer</p><p className="pm-display pm-num text-4xl font-extrabold">{packQty * PACK_PRICE_DH}</p><p className="text-xs pm-muted">DH</p></div>
+                      </div>
+
+                      {stats.leads30 > 0 && (
+                        <button onClick={() => setPackQty(Math.min(10, suggestedPacks))} className="mt-6 w-full text-left rounded-md border pm-edge px-4 py-3 text-sm cursor-pointer transition-colors hover:border-[var(--blue)]">
+                          {missingLeads === 0
+                            ? <>Vous recevez environ <b>{stats.leads30}</b> demandes par mois : votre solde actuel vous couvre.</>
+                            : <>Vous recevez environ <b>{stats.leads30}</b> demandes par mois. Nous vous conseillons <b>{suggestedPacks} pack{suggestedPacks > 1 ? 's' : ''}</b> ({suggestedPacks * PACK_PRICE_DH} DH). <span className="font-bold underline" style={{ color: 'var(--blue)' }}>Appliquer</span></>}
+                        </button>
+                      )}
+
+                      <a href={orderUrl} target="_blank" rel="noopener noreferrer" className="pm-btn pm-btn-green mt-6 w-full py-3.5 text-sm">
+                        <MessageCircle className="size-5" />Commander sur WhatsApp, {packQty * PACK_PRICE_DH} DH
+                      </a>
+                      <p className="mt-3 text-xs pm-muted text-center">Le message contient déjà votre référence. Vos leads sont ajoutés dès la confirmation du paiement.</p>
+                      <button onClick={() => copy('ref', String(profData?.id ?? ''))} className="mt-2 mx-auto flex items-center gap-1.5 text-xs font-semibold pm-muted cursor-pointer hover:text-[var(--ink)]">
+                        {copied === 'ref' ? <Check className="size-3.5" style={{ color: 'var(--green)' }} /> : <Copy className="size-3.5" />}Ma référence : {String(profData?.id ?? '')}
+                      </button>
+                    </div>
+                  </div>
+                </section>
+
+                <section className="pm-sheet p-7 grid grid-cols-1 md:grid-cols-[auto_1fr] gap-6 items-center">
+                  <h3 className={`${sectionTitle} md:max-w-[200px]`}>Ce que rapporte un lead</h3>
+                  <RoiNote tarif={tarif} breakEvenHours={breakEvenHours} monthlyPerStudent={monthlyPerStudent} roiMultiple={roiMultiple} />
+                </section>
+              </>
+            )}
+
+            {/* ===================== PUBLICITÉS ===================== */}
+            {activeTab === 'publicites' && (
+              <>
+                <section>
+                  <h1 className="pm-display text-[40px] sm:text-5xl font-extrabold leading-[1.05]">Gérer mes publicités</h1>
+                  <p className="mt-3 text-[17px] max-w-xl">Faites circuler votre lien : plus de visiteurs, plus de demandes d&apos;élèves.</p>
+                </section>
+
+                <section className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+                  <div className="xl:col-span-4">
+                    <p className="text-sm font-semibold pm-muted mb-3">Votre carte telle que les élèves la voient</p>
+                    <div className="pm-sheet overflow-hidden">
+                      <div className="relative h-56" style={{ background: 'var(--side)' }}>
+                        {profImage ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={profImage} alt={profFullName} className="w-full h-full object-cover" />
+                        ) : <div className="w-full h-full grid place-items-center text-white/50"><User className="size-14" /></div>}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent" />
+                        <div className="absolute bottom-3 left-4 right-4 text-white">
+                          <p className="pm-display text-xl font-bold">{profFullName}</p>
+                          <p className="text-xs flex items-center gap-1 text-white/80"><MapPin className="size-3" />{cityName}</p>
+                        </div>
+                      </div>
+                      <div className="p-4 flex items-center justify-between">
+                        <div><p className="text-sm font-bold">{subjectName}</p><p className="pm-display pm-num text-lg font-bold">{tarif} MAD<span className="text-xs font-medium pm-muted">/h</span></p></div>
+                        <span className="text-xs font-bold" style={{ color: 'var(--red)' }}>1er cours offert</span>
+                      </div>
+                    </div>
+                    {completeness.score < 100 && (
+                      <Link href="/prof/profile" className="pm-btn pm-btn-blue mt-4 w-full py-2.5 text-sm">Améliorer mon profil ({score20}/20)</Link>
+                    )}
+                  </div>
+
+                  <div className="pm-sheet xl:col-span-8 p-6 space-y-7">
+                    <div>
+                      <h3 className={sectionTitle}>Votre lien de profil</h3>
+                      <div className="mt-3 flex items-center gap-2 rounded-md border pm-edge p-1.5 pl-4" style={{ background: 'var(--paper)' }}>
+                        <span className="flex-1 truncate text-sm font-semibold">{publicUrl || '…'}</span>
+                        <button onClick={() => copy('url', publicUrl)} className="pm-btn pm-btn-blue shrink-0 px-4 py-2 text-xs">
+                          {copied === 'url' ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}{copied === 'url' ? 'Copié' : 'Copier le lien'}
+                        </button>
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-2.5">
+                        <a href={waShareUrl} target="_blank" rel="noopener noreferrer" className="pm-btn pm-btn-green px-4 py-2.5 text-xs"><MessageCircle className="size-4" />Partager sur WhatsApp</a>
+                        <a href={fbShareUrl} target="_blank" rel="noopener noreferrer" className="pm-btn pm-btn-ghost px-4 py-2.5 text-xs"><Share2 className="size-4" />Partager sur Facebook</a>
+                        {profData && <Link href={`/professeurs/${profData.id}`} className="pm-btn pm-btn-ghost px-4 py-2.5 text-xs"><ExternalLink className="size-4" />Voir mon profil public</Link>}
+                      </div>
+                    </div>
+
+                    <div>
+                      <h3 className={sectionTitle}>Textes prêts à publier</h3>
+                      <div className="mt-3 space-y-3">
+                        {[
+                          { k: 'msg', title: 'Message WhatsApp ou Facebook', text: shareText },
+                          { k: 'bio', title: 'Bio Instagram ou TikTok', text: bioText },
+                        ].map((t) => (
+                          <div key={t.k} className="rounded-md border pm-edge p-4">
+                            <div className="flex items-center justify-between mb-1.5">
+                              <p className="text-sm font-bold">{t.title}</p>
+                              <button onClick={() => copy(t.k, t.text)} className="flex items-center gap-1 text-xs font-bold cursor-pointer" style={{ color: 'var(--blue)' }}>
+                                {copied === t.k ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}{copied === t.k ? 'Copié' : 'Copier'}
+                              </button>
+                            </div>
+                            <p className="text-sm pm-muted leading-relaxed">{t.text}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                <section className="pm-sheet p-6">
+                  <h3 className={sectionTitle}>Ce qui fait venir les élèves</h3>
+                  <ul className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-3">
+                    {['Une photo claire et souriante', 'Une description qui précise niveaux et méthode', 'Répondre aux demandes en moins de 2 heures', 'Partager votre lien dans les groupes de parents', 'Rester disponible aux heures de pointe', 'Proposer le premier cours offert'].map((t) => (
+                      <li key={t} className="flex items-start gap-2.5 text-sm font-semibold">
+                        <Check className="size-4 mt-0.5 shrink-0 stroke-[3]" style={{ color: 'var(--green)' }} />{t}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              </>
+            )}
+          </div>
         </main>
       </div>
     </div>
