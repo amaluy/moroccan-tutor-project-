@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
@@ -9,7 +9,7 @@ import {
   LayoutGrid, ChevronsLeft, ChevronsRight, ArrowUpRight, ArrowDownRight, Megaphone,
   CheckCircle2, Clock, Menu, MapPin, BookOpen, Check, Copy, Share2, ExternalLink,
   MessageCircle, Scissors, Flame, ChevronRight, Eye, Inbox,
-  Heart, Trash2, Power, Tag, Info, Loader2, Sparkles, Target
+  Heart, Trash2, Power, Tag, Info, Loader2, Sparkles, Target, Percent
 } from 'lucide-react';
 
 import GestionDemandeView from './gestion_demande/page';
@@ -18,35 +18,44 @@ import GestionDemandeView from './gestion_demande/page';
 /*  CONFIG — à ajuster                                                 */
 /* ------------------------------------------------------------------ */
 const PACK_PRICE_DH = 100;               // prix d'une recharge
-const LEADS_PER_PACK = 10;               // leads inclus dans une recharge (À ADAPTER)
+const LEADS_PER_PACK = 10;               // leads inclus dans une recharge
 const LOW_LEADS_THRESHOLD = 3;           // alerte crédits bas
-const HOURS_PER_MONTH = 4;               // heures/mois estimées par élève (estimation)
-const SUPPORT_WHATSAPP = '212600000000'; // ⚠️ REMPLACER par votre numéro WhatsApp (format international, sans +)
-const MAX_ACTIVE_PROMOS = 3;             // promotions actives max par prof
-const BOOST_CAP = 50;                    // plafond du bonus de classement
+const HOURS_PER_MONTH = 4;               // heures/mois estimées par élève
+const SUPPORT_WHATSAPP = '212600000000'; // ⚠️ REMPLACER (format international, sans +)
+const MAX_ACTIVE_PROMOS = 3;
+const BOOST_CAP = 50;
+const REFRESH_MS = 30_000;               // resynchronisation du solde et des demandes
+
+/* ------------------------------------------------------------------ */
+/*  BASE DE DONNÉES — noms de colonnes réels                           */
+/*  professors : id, email, "Prénom", "Nom", telephone, niveau[], ville,
+/*     tarif, bio, is_approved, experience, "Type_cours"[], "photo_URL",
+/*     disponibilites[], leads_restants, matiere  (+ available, monthly_goal
+/*     ajoutés par supabase_dashboard.sql)
+/*  leads      : id, professor_email, student_name, student_family_name,
+/*     student_city, student_subjects[], student_grade, student_age,
+/*     student_price_monthly, status, message, is_read, lead_consumed, lead_date
+/*  profile_views : id, professor_id, viewed_at
+/* ------------------------------------------------------------------ */
+const BASE_COLS = 'id,email,"Prénom","Nom",telephone,niveau,ville,tarif,bio,is_approved,experience,"Type_cours","photo_URL",disponibilites,leads_restants,matiere';
+const EXT_COLS = `${BASE_COLS},available,monthly_goal`;
 
 /* ------------------------------------------------------------------ */
 /*  TYPES                                                              */
 /* ------------------------------------------------------------------ */
 interface Professor {
-  id: string | number;
+  id: string;
   email?: string;
-  'Prénom'?: string;
-  prenom?: string;
-  'Nom'?: string;
-  nom?: string;
-  photo_URL?: string;
-  photo_url?: string;
-  image_url?: string;
-  photo?: string;
-  available?: boolean;
   leads_restants?: number;
+  available?: boolean;
+  monthly_goal?: number;
   [key: string]: any;
 }
 interface Lead {
   id?: string | number;
   status?: string;
-  created_at?: string;
+  lead_date?: string;
+  is_read?: boolean;
   [key: string]: any;
 }
 interface Promo {
@@ -63,6 +72,7 @@ type Tab = 'overview' | 'demandes' | 'credits' | 'publicites';
 type Range = 'semaine' | 'mois' | 'annee';
 type Bucket = { label: string; start: number; end: number };
 type Point = { label: string; views: number; leads: number };
+type TodoKind = 'available' | 'credits' | 'pending' | 'profile' | 'share' | 'none';
 
 /* ------------------------------------------------------------------ */
 /*  HELPERS                                                            */
@@ -115,9 +125,16 @@ const niceMax = (v: number) => {
   return (n <= 2 ? 2 : n <= 5 ? 5 : 10) * pow;
 };
 
-const pick = (o: Record<string, any>, keys: string[]) => {
-  for (const k of keys) if (o[k] !== undefined && o[k] !== null && o[k] !== '') return o[k];
-  return '';
+/** Colonnes text[] ou text : toujours renvoyer une liste propre. */
+const asList = (v: any): string[] => {
+  if (Array.isArray(v)) return v.map((x) => String(x).trim()).filter(Boolean);
+  if (typeof v === 'string') return v.replace(/^\{|\}$/g, '').split(',').map((x) => x.replace(/^"|"$/g, '').trim()).filter(Boolean);
+  return [];
+};
+
+const toNumber = (v: any) => {
+  const n = Number(String(v ?? '').replace(',', '.').replace(/[^\d.]/g, ''));
+  return Number.isFinite(n) ? n : 0;
 };
 
 const isAccepted = (s?: string) => (s || '').toLowerCase() === 'accepted';
@@ -144,14 +161,25 @@ const topCounts = (items: string[], n = 3) => {
 };
 
 const fmt = (n: number) => n.toLocaleString('fr-FR');
-
 const inDays = (n: number) => new Date(Date.now() + n * DAY).toISOString().slice(0, 10);
 const isLivePromo = (p: Promo) => p.is_active && new Date(p.ends_at).getTime() > Date.now();
 
+/** Charge le prof sans jamais rapatrier la colonne password dans le navigateur. */
+async function fetchProfessor(apply: (q: any) => any): Promise<Professor | null> {
+  for (const cols of [EXT_COLS, BASE_COLS, '*']) {
+    const { data, error } = await apply(supabase.from('professors').select(cols)).limit(1).maybeSingle();
+    if (error) continue;
+    if (!data) return null;
+    const safe: any = { ...data };
+    delete safe.password;
+    delete safe.is_admin;
+    return safe as Professor;
+  }
+  return null;
+}
+
 /* ------------------------------------------------------------------ */
-/*  STYLES GLOBAUX                                                     */
-/*  Même univers que la page d'accueil : fond clair, cartes arrondies, */
-/*  orange ProfMaroc (action), bleu nuit (boutons sombres), pastilles. */
+/*  STYLES GLOBAUX (même univers que la page d'accueil)                */
 /* ------------------------------------------------------------------ */
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap');
@@ -201,26 +229,22 @@ function Delta({ text, dir }: { text: string; dir: 'up' | 'down' | 'flat' }) {
   );
 }
 
-function Tickets({ n, low, size = 'md' }: { n: number; low?: boolean; size?: 'sm' | 'md' }) {
+function Tickets({ n, low }: { n: number; low?: boolean }) {
   const total = Math.min(Math.max(LEADS_PER_PACK, Math.ceil(n / LEADS_PER_PACK) * LEADS_PER_PACK), 40);
   const filled = Math.min(n, total);
   const color = low ? 'var(--red)' : 'var(--blue)';
-  const cut = size === 'sm' ? 'var(--paper)' : 'var(--sheet)';
-  const w = size === 'sm' ? 12 : 22;
-  const h = size === 'sm' ? 18 : 32;
-  const notch = size === 'sm' ? 2 : 3.5;
   return (
     <div className="flex flex-wrap gap-1.5" role="img" aria-label={`${n} leads restants`}>
-      {Array.from({ length: size === 'sm' ? Math.min(total, 10) : total }, (_, i) => {
-        const on = i < (size === 'sm' ? Math.min(filled, 10) : filled);
+      {Array.from({ length: total }, (_, i) => {
+        const on = i < filled;
         return (
           <span
             key={i}
             style={{
-              width: w, height: h, borderRadius: 4,
+              width: 22, height: 32, borderRadius: 4,
               border: on ? 'none' : '1.5px dashed var(--edge)',
               background: on
-                ? `radial-gradient(circle at 0 50%, ${cut} ${notch}px, transparent ${notch + 0.5}px), radial-gradient(circle at 100% 50%, ${cut} ${notch}px, transparent ${notch + 0.5}px), ${color}`
+                ? `radial-gradient(circle at 0 50%, var(--sheet) 3.5px, transparent 4px), radial-gradient(circle at 100% 50%, var(--sheet) 3.5px, transparent 4px), ${color}`
                 : 'transparent',
             }}
           />
@@ -230,39 +254,46 @@ function Tickets({ n, low, size = 'md' }: { n: number; low?: boolean; size?: 'sm
   );
 }
 
-function Grade({ score20, comment, note }: { score20: number; comment: string; note: string }) {
+/** Note du profil : l'anneau ET la liste des manques, au même endroit (rien d'ailleurs). */
+function Grade({ score20, comment, missing }: { score20: number; comment: string; missing: string[] }) {
   const r = 44;
   const c = 2 * Math.PI * r;
   const pct = Math.min(Math.max(score20 / 20, 0), 1);
   return (
-    <Link
-      href="/prof/profile"
-      aria-label={`Note du profil : ${score20} sur 20. Modifier mon profil`}
-      className="group pm-sheet flex items-center gap-5 p-5 self-start transition-shadow hover:shadow-lg"
-      style={{ background: 'var(--paper)' }}
-    >
-      <div className="relative size-[112px] shrink-0">
-        <svg viewBox="0 0 112 112" className="size-full -rotate-90" aria-hidden>
-          <circle cx="56" cy="56" r={r} fill="none" strokeWidth="9" style={{ stroke: 'var(--edge)' }} />
-          <circle cx="56" cy="56" r={r} fill="none" strokeWidth="9" strokeLinecap="round"
-            strokeDasharray={c} strokeDashoffset={c * (1 - pct)} className="transition-all duration-700"
-            style={{ stroke: 'var(--blue)' }} />
-        </svg>
-        <div className="absolute inset-0 grid place-items-center">
-          <p className="pm-display pm-num text-3xl font-extrabold leading-none">
-            {score20}<span className="text-sm font-bold pm-muted">/20</span>
-          </p>
+    <div className="pm-sheet p-5 w-full lg:w-[360px] self-start" style={{ background: 'var(--paper)' }}>
+      <div className="flex items-center gap-5">
+        <div className="relative size-[96px] shrink-0">
+          <svg viewBox="0 0 112 112" className="size-full -rotate-90" aria-hidden>
+            <circle cx="56" cy="56" r={r} fill="none" strokeWidth="9" style={{ stroke: 'var(--edge)' }} />
+            <circle cx="56" cy="56" r={r} fill="none" strokeWidth="9" strokeLinecap="round"
+              strokeDasharray={c} strokeDashoffset={c * (1 - pct)} className="transition-all duration-700"
+              style={{ stroke: 'var(--blue)' }} />
+          </svg>
+          <div className="absolute inset-0 grid place-items-center">
+            <p className="pm-display pm-num text-2xl font-extrabold leading-none">{score20}<span className="text-xs font-bold pm-muted">/20</span></p>
+          </div>
+        </div>
+        <div className="min-w-0">
+          <p className="text-[11px] font-bold uppercase tracking-wider pm-muted">Qualité du profil</p>
+          <p className="pm-display text-xl font-bold mt-0.5 leading-6">{comment}</p>
         </div>
       </div>
-      <div className="max-w-[190px]">
-        <p className="text-[11px] font-bold uppercase tracking-wider pm-muted">Qualité du profil</p>
-        <p className="pm-display text-xl font-bold mt-1 leading-6">{comment}</p>
-        <p className="text-sm pm-muted mt-1 leading-5">{note}</p>
-        <span className="mt-2 inline-flex items-center gap-0.5 text-xs font-bold" style={{ color: 'var(--blue)' }}>
-          Modifier mon profil<ChevronRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
-        </span>
-      </div>
-    </Link>
+      {missing.length > 0 ? (
+        <div className="mt-4">
+          <p className="text-xs font-semibold pm-muted mb-2">À compléter</p>
+          <div className="flex flex-wrap gap-2">
+            {missing.slice(0, 4).map((m) => (
+              <Link key={m} href="/prof/profile" className="inline-flex items-center gap-1 rounded-full border pm-edge px-3 py-1 text-xs font-semibold transition-colors hover:border-[var(--blue)] hover:bg-[var(--hl)]" style={{ background: 'var(--sheet)' }}>
+                <Plus className="size-3" />{m}
+              </Link>
+            ))}
+            {missing.length > 4 && <span className="text-xs font-semibold pm-muted self-center">+{missing.length - 4}</span>}
+          </div>
+        </div>
+      ) : (
+        <p className="mt-4 text-sm font-semibold" style={{ color: 'var(--green)' }}>Profil complet, bravo !</p>
+      )}
+    </div>
   );
 }
 
@@ -341,8 +372,7 @@ function RoiNote(props: { tarif: number; breakEvenHours: number; monthlyPerStude
     );
   }
   const rows: [string, string][] = [
-    ['Prix d\u2019une recharge', `${PACK_PRICE_DH} DH`],
-    [`Amortie en (à ${tarif} DH/h)`, `${String(breakEvenHours).replace('.', ',')} h de cours`],
+    ['Amortie en (à ' + tarif + ' DH/h)', `${String(breakEvenHours).replace('.', ',')} h de cours`],
     [`1 élève × ${HOURS_PER_MONTH} h par mois`, `${fmt(monthlyPerStudent)} MAD`],
   ];
   return (
@@ -358,20 +388,22 @@ function RoiNote(props: { tarif: number; breakEvenHours: number; monthlyPerStude
         <p className="pm-display pm-num text-4xl font-extrabold leading-none" style={{ color: 'var(--accent-ink)' }}>×{roiMultiple}</p>
         <p className="text-sm font-semibold leading-5">le prix d&apos;un lead, dès le premier élève.</p>
       </div>
+      <p className="text-[11px] pm-muted">Estimation indicative, sur la base de {HOURS_PER_MONTH} h de cours par mois.</p>
     </div>
   );
 }
 
 /* ------------------------------------------------------------------ */
 /*  PROMOTIONS : le prof écrit, les parents aiment (pas de commentaires)*/
-/*  Chaque like d'une promo ACTIVE donne un bonus de classement.       */
-/*  (nécessite les tables SQL promotions + promotion_likes)            */
+/*  Nécessite les tables promotions + promotion_likes                  */
+/*  (créées par supabase_dashboard.sql)                                */
 /* ------------------------------------------------------------------ */
-function PromoManager({ profId }: { profId: string | number }) {
+function PromoManager({ profId }: { profId: string }) {
   const [promos, setPromos] = useState<Promo[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [missingTable, setMissingTable] = useState(false);
 
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
@@ -379,16 +411,26 @@ function PromoManager({ profId }: { profId: string | number }) {
   const [endDate, setEndDate] = useState(inDays(7));
 
   const load = useCallback(async () => {
-    const { data } = await supabase
+    const { data, error: err } = await supabase
       .from('promotions')
       .select('*')
-      .eq('professor_id', String(profId))
+      .eq('professor_id', profId)
       .order('created_at', { ascending: false });
-    setPromos((data as Promo[]) || []);
+    if (err) setMissingTable(true);
+    else { setMissingTable(false); setPromos((data as Promo[]) || []); }
     setLoading(false);
   }, [profId]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Les likes des parents arrivent en direct
+  useEffect(() => {
+    const ch = supabase
+      .channel(`promos-${profId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'promotions', filter: `professor_id=eq.${profId}` }, () => load())
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [profId, load]);
 
   const live = promos.filter(isLivePromo);
   const boost = Math.min(live.reduce((a, p) => a + p.likes_count, 0), BOOST_CAP);
@@ -404,7 +446,7 @@ function PromoManager({ profId }: { profId: string | number }) {
 
     setSaving(true);
     const { error: err } = await supabase.from('promotions').insert({
-      professor_id: String(profId),
+      professor_id: profId,
       title: title.trim(),
       body: body.trim(),
       discount_percent: discount ? d : null,
@@ -431,6 +473,18 @@ function PromoManager({ profId }: { profId: string | number }) {
 
   const st = 'pm-display text-xl font-bold leading-7';
 
+  if (missingTable) {
+    return (
+      <section className="pm-sheet p-6 flex gap-3 items-start" style={{ borderColor: 'var(--red)' }}>
+        <Info className="size-5 shrink-0 mt-0.5" style={{ color: 'var(--red)' }} />
+        <div>
+          <p className="font-bold">Les promotions ne sont pas encore activées.</p>
+          <p className="text-sm pm-muted mt-1">Exécutez le fichier <code>supabase_dashboard.sql</code> dans le SQL Editor de Supabase, puis rechargez la page.</p>
+        </div>
+      </section>
+    );
+  }
+
   const stats = [
     { label: 'Promotions actives', value: `${live.length}/${MAX_ACTIVE_PROMOS}`, hint: '', icon: Megaphone },
     { label: 'Likes reçus (total)', value: String(totalLikes), hint: '', icon: Heart },
@@ -456,10 +510,9 @@ function PromoManager({ profId }: { profId: string | number }) {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
-        {/* Formulaire */}
         <div className="pm-sheet xl:col-span-5 p-6">
           <h3 className={st}>Nouvelle promotion</h3>
-          <p className="text-sm pm-muted mt-1">Elle s&apos;affiche sur votre profil public. Chaque like d&apos;un parent vous fait monter dans la liste des professeurs.</p>
+          <p className="text-sm pm-muted mt-1">Elle s&apos;affiche sur votre profil public. Chaque like d&apos;un parent vous fait monter dans la liste des professeurs. Les commentaires sont interdits.</p>
 
           <div className="mt-5 space-y-4">
             <label className="block">
@@ -491,20 +544,12 @@ function PromoManager({ profId }: { profId: string | number }) {
             </button>
             {!canCreate && <p className="text-xs pm-muted text-center">Vous avez déjà {MAX_ACTIVE_PROMOS} promotions actives. Désactivez-en une pour en publier une nouvelle.</p>}
           </div>
-
-          <div className="mt-6 rounded-xl p-4 flex gap-3 text-xs leading-relaxed" style={{ background: 'var(--hl)' }}>
-            <Info className="size-4 shrink-0 mt-0.5" style={{ color: 'var(--accent-ink)' }} />
-            <p>Les parents peuvent <b>aimer</b> une promotion, mais <b>les commentaires sont interdits</b>. Le bonus disparaît quand la promotion expire ou est désactivée.</p>
-          </div>
         </div>
 
-        {/* Liste */}
         <div className="pm-sheet xl:col-span-7 p-6">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <h3 className={st}>Mes promotions</h3>
-            {boost > 0 && (
-              <span className="pm-pill"><Flame className="size-3.5" />Bonus de visibilité : +{boost}</span>
-            )}
+            {boost > 0 && <span className="pm-pill"><Flame className="size-3.5" />Bonus de visibilité : +{boost}</span>}
           </div>
 
           {loading ? (
@@ -529,9 +574,7 @@ function PromoManager({ profId }: { profId: string | number }) {
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="text-sm font-bold">{p.title}</p>
-                        {p.discount_percent && (
-                          <span className="pm-pill"><Tag className="size-3" />-{p.discount_percent}%</span>
-                        )}
+                        {p.discount_percent && <span className="pm-pill"><Tag className="size-3" />-{p.discount_percent}%</span>}
                       </div>
                       <p className="text-sm pm-muted mt-1 leading-relaxed">{p.body}</p>
                       <p className="text-[11px] mt-2 font-semibold" style={{ color: isLive ? 'var(--green)' : 'var(--muted)' }}>
@@ -565,8 +608,6 @@ function PromoManager({ profId }: { profId: string | number }) {
 export default function ProfDashboard() {
   const router = useRouter();
   const [profData, setProfData] = useState<Professor | null>(null);
-  const [profFullName, setProfFullName] = useState('Professeur');
-  const [profImage, setProfImage] = useState('');
   const [isAvailable, setIsAvailable] = useState(true);
   const [loading, setLoading] = useState(true);
 
@@ -596,20 +637,6 @@ export default function ProfDashboard() {
     setOrigin(window.location.origin);
   }, []);
 
-  useEffect(() => {
-    if (!profData) return;
-    try {
-      const g = Number(localStorage.getItem(`prof_goal_${profData.id}`));
-      if (g > 0) setGoal(g);
-    } catch {}
-  }, [profData]);
-
-  const changeGoal = (v: number) => {
-    const next = Math.min(Math.max(v, 1), 50);
-    setGoal(next);
-    try { if (profData) localStorage.setItem(`prof_goal_${profData.id}`, String(next)); } catch {}
-  };
-
   const toggleTheme = () => {
     const next = !isDarkMode;
     setIsDarkMode(next);
@@ -620,6 +647,14 @@ export default function ProfDashboard() {
     await supabase.auth.signOut();
     localStorage.clear();
     router.push('/connexion');
+  };
+
+  /* Objectif mensuel : enregistré dans professors.monthly_goal (repli navigateur) */
+  const changeGoal = async (v: number) => {
+    const next = Math.min(Math.max(v, 1), 50);
+    setGoal(next);
+    try { if (profData) localStorage.setItem(`prof_goal_${profData.id}`, String(next)); } catch {}
+    if (profData) await supabase.from('professors').update({ monthly_goal: next }).eq('id', profData.id);
   };
 
   const toggleAvailability = async () => {
@@ -640,7 +675,20 @@ export default function ProfDashboard() {
 
   const goTo = (tab: Tab) => { setActiveTab(tab); setMobileOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }); };
 
-  /* ---------------------------- CHARGEMENT ---------------------------- */
+  /* ---------------------------- SYNCHRONISATION ---------------------------- */
+  const refresh = useCallback(async (id: string, rawEmail: string) => {
+    const email = rawEmail.toLowerCase().trim();
+    const [leadsRes, viewsRes, balRes] = await Promise.all([
+      supabase.from('leads').select('*').ilike('professor_email', email),
+      supabase.from('profile_views').select('viewed_at').eq('professor_id', id)
+        .gte('viewed_at', new Date(Date.now() - 800 * DAY).toISOString()),
+      supabase.from('professors').select('leads_restants').eq('id', id).maybeSingle(),
+    ]);
+    if (!leadsRes.error) setLeads((leadsRes.data as Lead[]) || []);
+    if (!viewsRes.error) setViewTimes(toTimes(viewsRes.data || [], 'viewed_at'));
+    if (balRes.data) setProfData((p) => (p ? { ...p, leads_restants: (balRes.data as any).leads_restants } : p));
+  }, []);
+
   useEffect(() => {
     let alive = true;
     async function load() {
@@ -655,31 +703,15 @@ export default function ProfDashboard() {
         if (!rawEmail && !storedId) { router.push('/connexion'); return; }
 
         let prof: Professor | null = null;
-        if (storedId) {
-          const { data } = await supabase.from('professors').select('*').eq('id', storedId).maybeSingle();
-          prof = (data as Professor) || null;
-        }
-        if (!prof && rawEmail) {
-          const { data } = await supabase.from('professors').select('*').ilike('email', rawEmail.trim()).limit(1).maybeSingle();
-          prof = (data as Professor) || null;
-        }
+        if (storedId) prof = await fetchProfessor((q) => q.eq('id', storedId));
+        if (!prof && rawEmail) prof = await fetchProfessor((q) => q.ilike('email', rawEmail.trim()));
         if (!prof || !alive) return;
 
         setProfData(prof);
-        const fullName = `${prof['Prénom'] || prof.prenom || ''} ${prof['Nom'] || prof.nom || ''}`.trim();
-        setProfFullName(fullName || prof.email || 'Professeur');
-        setProfImage(prof.photo_URL || prof.photo_url || prof.image_url || prof.photo || '');
         setIsAvailable(prof.available ?? true);
-
-        const email = (prof.email || rawEmail || '').toLowerCase().trim();
-        const [leadsRes, viewsRes] = await Promise.all([
-          supabase.from('leads').select('*').or(`professor_email.eq.${email},professor_id.eq.${prof.id}`),
-          supabase.from('profile_views').select('viewed_at').eq('professor_id', String(prof.id))
-            .gte('viewed_at', new Date(Date.now() - 800 * DAY).toISOString()),
-        ]);
-        if (!alive) return;
-        setLeads((leadsRes.data as Lead[]) || []);
-        setViewTimes(toTimes(viewsRes.data || [], 'viewed_at'));
+        const g = Number(prof.monthly_goal) || Number(localStorage.getItem(`prof_goal_${prof.id}`)) || 5;
+        setGoal(g);
+        await refresh(String(prof.id), prof.email || rawEmail || '');
       } catch (err) {
         console.error('Erreur dashboard:', err);
       } finally {
@@ -688,7 +720,41 @@ export default function ProfDashboard() {
     }
     load();
     return () => { alive = false; };
-  }, [router]);
+  }, [router, refresh]);
+
+  // Temps réel : nouvelle demande, changement de statut, solde modifié
+  useEffect(() => {
+    if (!profData?.id || !profData.email) return;
+    const id = String(profData.id);
+    const email = profData.email;
+    const sync = () => refresh(id, email);
+
+    const channel = supabase
+      .channel(`leads-${id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'leads', filter: `professor_email=eq.${email}` }, sync)
+      .subscribe();
+    const onVisible = () => { if (document.visibilityState === 'visible') sync(); };
+    document.addEventListener('visibilitychange', onVisible);
+    const timer = setInterval(sync, REFRESH_MS);
+
+    return () => {
+      supabase.removeChannel(channel);
+      document.removeEventListener('visibilitychange', onVisible);
+      clearInterval(timer);
+    };
+  }, [profData?.id, profData?.email, refresh]);
+
+  /* ---------------------------- DONNÉES DU PROF ---------------------------- */
+  const profFullName = profData
+    ? `${profData['Prénom'] || ''} ${profData['Nom'] || ''}`.trim() || profData.email || 'Professeur'
+    : 'Professeur';
+  const profImage: string = profData?.['photo_URL'] || '';
+  const subjects = asList(profData?.matiere);
+  const levels = asList(profData?.niveau);
+  const courseTypes = asList(profData?.['Type_cours']);
+  const subjectName = subjects.join(', ') || 'Soutien scolaire';
+  const cityName: string = profData?.ville || 'Maroc';
+  const tarif = toNumber(profData?.tarif);
 
   /* ---------------------------- CALCULS ---------------------------- */
   const stats = useMemo(() => {
@@ -698,8 +764,8 @@ export default function ProfDashboard() {
     const to = buckets[buckets.length - 1].end;
     const prevFrom = from - (to - from);
 
-    const leadTimes = toTimes(leads, 'created_at');
-    const acceptedTimes = toTimes(leads.filter((l) => isAccepted(l.status)), 'created_at');
+    const leadTimes = toTimes(leads, 'lead_date');
+    const acceptedTimes = toTimes(leads.filter((l) => isAccepted(l.status)), 'lead_date');
 
     const points: Point[] = buckets.map((b) => ({
       label: b.label, views: countIn(viewTimes, b.start, b.end), leads: countIn(leadTimes, b.start, b.end),
@@ -709,7 +775,6 @@ export default function ProfDashboard() {
     const prevViews = countIn(viewTimes, prevFrom, from);
     const leadsIn = countIn(leadTimes, from, to);
     const prevLeadsIn = countIn(leadTimes, prevFrom, from);
-    const acceptedIn = countIn(acceptedTimes, from, to);
 
     const acceptedAll = leads.filter((l) => isAccepted(l.status)).length;
     const pendingAll = leads.filter((l) => isPending(l.status)).length;
@@ -738,14 +803,14 @@ export default function ProfDashboard() {
 
     const pendingSorted = leads
       .filter((l) => isPending(l.status))
-      .sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
+      .sort((a, b) => new Date(a.lead_date || 0).getTime() - new Date(b.lead_date || 0).getTime());
 
     return {
-      points, views, prevViews, leadsIn, prevLeadsIn, acceptedIn, acceptedAll, pendingAll, refusedAll,
+      points, views, prevViews, leadsIn, prevLeadsIn, acceptedAll, pendingAll, decided,
       acceptRate, conv, perDay, leads30, acceptedThisMonth, heat, heatTotal, best,
       pendingSorted, oldestPending: pendingSorted[0],
-      topSubjects: topCounts(leads.map((l) => String(pick(l, ['subject', 'matiere'])))),
-      topCities: topCounts(leads.map((l) => String(pick(l, ['city', 'ville'])))),
+      topSubjects: topCounts(leads.flatMap((l) => asList(l.student_subjects))),
+      topCities: topCounts(leads.map((l) => String(l.student_city || ''))),
       viewsDelta: delta(views, prevViews), leadsDelta: delta(leadsIn, prevLeadsIn),
     };
   }, [leads, viewTimes, timeRange]);
@@ -754,9 +819,6 @@ export default function ProfDashboard() {
   const isLow = leadBalance <= LOW_LEADS_THRESHOLD;
   const autonomyDays = stats.perDay > 0 ? Math.floor(leadBalance / stats.perDay) : null;
 
-  const tarif = Number(profData ? pick(profData, ['tarif', 'price']) : 0) || 0;
-  const subjectName = String(profData ? pick(profData, ['matiere', 'subject']) : '') || 'Soutien scolaire';
-  const cityName = String(profData ? pick(profData, ['ville', 'city']) : '') || 'Maroc';
   const costPerLead = PACK_PRICE_DH / LEADS_PER_PACK;
   const monthlyPerStudent = tarif * HOURS_PER_MONTH;
   const roiMultiple = costPerLead > 0 && monthlyPerStudent > 0 ? Math.round(monthlyPerStudent / costPerLead) : 0;
@@ -770,35 +832,48 @@ export default function ProfDashboard() {
     if (!profData) return { score: 0, missing: [] as string[] };
     const checks: [string, boolean][] = [
       ['Photo de profil', !!profImage],
-      ['Description', !!pick(profData, ['bio', 'description', 'about', 'presentation'])],
-      ['Matière enseignée', !!pick(profData, ['matiere', 'subject'])],
-      ['Niveau enseigné', !!pick(profData, ['niveau', 'level'])],
-      ['Ville', !!pick(profData, ['ville', 'city'])],
+      ['Description', !!String(profData.bio || '').trim()],
+      ['Matière', subjects.length > 0],
+      ['Niveau', levels.length > 0],
+      ['Ville', !!profData.ville],
       ['Tarif horaire', tarif > 0],
-      ['Lieu des cours', !!pick(profData, ['lieu', 'location'])],
-      ['Numéro de téléphone', !!pick(profData, ['telephone', 'phone', 'tel', 'whatsapp'])],
+      ['Type de cours', courseTypes.length > 0],
+      ['Disponibilités', asList(profData.disponibilites).length > 0],
+      ['Expérience', !!String(profData.experience || '').trim()],
+      ['Téléphone', !!String(profData.telephone || '').trim()],
     ];
     const done = checks.filter(([, ok]) => ok).length;
     return { score: Math.round((done / checks.length) * 100), missing: checks.filter(([, ok]) => !ok).map(([l]) => l) };
-  }, [profData, profImage, tarif]);
+  }, [profData, profImage, subjects, levels, courseTypes, tarif]);
 
   const score20 = Math.round((completeness.score / 100) * 20);
   const gradeComment = score20 >= 18 ? 'Excellent !' : score20 >= 15 ? 'Bien.' : score20 >= 10 ? 'Peut mieux faire.' : 'Profil à compléter.';
-  const gradeNote = completeness.missing[0] ? `Ajoutez : ${completeness.missing[0].toLowerCase()}` : 'Profil complet, bravo !';
 
   const queue = useMemo(() => {
     if (stats.pendingSorted.length > 0) return { rows: stats.pendingSorted.slice(0, 5), pending: true };
-    const recent = [...leads].sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()).slice(0, 5);
+    const recent = [...leads].sort((a, b) => new Date(b.lead_date || 0).getTime() - new Date(a.lead_date || 0).getTime()).slice(0, 5);
     return { rows: recent, pending: false };
   }, [leads, stats.pendingSorted]);
 
-  const todo = useMemo(() => {
-    if (!isAvailable) return 'Vous êtes indisponible : les élèves ne peuvent pas vous contacter. Réactivez-vous en haut de page.';
-    if (stats.oldestPending) return `Une demande attend votre réponse depuis ${timeAgo(stats.oldestPending.created_at).replace('il y a ', '')}.`;
-    if (completeness.missing[0]) return `Pour inspirer confiance, ajoutez : ${completeness.missing[0].toLowerCase()}.`;
-    if (stats.heatTotal > 0) return `Vos visiteurs viennent surtout le ${WEEKDAYS_FULL[stats.best.d]} entre ${SLOTS[stats.best.s]}. Soyez joignable à ce moment.`;
-    return 'Partagez votre lien de profil pour recevoir vos prochaines demandes.';
-  }, [isAvailable, stats, completeness]);
+  /** Une seule consigne du jour, avec son bouton si une action existe. */
+  const todo: { text: string; cta?: string; kind: TodoKind } = useMemo(() => {
+    if (!isAvailable) return { text: 'Vous êtes masqué : les élèves ne peuvent pas vous contacter.', cta: 'Me rendre disponible', kind: 'available' };
+    if (leadBalance === 0) return { text: "Vous n'avez plus de leads : vous ne voyez plus les nouvelles demandes.", cta: 'Recharger mes leads', kind: 'credits' };
+    if (stats.oldestPending) return { text: `Une demande attend votre réponse depuis ${timeAgo(stats.oldestPending.lead_date).replace('il y a ', '')}.`, cta: 'Répondre aux demandes', kind: 'pending' };
+    if (completeness.missing[0]) return { text: `Pour inspirer confiance aux parents, complétez votre profil : ${completeness.missing[0].toLowerCase()}.`, cta: 'Compléter mon profil', kind: 'profile' };
+    if (stats.heatTotal > 0) return { text: `Vos visiteurs viennent surtout le ${WEEKDAYS_FULL[stats.best.d]} entre ${SLOTS[stats.best.s]}. Soyez joignable à ce moment.`, kind: 'none' };
+    return { text: 'Partagez votre lien de profil pour recevoir vos prochaines demandes.', cta: 'Partager mon profil', kind: 'share' };
+  }, [isAvailable, leadBalance, stats.oldestPending, stats.heatTotal, stats.best, completeness.missing]);
+
+  const runTodo = () => {
+    switch (todo.kind) {
+      case 'available': return toggleAvailability();
+      case 'credits': return goTo('credits');
+      case 'pending': setDemandeSubTab('pending'); return goTo('demandes');
+      case 'profile': return router.push('/prof/profile');
+      case 'share': return goTo('publicites');
+    }
+  };
 
   /* ---------------------------- CHARGEMENT UI ---------------------------- */
   if (loading) {
@@ -819,7 +894,7 @@ export default function ProfDashboard() {
   const rangeLabel = timeRange === 'semaine' ? '7 derniers jours' : timeRange === 'mois' ? '30 derniers jours' : '12 derniers mois';
   const prevLabel = timeRange === 'semaine' ? 'sem. préc.' : timeRange === 'mois' ? 'mois préc.' : 'année préc.';
   const labelEvery = timeRange === 'mois' ? 5 : 1;
-  const firstName = profFullName.split(' ')[0];
+  const firstName = (profData?.['Prénom'] as string) || profFullName.split(' ')[0];
   const todayLabel = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
   const todayCap = todayLabel.charAt(0).toUpperCase() + todayLabel.slice(1);
 
@@ -843,22 +918,14 @@ export default function ProfDashboard() {
   const statusInfo = (s?: string) =>
     isAccepted(s) ? { t: 'Accepté', c: 'var(--green)' } : isPending(s) ? { t: 'À traiter', c: 'var(--blue)' } : { t: 'Refusé', c: 'var(--red)' };
 
-  const maxFunnel = Math.max(stats.views, 1);
-  const funnelRows = [
-    { label: 'Ont vu votre profil', value: stats.views, icon: Eye },
-    { label: 'Vous ont écrit', value: stats.leadsIn, icon: Inbox },
-    { label: 'Acceptés', value: stats.acceptedIn, icon: CheckCircle2 },
-  ];
-
-  const kpis = [
-    { k: 'leads', icon: Coins, label: 'Leads restants', value: leadBalance as number | string, sub: autonomyDays !== null ? `environ ${autonomyDays} jour${autonomyDays > 1 ? 's' : ''} d'autonomie` : 'Aucune demande récente', color: isLow ? 'var(--red)' : undefined, badge: null as React.ReactNode, onClick: () => goTo('credits') as void | undefined },
-    { k: 'views', icon: Eye, label: 'Vues du profil', value: stats.views, sub: `contre ${stats.prevViews} (${prevLabel})`, color: undefined, badge: <Delta {...stats.viewsDelta} />, onClick: undefined },
-    { k: 'req', icon: Inbox, label: 'Demandes reçues', value: stats.leadsIn, sub: `contre ${stats.prevLeadsIn} (${prevLabel})`, color: undefined, badge: <Delta {...stats.leadsDelta} />, onClick: () => { setDemandeSubTab(stats.pendingAll > 0 ? 'pending' : 'accepted'); goTo('demandes'); } },
-    { k: 'rate', icon: CheckCircle2, label: "Taux d'acceptation", value: `${stats.acceptRate}%`, sub: `${stats.acceptedAll} accepté(s), ${stats.refusedAll} refusé(s)`, color: undefined, badge: null as React.ReactNode, onClick: undefined },
+  const kpis: { k: string; icon: typeof Eye; label: string; value: string | number; sub: string; badge: ReactNode; onClick?: () => void }[] = [
+    { k: 'views', icon: Eye, label: 'Vues du profil', value: stats.views, sub: `contre ${stats.prevViews} (${prevLabel})`, badge: <Delta {...stats.viewsDelta} /> },
+    { k: 'req', icon: Inbox, label: 'Demandes reçues', value: stats.leadsIn, sub: `contre ${stats.prevLeadsIn} (${prevLabel})`, badge: <Delta {...stats.leadsDelta} />, onClick: () => { setDemandeSubTab(stats.pendingAll > 0 ? 'pending' : 'accepted'); goTo('demandes'); } },
+    { k: 'conv', icon: Percent, label: 'Visiteurs qui écrivent', value: `${stats.conv.toFixed(1)}%`, sub: 'demandes ÷ vues, sur la période', badge: null },
+    { k: 'rate', icon: CheckCircle2, label: "Taux d'acceptation", value: `${stats.acceptRate}%`, sub: stats.decided > 0 ? `${stats.acceptedAll} acceptée(s) sur ${stats.decided} traitée(s)` : 'Aucune demande traitée', badge: null },
   ];
 
   const sectionTitle = 'pm-display text-xl font-bold leading-7';
-  const pageTitle = 'pm-display text-[34px] sm:text-[44px] font-extrabold leading-[1.08] mt-3';
 
   return (
     <div className={`pm ${theme} min-h-screen flex transition-colors duration-300`}>
@@ -887,21 +954,10 @@ export default function ProfDashboard() {
           </button>
         )}
 
-        {!collapsed && (
-          <button onClick={() => goTo('credits')} className="pm-edge mx-3 mt-3 text-left rounded-xl border p-3 cursor-pointer transition-colors hover:border-[var(--blue)]" style={{ background: 'var(--paper)' }}>
-            <div className="flex items-end justify-between">
-              <span className="text-xs font-semibold pm-muted">Mes leads</span>
-              <span className="pm-display pm-num text-2xl font-bold leading-none" style={{ color: isLow ? 'var(--red)' : undefined }}>{leadBalance}</span>
-            </div>
-            <div className="mt-2.5"><Tickets n={leadBalance} low={isLow} size="sm" /></div>
-            <p className="mt-2 text-[11px] font-semibold" style={{ color: isLow ? 'var(--red)' : 'var(--accent-ink)' }}>{isLow ? 'Solde bas : recharger' : 'Voir mon solde'}</p>
-          </button>
-        )}
-
         <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-5">
           <button onClick={() => goTo('overview')} className={navCls(activeTab === 'overview')}>
             <LayoutGrid className="size-[18px]" />
-            <span className={`flex-1 text-left ${collapsed ? 'lg:hidden' : ''}`}>Vue d&apos;ensemble</span>
+            <span className={`flex-1 text-left ${collapsed ? 'lg:hidden' : ''}`}>Tableau de bord</span>
           </button>
 
           <div>
@@ -970,6 +1026,7 @@ export default function ProfDashboard() {
             </div>
 
             <div className="flex items-center gap-2 sm:gap-2.5">
+              {/* Seul affichage permanent du solde */}
               <button onClick={() => goTo('credits')} className="pm-btn pm-btn-ghost px-3 py-1.5 text-xs" style={isLow ? { color: 'var(--red)', borderColor: 'var(--red)' } : undefined}>
                 <Coins className="size-3.5" /><span className="pm-num">{leadBalance} leads</span>
               </button>
@@ -1019,7 +1076,7 @@ export default function ProfDashboard() {
             {/* ===================== VUE D'ENSEMBLE ===================== */}
             {activeTab === 'overview' && (
               <>
-                {/* HERO */}
+                {/* HERO : salutation + UNE consigne + note du profil */}
                 <section className="pm-sheet relative overflow-hidden p-6 sm:p-8">
                   <div aria-hidden className="pointer-events-none absolute -right-24 -top-28 size-80 rounded-full"
                     style={{ background: 'radial-gradient(closest-side, var(--hl), transparent)' }} />
@@ -1031,27 +1088,15 @@ export default function ProfDashboard() {
                       </h1>
                       <div className="mt-4 flex items-start gap-3 rounded-xl border pm-edge p-4" style={{ background: 'var(--paper)' }}>
                         <Info className="size-4 shrink-0 mt-0.5" style={{ color: 'var(--accent-ink)' }} />
-                        <p className="text-[15px] leading-6 font-semibold">{todo}</p>
+                        <p className="text-[15px] leading-6 font-semibold">{todo.text}</p>
                       </div>
-                      <div className="mt-6 flex flex-wrap gap-3">
-                        <button onClick={() => goTo('credits')} className="pm-btn pm-btn-dark px-5 py-3 text-sm"><Coins className="size-4" />Recharger mes leads</button>
-                        {profData && <Link href={`/professeurs/${profData.id}`} className="pm-btn pm-btn-ghost px-5 py-3 text-sm"><ExternalLink className="size-4" />Voir mon profil public</Link>}
-                      </div>
+                      {todo.cta && (
+                        <button onClick={runTodo} className="pm-btn pm-btn-dark mt-5 px-5 py-3 text-sm">{todo.cta}<ChevronRight className="size-4" /></button>
+                      )}
                     </div>
-                    <Grade score20={score20} comment={gradeComment} note={gradeNote} />
+                    <Grade score20={score20} comment={gradeComment} missing={completeness.missing} />
                   </div>
                 </section>
-
-                {isLow && (
-                  <section className="pm-sheet flex flex-col sm:flex-row sm:items-center gap-4 p-5" style={{ borderColor: 'var(--red)', background: 'color-mix(in srgb, var(--red) 6%, var(--sheet))' }}>
-                    <span className="pm-icon shrink-0" style={{ background: 'color-mix(in srgb, var(--red) 12%, transparent)', color: 'var(--red)' }}><Coins className="size-5" /></span>
-                    <div className="flex-1">
-                      <p className="font-bold">{leadBalance === 0 ? "Vous n'avez plus de leads." : `Il vous reste ${leadBalance} lead${leadBalance > 1 ? 's' : ''}.`}</p>
-                      <p className="text-sm pm-muted">Sans leads, vous ne voyez plus les nouvelles demandes d&apos;élèves.</p>
-                    </div>
-                    <button onClick={() => goTo('credits')} className="pm-btn pm-btn-red px-5 py-2.5 text-sm">Recharger pour {PACK_PRICE_DH} DH</button>
-                  </section>
-                )}
 
                 {/* CHIFFRES CLÉS */}
                 <section>
@@ -1082,7 +1127,7 @@ export default function ProfDashboard() {
                             {c.badge}
                           </div>
                           <p className="text-sm font-semibold pm-muted mt-4">{c.label}</p>
-                          <p className="pm-display pm-num text-[40px] font-extrabold leading-none mt-1.5" style={{ color: c.color }}>{c.value}</p>
+                          <p className="pm-display pm-num text-[40px] font-extrabold leading-none mt-1.5">{c.value}</p>
                           <p className="text-xs pm-muted mt-2">{c.sub}</p>
                         </Wrap>
                       );
@@ -1090,7 +1135,7 @@ export default function ProfDashboard() {
                   </div>
                 </section>
 
-                {/* COURBE + TICKETS */}
+                {/* COURBE + LEADS (seule carte de solde de la page) */}
                 <section className="grid grid-cols-1 xl:grid-cols-12 gap-6">
                   <div className="pm-sheet xl:col-span-8 p-6">
                     <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
@@ -1102,26 +1147,26 @@ export default function ProfDashboard() {
                     </div>
                     {stats.views === 0 && stats.leadsIn === 0 ? (
                       <div className="h-56 grid place-items-center text-center px-4 rounded-xl border border-dashed pm-edge" style={{ background: 'var(--paper)' }}>
-                        <div className="space-y-3">
+                        <div className="space-y-1">
                           <p className="font-bold">Aucune activité sur cette période</p>
                           <p className="text-sm pm-muted">Vos premières visites arrivent dès que votre lien circule.</p>
-                          <button onClick={() => goTo('publicites')} className="pm-btn pm-btn-blue px-4 py-2 text-xs">Partager mon profil</button>
                         </div>
                       </div>
                     ) : <AreaChart data={stats.points} labelEvery={labelEvery} />}
                   </div>
 
-                  <div className="pm-sheet xl:col-span-4 p-6 flex flex-col">
-                    <h3 className={sectionTitle}>Mon carnet de leads</h3>
+                  <div className="pm-sheet xl:col-span-4 p-6 flex flex-col" style={isLow ? { borderColor: 'var(--red)' } : undefined}>
+                    <h3 className={sectionTitle}>Mes leads</h3>
                     <p className="pm-display pm-num text-7xl font-extrabold leading-none mt-4" style={{ color: isLow ? 'var(--red)' : undefined }}>{leadBalance}</p>
-                    <p className="text-sm pm-muted mt-1">leads restants, 1 lead = 1 demande d&apos;élève</p>
+                    <p className="text-sm mt-1" style={{ color: isLow ? 'var(--red)' : 'var(--muted)', fontWeight: isLow ? 700 : 400 }}>
+                      {isLow ? (leadBalance === 0 ? 'Plus de leads : vous ne voyez plus les demandes.' : 'Solde bas : rechargez pour ne rien rater.') : autonomyDays !== null ? `environ ${autonomyDays} jour${autonomyDays > 1 ? 's' : ''} d'autonomie` : '1 lead = 1 demande d’élève'}
+                    </p>
                     <div className="mt-5"><Tickets n={leadBalance} low={isLow} /></div>
-                    <p className="mt-5 text-xs pm-muted">{PACK_PRICE_DH} DH pour {LEADS_PER_PACK} leads, soit {fmt(costPerLead)} DH la demande.</p>
                     <button onClick={() => goTo('credits')} className="pm-btn pm-btn-blue mt-auto w-full py-3 text-sm" style={{ marginTop: 24 }}>Recharger mes leads</button>
                   </div>
                 </section>
 
-                {/* FILE DES DEMANDES + ENTONNOIR */}
+                {/* DEMANDES + CE QUE DEMANDENT LES ÉLÈVES */}
                 <section className="grid grid-cols-1 xl:grid-cols-12 gap-6">
                   <div className="pm-sheet xl:col-span-7 p-6">
                     <div className="flex items-center justify-between gap-3">
@@ -1130,32 +1175,35 @@ export default function ProfDashboard() {
                     </div>
 
                     {queue.rows.length === 0 ? (
-                      <div className="py-10 text-center space-y-3">
+                      <div className="py-10 text-center space-y-1">
                         <p className="font-bold">Aucune demande pour l&apos;instant</p>
-                        <p className="text-sm pm-muted">Partagez votre profil dans les groupes de parents pour recevoir vos premières demandes.</p>
-                        <button onClick={() => goTo('publicites')} className="pm-btn pm-btn-ghost px-4 py-2 text-xs">Partager mon profil</button>
+                        <p className="text-sm pm-muted">Elles apparaîtront ici dès qu&apos;un parent vous contacte.</p>
                       </div>
                     ) : (
                       <ul className="mt-3 divide-y divide-[var(--edge)]">
                         {queue.rows.map((l, i) => {
-                          const name = String(pick(l, ['student_name', 'nom_eleve', 'full_name', 'name', 'nom', 'parent_name']) || 'Élève');
-                          const subj = String(pick(l, ['subject', 'matiere']) || '');
-                          const city = String(pick(l, ['city', 'ville']) || '');
+                          const name = `${l.student_name || ''} ${l.student_family_name || ''}`.trim() || 'Élève';
+                          const subj = asList(l.student_subjects).join(', ');
+                          const city = String(l.student_city || '');
+                          const grade = String(l.student_grade || '');
                           const st = statusInfo(l.status);
-                          const old = isPending(l.status) && l.created_at && Date.now() - new Date(l.created_at).getTime() > DAY;
+                          const old = isPending(l.status) && l.lead_date && Date.now() - new Date(l.lead_date).getTime() > DAY;
                           return (
                             <li key={l.id ?? i} className="flex items-center gap-3 py-3.5">
-                              <span className="size-10 shrink-0 rounded-full grid place-items-center font-bold text-sm" style={{ background: 'var(--hl)', color: 'var(--accent-ink)' }}>{name[0]?.toUpperCase()}</span>
+                              <span className="relative size-10 shrink-0 rounded-full grid place-items-center font-bold text-sm" style={{ background: 'var(--hl)', color: 'var(--accent-ink)' }}>
+                                {name[0]?.toUpperCase()}
+                                {l.is_read === false && <span className="absolute -top-0.5 -right-0.5 size-2.5 rounded-full ring-2 ring-[var(--sheet)]" style={{ background: 'var(--blue)' }} aria-label="Non lue" />}
+                              </span>
                               <div className="min-w-0 flex-1">
                                 <p className="text-sm font-bold truncate">{name}</p>
                                 <p className="text-xs pm-muted flex flex-wrap items-center gap-x-3">
-                                  {subj && <span className="inline-flex items-center gap-1"><BookOpen className="size-3" />{subj}</span>}
+                                  {subj && <span className="inline-flex items-center gap-1"><BookOpen className="size-3" />{subj}{grade && ` · ${grade}`}</span>}
                                   {city && <span className="inline-flex items-center gap-1"><MapPin className="size-3" />{city}</span>}
                                 </p>
                               </div>
                               <div className="text-right shrink-0">
                                 <p className="text-xs font-bold" style={{ color: st.c }}>{st.t}</p>
-                                <p className="text-[11px]" style={{ color: old ? 'var(--red)' : 'var(--muted)' }}>{timeAgo(l.created_at)}</p>
+                                <p className="text-[11px]" style={{ color: old ? 'var(--red)' : 'var(--muted)' }}>{timeAgo(l.lead_date)}</p>
                               </div>
                             </li>
                           );
@@ -1163,37 +1211,35 @@ export default function ProfDashboard() {
                       </ul>
                     )}
                     {queue.rows.length > 0 && (
-                      <button onClick={() => { setDemandeSubTab(stats.pendingAll > 0 ? 'pending' : 'accepted'); goTo('demandes'); }} className="pm-btn pm-btn-blue mt-4 px-5 py-2.5 text-sm">
+                      <button onClick={() => { setDemandeSubTab(stats.pendingAll > 0 ? 'pending' : 'accepted'); goTo('demandes'); }} className="pm-btn pm-btn-ghost mt-4 px-5 py-2.5 text-sm">
                         {stats.pendingAll > 0 ? 'Répondre aux demandes' : 'Gérer mes demandes'}<ChevronRight className="size-4" />
                       </button>
                     )}
                   </div>
 
                   <div className="pm-sheet xl:col-span-5 p-6">
-                    <h3 className={sectionTitle}>Du visiteur à l&apos;élève</h3>
-                    <p className="text-sm pm-muted">Sur les {rangeLabel}</p>
-                    <ul className="mt-5 space-y-5">
-                      {funnelRows.map((f, i) => {
-                        const Icon = f.icon;
-                        const prev = i > 0 ? funnelRows[i - 1].value : 0;
-                        const rate = i > 0 && prev > 0 ? Math.round((f.value / prev) * 100) : null;
-                        return (
-                          <li key={f.label}>
-                            <div className="flex items-baseline justify-between gap-2 mb-1.5">
-                              <span className="flex items-center gap-2 text-sm font-semibold"><Icon className="size-4 pm-muted" />{f.label}</span>
-                              <span className="flex items-baseline gap-2">
-                                {rate !== null && <span className="text-xs pm-muted">{rate}% du palier précédent</span>}
-                                <span className="pm-display pm-num text-2xl font-bold">{f.value}</span>
-                              </span>
+                    <h3 className={sectionTitle}>Ce que demandent les élèves</h3>
+                    {stats.topSubjects.length === 0 && stats.topCities.length === 0 ? (
+                      <p className="mt-3 text-sm pm-muted">Les matières et villes les plus demandées apparaîtront avec vos premières demandes.</p>
+                    ) : (
+                      <div className="mt-4 space-y-5">
+                        {[{ title: 'Matières', rows: stats.topSubjects }, { title: 'Villes', rows: stats.topCities }].map((g) => g.rows.length > 0 && (
+                          <div key={g.title}>
+                            <p className="text-sm font-bold mb-2">{g.title}</p>
+                            <div className="space-y-2">
+                              {g.rows.map(([label, n]) => (
+                                <div key={label}>
+                                  <div className="flex justify-between text-xs font-semibold mb-1"><span className="truncate">{label}</span><span className="pm-num">{n}</span></div>
+                                  <div className="h-2 rounded-full overflow-hidden" style={{ background: 'var(--rule)' }}>
+                                    <div className="h-full rounded-full" style={{ width: `${(n / g.rows[0][1]) * 100}%`, background: 'var(--blue)' }} />
+                                  </div>
+                                </div>
+                              ))}
                             </div>
-                            <div className="h-2.5 rounded-full overflow-hidden" style={{ background: 'var(--rule)' }}>
-                              <div className="h-full rounded-full transition-all duration-700" style={{ width: `${Math.max((f.value / maxFunnel) * 100, f.value > 0 ? 3 : 0)}%`, background: i === 2 ? 'var(--green)' : 'var(--blue)', opacity: i === 1 ? 0.7 : 1 }} />
-                            </div>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                    <p className="mt-6 text-sm rounded-xl p-3.5" style={{ background: 'var(--hl)' }}>Sur 100 visiteurs, <span className="font-extrabold pm-num" style={{ color: 'var(--accent-ink)' }}>{stats.conv.toFixed(1)}</span> vous écrivent.</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </section>
 
@@ -1254,57 +1300,6 @@ export default function ProfDashboard() {
                     )}
                   </div>
                 </section>
-
-                {/* DEMANDES / CALCUL / PROFIL */}
-                <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  <div className="pm-sheet p-6">
-                    <h3 className={sectionTitle}>Ce que demandent les élèves</h3>
-                    {stats.topSubjects.length === 0 && stats.topCities.length === 0 ? (
-                      <p className="mt-3 text-sm pm-muted">Les matières et villes les plus demandées apparaîtront avec vos premières demandes.</p>
-                    ) : (
-                      <div className="mt-4 space-y-5">
-                        {[{ title: 'Matières', rows: stats.topSubjects }, { title: 'Villes', rows: stats.topCities }].map((g) => g.rows.length > 0 && (
-                          <div key={g.title}>
-                            <p className="text-sm font-bold mb-2">{g.title}</p>
-                            <div className="space-y-2">
-                              {g.rows.map(([label, n]) => (
-                                <div key={label}>
-                                  <div className="flex justify-between text-xs font-semibold mb-1"><span className="truncate">{label}</span><span className="pm-num">{n}</span></div>
-                                  <div className="h-2 rounded-full overflow-hidden" style={{ background: 'var(--rule)' }}>
-                                    <div className="h-full rounded-full" style={{ width: `${(n / g.rows[0][1]) * 100}%`, background: 'var(--blue)' }} />
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="pm-sheet p-6">
-                    <h3 className={sectionTitle}>Ce que rapporte un lead</h3>
-                    <div className="mt-3"><RoiNote tarif={tarif} breakEvenHours={breakEvenHours} monthlyPerStudent={monthlyPerStudent} roiMultiple={roiMultiple} /></div>
-                    {tarif > 0 && <p className="text-[11px] pm-muted mt-3">Estimation indicative, sur la base de {HOURS_PER_MONTH} h de cours par mois.</p>}
-                  </div>
-
-                  <div className="pm-sheet p-6">
-                    <h3 className={sectionTitle}>Pour améliorer votre note</h3>
-                    {completeness.missing.length === 0 ? (
-                      <p className="mt-3 text-sm pm-muted">Votre profil est complet. Il inspire confiance aux parents.</p>
-                    ) : (
-                      <ul className="mt-3 space-y-2">
-                        {completeness.missing.slice(0, 5).map((m) => (
-                          <li key={m}>
-                            <Link href="/prof/profile" className="flex items-center justify-between rounded-xl border pm-edge px-3.5 py-2.5 text-sm font-semibold transition-colors hover:border-[var(--blue)] hover:bg-[var(--hl)]">
-                              {m}<ChevronRight className="size-4 pm-muted" />
-                            </Link>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                </section>
               </>
             )}
 
@@ -1314,11 +1309,7 @@ export default function ProfDashboard() {
             {/* ===================== LEADS ET CRÉDITS ===================== */}
             {activeTab === 'credits' && (
               <>
-                <section>
-                  <span className="pm-pill"><Coins className="size-3" />Crédits</span>
-                  <h1 className={pageTitle}>Leads et <span style={{ color: 'var(--blue)' }}>crédits</span></h1>
-                  <p className="mt-3 text-[16px] max-w-xl pm-muted">Chaque lead ouvre une demande d&apos;élève. Rechargez en une minute, sans quitter votre tableau de bord.</p>
-                </section>
+                <p className="text-[16px] max-w-xl pm-muted">Chaque lead ouvre une demande d&apos;élève. Rechargez en une minute, sans quitter votre tableau de bord.</p>
 
                 <section className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
                   <div className="pm-sheet xl:col-span-5 p-7">
@@ -1331,7 +1322,6 @@ export default function ProfDashboard() {
                       {[
                         ['Demandes reçues (30 jours)', String(stats.leads30)],
                         ['Autonomie estimée', autonomyDays !== null ? `${autonomyDays} jour(s)` : 'non calculable'],
-                        ['Prix d’un lead', `${fmt(costPerLead)} DH`],
                       ].map(([k, v]) => (
                         <div key={k} className="flex items-baseline justify-between gap-3 py-2 pm-dots">
                           <dt className="pm-muted">{k}</dt><dd className="font-bold pm-num">{v}</dd>
@@ -1349,7 +1339,7 @@ export default function ProfDashboard() {
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div>
                           <p className="font-bold">Pack de {LEADS_PER_PACK} leads</p>
-                          <p className="text-sm pm-muted">{PACK_PRICE_DH} DH le pack</p>
+                          <p className="text-sm pm-muted">{PACK_PRICE_DH} DH le pack, soit {fmt(costPerLead)} DH la demande</p>
                         </div>
                         <div className="flex items-center gap-3">
                           <button onClick={() => setPackQty(Math.max(1, packQty - 1))} aria-label="Retirer un pack" className="pm-btn pm-btn-ghost size-10"><Minus className="size-4" /></button>
@@ -1367,14 +1357,14 @@ export default function ProfDashboard() {
                         <button onClick={() => setPackQty(Math.min(10, suggestedPacks))} className="mt-6 w-full text-left rounded-xl border pm-edge px-4 py-3 text-sm cursor-pointer transition-colors hover:border-[var(--blue)] hover:bg-[var(--hl)]">
                           {missingLeads === 0
                             ? <>Vous recevez environ <b>{stats.leads30}</b> demandes par mois : votre solde actuel vous couvre.</>
-                            : <>Vous recevez environ <b>{stats.leads30}</b> demandes par mois. Nous vous conseillons <b>{suggestedPacks} pack{suggestedPacks > 1 ? 's' : ''}</b> ({suggestedPacks * PACK_PRICE_DH} DH). <span className="font-bold underline" style={{ color: 'var(--blue)' }}>Appliquer</span></>}
+                            : <>Vous recevez environ <b>{stats.leads30}</b> demandes par mois. Nous vous conseillons <b>{suggestedPacks} pack{suggestedPacks > 1 ? 's' : ''}</b>. <span className="font-bold underline" style={{ color: 'var(--blue)' }}>Appliquer</span></>}
                         </button>
                       )}
 
                       <a href={orderUrl} target="_blank" rel="noopener noreferrer" className="pm-btn pm-btn-green mt-6 w-full py-3.5 text-sm">
-                        <MessageCircle className="size-5" />Commander sur WhatsApp, {packQty * PACK_PRICE_DH} DH
+                        <MessageCircle className="size-5" />Commander sur WhatsApp
                       </a>
-                      <p className="mt-3 text-xs pm-muted text-center">Le message contient déjà votre référence. Vos leads sont ajoutés dès la confirmation du paiement.</p>
+                      <p className="mt-3 text-xs pm-muted text-center">Le message contient déjà votre référence. Votre solde se met à jour ici dès la confirmation du paiement.</p>
                       <button onClick={() => copy('ref', String(profData?.id ?? ''))} className="mt-2 mx-auto flex items-center gap-1.5 text-xs font-semibold pm-muted cursor-pointer hover:text-[var(--ink)]">
                         {copied === 'ref' ? <Check className="size-3.5" style={{ color: 'var(--green)' }} /> : <Copy className="size-3.5" />}Ma référence : {String(profData?.id ?? '')}
                       </button>
@@ -1392,14 +1382,9 @@ export default function ProfDashboard() {
             {/* ===================== PUBLICITÉS ===================== */}
             {activeTab === 'publicites' && (
               <>
-                <section>
-                  <span className="pm-pill"><Megaphone className="size-3" />Visibilité</span>
-                  <h1 className={pageTitle}>Gérer mes <span style={{ color: 'var(--blue)' }}>publicités</span></h1>
-                  <p className="mt-3 text-[16px] max-w-xl pm-muted">Publiez vos promotions : chaque like des parents vous fait monter dans la liste des professeurs. Les commentaires sont interdits.</p>
-                </section>
+                <p className="text-[16px] max-w-xl pm-muted">Publiez vos promotions et partagez votre profil : chaque like des parents vous fait monter dans la liste des professeurs.</p>
 
-                {/* PROMOTIONS (likes uniquement) */}
-                {profData && <PromoManager profId={profData.id} />}
+                {profData && <PromoManager profId={String(profData.id)} />}
 
                 <section className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
                   <div className="xl:col-span-4">
@@ -1416,14 +1401,11 @@ export default function ProfDashboard() {
                           <p className="text-xs flex items-center gap-1 text-white/80"><MapPin className="size-3" />{cityName}</p>
                         </div>
                       </div>
-                      <div className="p-4 flex items-center justify-between">
-                        <div><p className="text-sm font-bold">{subjectName}</p><p className="pm-display pm-num text-lg font-bold">{tarif} MAD<span className="text-xs font-medium pm-muted">/h</span></p></div>
-                        <span className="pm-pill">1er cours offert</span>
+                      <div className="p-4 flex items-center justify-between gap-3">
+                        <div className="min-w-0"><p className="text-sm font-bold truncate">{subjectName}</p><p className="pm-display pm-num text-lg font-bold">{tarif > 0 ? tarif : '—'} MAD<span className="text-xs font-medium pm-muted">/h</span></p></div>
+                        <span className="pm-pill shrink-0">1er cours offert</span>
                       </div>
                     </div>
-                    {completeness.score < 100 && (
-                      <Link href="/prof/profile" className="pm-btn pm-btn-blue mt-4 w-full py-2.5 text-sm">Améliorer mon profil ({score20}/20)</Link>
-                    )}
                   </div>
 
                   <div className="pm-sheet xl:col-span-8 p-6 space-y-7">
@@ -1438,7 +1420,6 @@ export default function ProfDashboard() {
                       <div className="mt-3 flex flex-wrap gap-2.5">
                         <a href={waShareUrl} target="_blank" rel="noopener noreferrer" className="pm-btn pm-btn-green px-4 py-2.5 text-xs"><MessageCircle className="size-4" />Partager sur WhatsApp</a>
                         <a href={fbShareUrl} target="_blank" rel="noopener noreferrer" className="pm-btn pm-btn-ghost px-4 py-2.5 text-xs"><Share2 className="size-4" />Partager sur Facebook</a>
-                        {profData && <Link href={`/professeurs/${profData.id}`} className="pm-btn pm-btn-ghost px-4 py-2.5 text-xs"><ExternalLink className="size-4" />Voir mon profil public</Link>}
                       </div>
                     </div>
 
@@ -1462,17 +1443,6 @@ export default function ProfDashboard() {
                       </div>
                     </div>
                   </div>
-                </section>
-
-                <section className="pm-sheet p-6">
-                  <h3 className={sectionTitle}>Ce qui fait venir les élèves</h3>
-                  <ul className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {['Une photo claire et souriante', 'Une description qui précise niveaux et méthode', 'Répondre aux demandes en moins de 2 heures', 'Partager votre lien dans les groupes de parents', 'Rester disponible aux heures de pointe', 'Proposer le premier cours offert'].map((t) => (
-                      <li key={t} className="flex items-start gap-2.5 rounded-xl p-3.5 text-sm font-semibold" style={{ background: 'var(--paper)' }}>
-                        <Check className="size-4 mt-0.5 shrink-0 stroke-[3]" style={{ color: 'var(--green)' }} />{t}
-                      </li>
-                    ))}
-                  </ul>
                 </section>
               </>
             )}
