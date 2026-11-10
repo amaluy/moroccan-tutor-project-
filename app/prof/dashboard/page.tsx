@@ -28,14 +28,6 @@ const REFRESH_MS = 30_000;               // resynchronisation du solde et des de
 
 /* ------------------------------------------------------------------ */
 /*  BASE DE DONNÉES — noms de colonnes réels                           */
-/*  professors : id, email, "Prénom", "Nom", telephone, niveau[], ville,
-/*     tarif, bio, is_approved, experience, "Type_cours"[], "photo_URL",
-/*     disponibilites[], leads_restants, matiere  (+ available, monthly_goal
-/*     ajoutés par supabase_dashboard.sql)
-/*  leads      : id, professor_email, student_name, student_family_name,
-/*     student_city, student_subjects[], student_grade, student_age,
-/*     student_price_monthly, status, message, is_read, lead_consumed, lead_date
-/*  profile_views : id, professor_id, viewed_at
 /* ------------------------------------------------------------------ */
 const BASE_COLS = 'id,email,"Prénom","Nom",telephone,niveau,ville,tarif,bio,is_approved,experience,"Type_cours","photo_URL",disponibilites,leads_restants,matiere';
 const EXT_COLS = `${BASE_COLS},available,monthly_goal`;
@@ -125,7 +117,6 @@ const niceMax = (v: number) => {
   return (n <= 2 ? 2 : n <= 5 ? 5 : 10) * pow;
 };
 
-/** Colonnes text[] ou text : toujours renvoyer une liste propre. */
 const asList = (v: any): string[] => {
   if (Array.isArray(v)) return v.map((x) => String(x).trim()).filter(Boolean);
   if (typeof v === 'string') return v.replace(/^\{|\}$/g, '').split(',').map((x) => x.replace(/^"|"$/g, '').trim()).filter(Boolean);
@@ -151,7 +142,21 @@ const timeAgo = (iso?: string) => {
   if (h < 24) return `il y a ${h} h`;
   const d = Math.floor(h / 24);
   if (d < 30) return `il y a ${d} j`;
-  return new Date(iso).toLocaleDateString('fr-FR');
+  const mo = Math.floor(d / 30);
+  return mo < 12 ? `il y a ${mo} mois` : 'il y a plus d’un an';
+};
+
+const since = (iso?: string) => {
+  const ms = Date.now() - new Date(iso || '').getTime();
+  if (!Number.isFinite(ms) || ms < 0) return '';
+  const m = Math.floor(ms / 60000);
+  if (m < 60) return `${Math.max(m, 1)} min`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h} h`;
+  const d = Math.floor(h / 24);
+  if (d < 30) return `${d} jour${d > 1 ? 's' : ''}`;
+  const mo = Math.floor(d / 30);
+  return mo < 12 ? `${mo} mois` : 'plus d’un an';
 };
 
 const topCounts = (items: string[], n = 3) => {
@@ -164,7 +169,6 @@ const fmt = (n: number) => n.toLocaleString('fr-FR');
 const inDays = (n: number) => new Date(Date.now() + n * DAY).toISOString().slice(0, 10);
 const isLivePromo = (p: Promo) => p.is_active && new Date(p.ends_at).getTime() > Date.now();
 
-/** Charge le prof sans jamais rapatrier la colonne password dans le navigateur. */
 async function fetchProfessor(apply: (q: any) => any): Promise<Professor | null> {
   for (const cols of [EXT_COLS, BASE_COLS, '*']) {
     const { data, error } = await apply(supabase.from('professors').select(cols)).limit(1).maybeSingle();
@@ -179,7 +183,7 @@ async function fetchProfessor(apply: (q: any) => any): Promise<Professor | null>
 }
 
 /* ------------------------------------------------------------------ */
-/*  STYLES GLOBAUX (même univers que la page d'accueil)                */
+/*  STYLES GLOBAUX                                                     */
 /* ------------------------------------------------------------------ */
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap');
@@ -198,7 +202,7 @@ const CSS = `
 .pm-edge{border-color:var(--edge)}
 .pm-pill{display:inline-flex;align-items:center;gap:.375rem;border-radius:999px;padding:.25rem .65rem;font-size:11px;font-weight:700;background:var(--hl);color:var(--accent-ink);border:1px solid color-mix(in srgb,var(--blue) 25%,transparent)}
 .pm-icon{display:grid;place-items:center;width:40px;height:40px;border-radius:12px;background:var(--hl);color:var(--accent-ink)}
-.pm-btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;border-radius:10px;font-weight:700;cursor:pointer;transition:transform .15s,box-shadow .15s,background-color .15s,border-color .15s}
+:where(.pm-btn){display:inline-flex;align-items:center;justify-content:center;gap:.5rem;border-radius:10px;font-weight:700;cursor:pointer;transition:transform .15s,box-shadow .15s,background-color .15s,border-color .15s}
 .pm-btn:hover{transform:translateY(-1px)}
 .pm-btn:active{transform:translateY(0)}
 .pm-btn-blue{background:var(--blue);color:var(--onblue);box-shadow:0 8px 18px -10px var(--blue)}
@@ -254,7 +258,6 @@ function Tickets({ n, low }: { n: number; low?: boolean }) {
   );
 }
 
-/** Note du profil : l'anneau ET la liste des manques, au même endroit (rien d'ailleurs). */
 function Grade({ score20, comment, missing }: { score20: number; comment: string; missing: string[] }) {
   const r = 44;
   const c = 2 * Math.PI * r;
@@ -394,9 +397,7 @@ function RoiNote(props: { tarif: number; breakEvenHours: number; monthlyPerStude
 }
 
 /* ------------------------------------------------------------------ */
-/*  PROMOTIONS : le prof écrit, les parents aiment (pas de commentaires)*/
-/*  Nécessite les tables promotions + promotion_likes                  */
-/*  (créées par supabase_dashboard.sql)                                */
+/*  PROMOTIONS                                                         */
 /* ------------------------------------------------------------------ */
 function PromoManager({ profId }: { profId: string }) {
   const [promos, setPromos] = useState<Promo[]>([]);
@@ -423,7 +424,6 @@ function PromoManager({ profId }: { profId: string }) {
 
   useEffect(() => { load(); }, [load]);
 
-  // Les likes des parents arrivent en direct
   useEffect(() => {
     const ch = supabase
       .channel(`promos-${profId}`)
@@ -453,21 +453,25 @@ function PromoManager({ profId }: { profId: string }) {
       ends_at: new Date(`${endDate}T23:59:59`).toISOString(),
     });
     setSaving(false);
-    if (err) return setError(err.message);
+    if (err) return setError(err.message.includes('row-level security') ? "Publication refusée par la base (droits RLS) : la connexion du professeur n'est pas reconnue." : err.message);
     setTitle(''); setBody(''); setDiscount(''); setEndDate(inDays(7));
     load();
   };
 
   const toggle = async (p: Promo) => {
     setError('');
-    const { error: err } = await supabase.from('promotions').update({ is_active: !p.is_active }).eq('id', p.id);
+    const { data, error: err } = await supabase.from('promotions').update({ is_active: !p.is_active }).eq('id', p.id).select('id');
     if (err) return setError(err.message);
+    if (!data?.length) return setError('Modification refusée par la base (droits RLS).');
     load();
   };
 
   const remove = async (p: Promo) => {
     if (!confirm('Supprimer cette promotion ? Ses likes seront perdus.')) return;
-    await supabase.from('promotions').delete().eq('id', p.id);
+    setError('');
+    const { data, error: err } = await supabase.from('promotions').delete().eq('id', p.id).select('id');
+    if (err) return setError(err.message);
+    if (!data?.length) return setError('Suppression refusée par la base (droits RLS).');
     load();
   };
 
@@ -628,6 +632,13 @@ export default function ProfDashboard() {
   const [goal, setGoal] = useState(5);
   const [copied, setCopied] = useState('');
   const [origin, setOrigin] = useState('');
+  const [loadError, setLoadError] = useState('');
+  const [notice, setNotice] = useState<{ msg: string; ok: boolean } | null>(null);
+
+  const flash = (msg: string, ok = false) => {
+    setNotice({ msg, ok });
+    setTimeout(() => setNotice(null), 5000);
+  };
 
   const dark = isDarkMode;
   const theme = dark ? 'pm-dark' : 'pm-light';
@@ -649,20 +660,26 @@ export default function ProfDashboard() {
     router.push('/connexion');
   };
 
-  /* Objectif mensuel : enregistré dans professors.monthly_goal (repli navigateur) */
   const changeGoal = async (v: number) => {
     const next = Math.min(Math.max(v, 1), 50);
     setGoal(next);
     try { if (profData) localStorage.setItem(`prof_goal_${profData.id}`, String(next)); } catch {}
-    if (profData) await supabase.from('professors').update({ monthly_goal: next }).eq('id', profData.id);
+    if (!profData) return;
+    const { data, error } = await supabase.from('professors').update({ monthly_goal: next }).eq('id', profData.id).select('id');
+    if (error || !data?.length) {
+      flash(error ? `Objectif non enregistré dans la base : ${error.message}` : "Objectif non enregistré : la base a refusé la modification (droits RLS).");
+    }
   };
 
   const toggleAvailability = async () => {
     if (!profData) return;
     const next = !isAvailable;
     setIsAvailable(next);
-    const { error } = await supabase.from('professors').update({ available: next }).eq('id', profData.id);
-    if (error) setIsAvailable(!next);
+    const { data, error } = await supabase.from('professors').update({ available: next }).eq('id', profData.id).select('id');
+    if (error || !data?.length) {
+      setIsAvailable(!next);
+      flash(error ? `Disponibilité inchangée : ${error.message}` : 'Disponibilité inchangée : la base a refusé la modification (droits RLS).');
+    }
   };
 
   const copy = async (key: string, text: string) => {
@@ -675,7 +692,6 @@ export default function ProfDashboard() {
 
   const goTo = (tab: Tab) => { setActiveTab(tab); setMobileOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }); };
 
-  /* ---------------------------- SYNCHRONISATION ---------------------------- */
   const refresh = useCallback(async (id: string, rawEmail: string) => {
     const email = rawEmail.toLowerCase().trim();
     const [leadsRes, viewsRes, balRes] = await Promise.all([
@@ -686,6 +702,12 @@ export default function ProfDashboard() {
     ]);
     if (!leadsRes.error) setLeads((leadsRes.data as Lead[]) || []);
     if (!viewsRes.error) setViewTimes(toTimes(viewsRes.data || [], 'viewed_at'));
+    setLoadError(
+      leadsRes.error ? `Demandes : ${leadsRes.error.message}`
+      : viewsRes.error ? `Vues du profil : ${viewsRes.error.message}`
+      : balRes.error ? `Solde de leads : ${balRes.error.message}`
+      : ''
+    );
     if (balRes.data) setProfData((p) => (p ? { ...p, leads_restants: (balRes.data as any).leads_restants } : p));
   }, []);
 
@@ -722,7 +744,6 @@ export default function ProfDashboard() {
     return () => { alive = false; };
   }, [router, refresh]);
 
-  // Temps réel : nouvelle demande, changement de statut, solde modifié
   useEffect(() => {
     if (!profData?.id || !profData.email) return;
     const id = String(profData.id);
@@ -744,7 +765,6 @@ export default function ProfDashboard() {
     };
   }, [profData?.id, profData?.email, refresh]);
 
-  /* ---------------------------- DONNÉES DU PROF ---------------------------- */
   const profFullName = profData
     ? `${profData['Prénom'] || ''} ${profData['Nom'] || ''}`.trim() || profData.email || 'Professeur'
     : 'Professeur';
@@ -756,7 +776,6 @@ export default function ProfDashboard() {
   const cityName: string = profData?.ville || 'Maroc';
   const tarif = toNumber(profData?.tarif);
 
-  /* ---------------------------- CALCULS ---------------------------- */
   const stats = useMemo(() => {
     const now = new Date();
     const buckets = buildBuckets(timeRange, now);
@@ -855,11 +874,10 @@ export default function ProfDashboard() {
     return { rows: recent, pending: false };
   }, [leads, stats.pendingSorted]);
 
-  /** Une seule consigne du jour, avec son bouton si une action existe. */
   const todo: { text: string; cta?: string; kind: TodoKind } = useMemo(() => {
     if (!isAvailable) return { text: 'Vous êtes masqué : les élèves ne peuvent pas vous contacter.', cta: 'Me rendre disponible', kind: 'available' };
     if (leadBalance === 0) return { text: "Vous n'avez plus de leads : vous ne voyez plus les nouvelles demandes.", cta: 'Recharger mes leads', kind: 'credits' };
-    if (stats.oldestPending) return { text: `Une demande attend votre réponse depuis ${timeAgo(stats.oldestPending.lead_date).replace('il y a ', '')}.`, cta: 'Répondre aux demandes', kind: 'pending' };
+    if (stats.oldestPending) return { text: `Une demande attend votre réponse depuis ${since(stats.oldestPending.lead_date)}.`, cta: 'Répondre aux demandes', kind: 'pending' };
     if (completeness.missing[0]) return { text: `Pour inspirer confiance aux parents, complétez votre profil : ${completeness.missing[0].toLowerCase()}.`, cta: 'Compléter mon profil', kind: 'profile' };
     if (stats.heatTotal > 0) return { text: `Vos visiteurs viennent surtout le ${WEEKDAYS_FULL[stats.best.d]} entre ${SLOTS[stats.best.s]}. Soyez joignable à ce moment.`, kind: 'none' };
     return { text: 'Partagez votre lien de profil pour recevoir vos prochaines demandes.', cta: 'Partager mon profil', kind: 'share' };
@@ -875,14 +893,13 @@ export default function ProfDashboard() {
     }
   };
 
-  /* ---------------------------- CHARGEMENT UI ---------------------------- */
   if (loading) {
     return (
       <div className={`pm ${theme} min-h-screen flex flex-col items-center justify-center gap-5`}>
         <style dangerouslySetInnerHTML={{ __html: CSS }} />
         <div className="pm-sheet px-8 py-7 flex flex-col items-center gap-4">
           <span className="flex size-11 items-center justify-center rounded-xl font-extrabold pm-display text-lg" style={{ background: 'var(--blue)', color: 'var(--onblue)' }}>P</span>
-          <p className="pm-display text-lg font-bold">Préparation de votre tableau de bord…</p>
+          <p className="pm-display text-lg font-bold">Préparation de votre espace…</p>
           <div className="w-52 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--rule)' }}>
             <div className="h-full w-1/3 rounded-full animate-pulse" style={{ background: 'var(--blue)' }} />
           </div>
@@ -906,12 +923,6 @@ export default function ProfDashboard() {
   const waShareUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
   const fbShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(publicUrl)}`;
 
-  const tabTitle =
-    activeTab === 'overview' ? 'Tableau de bord'
-    : activeTab === 'demandes' ? `Demandes · ${demandeSubTab === 'accepted' ? 'élèves acceptés' : 'en attente'}`
-    : activeTab === 'credits' ? 'Leads et crédits'
-    : 'Gérer mes publicités';
-
   const navCls = (active: boolean) =>
     `relative w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors cursor-pointer ${collapsed ? 'lg:justify-center lg:px-0' : ''} ${active ? 'pm-nav-on' : 'pm-nav'}`;
 
@@ -930,6 +941,13 @@ export default function ProfDashboard() {
   return (
     <div className={`pm ${theme} min-h-screen flex transition-colors duration-300`}>
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
+
+      {notice && (
+        <div role="status" className="pm-sheet fixed bottom-5 right-5 z-[60] max-w-sm px-4 py-3 text-sm font-semibold"
+          style={{ borderColor: notice.ok ? 'var(--green)' : 'var(--red)' }}>
+          {notice.msg}
+        </div>
+      )}
 
       {/* ============================ SIDEBAR ============================ */}
       {mobileOpen && <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setMobileOpen(false)} />}
@@ -957,7 +975,7 @@ export default function ProfDashboard() {
         <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-5">
           <button onClick={() => goTo('overview')} className={navCls(activeTab === 'overview')}>
             <LayoutGrid className="size-[18px]" />
-            <span className={`flex-1 text-left ${collapsed ? 'lg:hidden' : ''}`}>Tableau de bord</span>
+            <span className={`flex-1 text-left ${collapsed ? 'lg:hidden' : ''}`}>Vue d&apos;ensemble</span>
           </button>
 
           <div>
@@ -1019,14 +1037,8 @@ export default function ProfDashboard() {
       {/* ============================ MAIN ============================ */}
       <div className="flex-1 flex flex-col min-w-0">
         <header className="sticky top-0 z-40 border-b pm-edge backdrop-blur-md" style={{ background: 'color-mix(in srgb, var(--sheet) 90%, transparent)' }}>
-          <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-10 py-3 flex items-center justify-between">
-            <div className="flex items-center gap-3 min-w-0">
-              <button onClick={() => setMobileOpen(true)} aria-label="Ouvrir le menu" className="pm-btn pm-btn-ghost size-9 lg:hidden"><Menu className="size-4" /></button>
-              <h2 className="pm-display text-lg font-bold truncate">{tabTitle}</h2>
-            </div>
-
+          <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-10 py-3 flex items-center justify-end">
             <div className="flex items-center gap-2 sm:gap-2.5">
-              {/* Seul affichage permanent du solde */}
               <button onClick={() => goTo('credits')} className="pm-btn pm-btn-ghost px-3 py-1.5 text-xs" style={isLow ? { color: 'var(--red)', borderColor: 'var(--red)' } : undefined}>
                 <Coins className="size-3.5" /><span className="pm-num">{leadBalance} leads</span>
               </button>
@@ -1073,10 +1085,19 @@ export default function ProfDashboard() {
         <main className="pm-paper flex-1">
           <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-10 py-8 sm:py-10 space-y-8">
 
+            {loadError && (
+              <div role="alert" className="pm-sheet flex items-start gap-3 p-4" style={{ borderColor: 'var(--red)' }}>
+                <Info className="size-5 shrink-0 mt-0.5" style={{ color: 'var(--red)' }} />
+                <div className="min-w-0">
+                  <p className="text-sm font-bold">Certaines données ne se chargent pas.</p>
+                  <p className="text-xs pm-muted mt-0.5 break-words">{loadError}</p>
+                </div>
+              </div>
+            )}
+
             {/* ===================== VUE D'ENSEMBLE ===================== */}
             {activeTab === 'overview' && (
               <>
-                {/* HERO : salutation + UNE consigne + note du profil */}
                 <section className="pm-sheet relative overflow-hidden p-6 sm:p-8">
                   <div aria-hidden className="pointer-events-none absolute -right-24 -top-28 size-80 rounded-full"
                     style={{ background: 'radial-gradient(closest-side, var(--hl), transparent)' }} />
@@ -1098,7 +1119,6 @@ export default function ProfDashboard() {
                   </div>
                 </section>
 
-                {/* CHIFFRES CLÉS */}
                 <section>
                   <div className="flex items-end justify-between flex-wrap gap-3 mb-4">
                     <div>
@@ -1135,7 +1155,6 @@ export default function ProfDashboard() {
                   </div>
                 </section>
 
-                {/* COURBE + LEADS (seule carte de solde de la page) */}
                 <section className="grid grid-cols-1 xl:grid-cols-12 gap-6">
                   <div className="pm-sheet xl:col-span-8 p-6">
                     <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
@@ -1166,7 +1185,6 @@ export default function ProfDashboard() {
                   </div>
                 </section>
 
-                {/* DEMANDES + CE QUE DEMANDENT LES ÉLÈVES */}
                 <section className="grid grid-cols-1 xl:grid-cols-12 gap-6">
                   <div className="pm-sheet xl:col-span-7 p-6">
                     <div className="flex items-center justify-between gap-3">
@@ -1243,7 +1261,6 @@ export default function ProfDashboard() {
                   </div>
                 </section>
 
-                {/* OBJECTIF + HORAIRES */}
                 <section className="grid grid-cols-1 xl:grid-cols-12 gap-6">
                   <div className="pm-sheet xl:col-span-4 p-6">
                     <div className="flex items-center justify-between">
