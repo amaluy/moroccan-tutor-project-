@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import Logo from '@/app/components/Logo';
 import { useState } from 'react';
 import { 
   BookOpen, Award, Briefcase, 
@@ -271,17 +272,13 @@ export default function ProfilProfesseurPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#FCFCFD] text-gray-900 font-sans flex flex-col justify-between selection:bg-[#FF5A5F] selection:text-white relative overflow-hidden">
+    <main className="min-h-screen bg-canvas text-gray-900 font-sans flex flex-col justify-between selection:bg-brand-600 selection:text-white relative overflow-hidden">
       
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[350px] bg-gradient-to-b from-red-50/60 to-transparent rounded-full blur-3xl pointer-events-none -z-10" />
 
       {/* Header */}
       <header className="w-full max-w-4xl mx-auto px-6 py-6 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2 group">
-          <span className="text-2xl font-black text-gray-900 tracking-tight">
-            prof<span className="text-[#FF5A5F]">maroc</span>
-          </span>
-        </Link>
+        <Logo href="/" size="lg" />
       </header>
 
       {/* Contenu principal : Formulaire Centré */}
@@ -289,7 +286,7 @@ export default function ProfilProfesseurPage() {
         
         <div className="text-center space-y-2">
           <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">
-            Présentez-vous aux <span className="text-[#FF5A5F]">élèves</span>
+            Présentez-vous aux <span className="text-brand-600">élèves</span>
           </h1>
           <p className="text-sm text-gray-500 max-w-md mx-auto">
             Un profil clair et bien renseigné rassure les parents et vous permet de trouver rapidement des élèves.
@@ -302,7 +299,7 @@ export default function ProfilProfesseurPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
-                <User className="w-3.5 h-3.5 text-[#FF5A5F]" />
+                <User className="w-3.5 h-3.5 text-brand-600" />
                 Prénom
               </label>
               <input 
@@ -310,13 +307,13 @@ export default function ProfilProfesseurPage() {
                 placeholder="Ex : Youssef"
                 value={prenom}
                 onChange={(e) => setPrenom(e.target.value)}
-                className="w-full p-3.5 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:border-[#FF5A5F] focus:ring-4 focus:ring-red-500/10 shadow-sm transition"
+                className="w-full p-3.5 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:border-brand-600 focus:ring-4 focus:ring-brand-500/15 shadow-sm transition"
               />
             </div>
 
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
-                <User className="w-3.5 h-3.5 text-[#FF5A5F]" />
+                <User className="w-3.5 h-3.5 text-brand-600" />
                 Nom
               </label>
               <input 
@@ -324,7 +321,7 @@ export default function ProfilProfesseurPage() {
                 placeholder="Ex : El Amrani"
                 value={nom}
                 onChange={(e) => setNom(e.target.value)}
-                className="w-full p-3.5 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:border-[#FF5A5F] focus:ring-4 focus:ring-red-500/10 shadow-sm transition"
+                className="w-full p-3.5 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:border-brand-600 focus:ring-4 focus:ring-brand-500/15 shadow-sm transition"
               />
             </div>
           </div>
@@ -332,7 +329,7 @@ export default function ProfilProfesseurPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-[#FF5A5F]" />
+                <Calendar className="w-3.5 h-3.5 text-brand-600" />
                 Âge
               </label>
               <input 
@@ -342,13 +339,13 @@ export default function ProfilProfesseurPage() {
                 max="99"
                 value={age}
                 onChange={(e) => setAge(e.target.value)}
-                className="w-full p-3.5 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:border-[#FF5A5F] focus:ring-4 focus:ring-red-500/10 shadow-sm transition"
+                className="w-full p-3.5 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:border-brand-600 focus:ring-4 focus:ring-brand-500/15 shadow-sm transition"
               />
             </div>
 
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5 text-[#FF5A5F]" />
+                <MapPin className="w-3.5 h-3.5 text-brand-600" />
                 Ville
               </label>
               <input 
@@ -356,14 +353,14 @@ export default function ProfilProfesseurPage() {
                 placeholder="Ex : Casablanca, Rabat, Marrakech..."
                 value={ville}
                 onChange={(e) => setVille(e.target.value)}
-                className="w-full p-3.5 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:border-[#FF5A5F] focus:ring-4 focus:ring-red-500/10 shadow-sm transition"
+                className="w-full p-3.5 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:border-brand-600 focus:ring-4 focus:ring-brand-500/15 shadow-sm transition"
               />
             </div>
           </div>
 
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
-              <UserCheck className="w-3.5 h-3.5 text-[#FF5A5F]" />
+              <UserCheck className="w-3.5 h-3.5 text-brand-600" />
               Profession actuelle
             </label>
             <input 
@@ -371,14 +368,14 @@ export default function ProfilProfesseurPage() {
               placeholder="Ex : Étudiant en Médecine, Ingénieur, Prof..."
               value={profession}
               onChange={(e) => setProfession(e.target.value)}
-              className="w-full p-3.5 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:border-[#FF5A5F] focus:ring-4 focus:ring-red-500/10 shadow-sm transition"
+              className="w-full p-3.5 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:border-brand-600 focus:ring-4 focus:ring-brand-500/15 shadow-sm transition"
             />
           </div>
 
           {/* 2. PARCOURS ACADÉMIQUE & NIVEAU */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
-              <BookOpen className="w-3.5 h-3.5 text-[#FF5A5F]" />
+              <BookOpen className="w-3.5 h-3.5 text-brand-600" />
               Matière(s) enseignée(s)
             </label>
             <input 
@@ -386,7 +383,7 @@ export default function ProfilProfesseurPage() {
               placeholder="Ex : Mathématiques, Physique-Chimie, Français..."
               value={matiere}
               onChange={(e) => setMatiere(e.target.value)}
-              className="w-full p-3.5 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:border-[#FF5A5F] focus:ring-4 focus:ring-red-500/10 shadow-sm transition"
+              className="w-full p-3.5 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:border-brand-600 focus:ring-4 focus:ring-brand-500/15 shadow-sm transition"
             />
           </div>
 
@@ -394,7 +391,7 @@ export default function ProfilProfesseurPage() {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
-                <GraduationCap className="w-3.5 h-3.5 text-[#FF5A5F]" />
+                <GraduationCap className="w-3.5 h-3.5 text-brand-600" />
                 Niveau(x) enseigné(s) (Maximum 2 choix)
               </label>
               <span className="text-[11px] text-gray-400 font-medium">{niveau.length}/2 sélectionnés</span>
@@ -409,7 +406,7 @@ export default function ProfilProfesseurPage() {
                     onClick={() => toggleNiveau(item.id)}
                     className={`p-3 rounded-xl border text-xs font-bold transition flex items-center justify-center cursor-pointer ${
                       isSelected 
-                        ? 'bg-white border-[#FF5A5F] text-[#FF5A5F] shadow-sm ring-2 ring-red-500/10' 
+                        ? 'bg-white border-brand-600 text-brand-600 shadow-sm ring-2 ring-red-500/10' 
                         : 'bg-white/80 border-gray-200 text-gray-600 hover:bg-white'
                     }`}
                   >
@@ -422,7 +419,7 @@ export default function ProfilProfesseurPage() {
 
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
-              <Award className="w-3.5 h-3.5 text-[#FF5A5F]" />
+              <Award className="w-3.5 h-3.5 text-brand-600" />
               Dernier diplôme ou Niveau d'études
             </label>
             <input 
@@ -430,7 +427,7 @@ export default function ProfilProfesseurPage() {
               placeholder="Ex : Licence en Mathématiques / Élève-Ingénieur à l'EHTP"
               value={diplome}
               onChange={(e) => setDiplome(e.target.value)}
-              className="w-full p-3.5 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:border-[#FF5A5F] focus:ring-4 focus:ring-red-500/10 shadow-sm transition"
+              className="w-full p-3.5 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:border-brand-600 focus:ring-4 focus:ring-brand-500/15 shadow-sm transition"
             />
           </div>
 
@@ -438,13 +435,13 @@ export default function ProfilProfesseurPage() {
           <div className="space-y-3">
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
-                <Briefcase className="w-3.5 h-3.5 text-[#FF5A5F]" />
+                <Briefcase className="w-3.5 h-3.5 text-brand-600" />
                 Expérience dans le soutien scolaire
               </label>
               <select
                 value={experience}
                 onChange={(e) => setExperience(e.target.value)}
-                className="w-full p-3.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 focus:outline-none focus:border-[#FF5A5F] focus:ring-4 focus:ring-red-500/10 shadow-sm transition"
+                className="w-full p-3.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 focus:outline-none focus:border-brand-600 focus:ring-4 focus:ring-brand-500/15 shadow-sm transition"
               >
                 <option value="">Sélectionnez votre expérience...</option>
                 <option value="debutant">Débutant (Moins d'1 an)</option>
@@ -482,7 +479,7 @@ export default function ProfilProfesseurPage() {
           <div className="space-y-4 bg-gray-50/80 p-5 rounded-2xl border border-gray-200/60">
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
-                <HomeIcon className="w-4 h-4 text-[#FF5A5F]" />
+                <HomeIcon className="w-4 h-4 text-brand-600" />
                 Où proposez-vous vos cours ? (Vous pouvez choisir les deux)
               </label>
               <div className="grid grid-cols-2 gap-3 pt-1">
@@ -498,11 +495,11 @@ export default function ProfilProfesseurPage() {
                       onClick={() => toggleTypeCours(item.id)}
                       className={`p-3.5 rounded-xl border text-left transition flex items-center gap-3 cursor-pointer ${
                         isSelected 
-                          ? 'bg-white border-[#FF5A5F] text-gray-900 shadow-sm ring-2 ring-red-500/10' 
+                          ? 'bg-white border-brand-600 text-gray-900 shadow-sm ring-2 ring-red-500/10' 
                           : 'bg-white/60 border-gray-200 text-gray-500 hover:bg-white'
                       }`}
                     >
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isSelected ? 'bg-red-50 text-[#FF5A5F]' : 'bg-gray-100 text-gray-400'}`}>
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isSelected ? 'bg-red-50 text-brand-600' : 'bg-gray-100 text-gray-400'}`}>
                         <item.icon className="w-4 h-4" />
                       </div>
                       <div>
@@ -517,10 +514,10 @@ export default function ProfilProfesseurPage() {
 
             <div className="space-y-1.5 pt-2 border-t border-gray-200/60">
               <label className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
-                <Coins className="w-4 h-4 text-[#FF5A5F]" />
+                <Coins className="w-4 h-4 text-brand-600" />
                 Tarif horaire souhaité
               </label>
-              <div className="flex items-center rounded-xl bg-white border border-gray-200 focus-within:border-[#FF5A5F] transition overflow-hidden shadow-sm">
+              <div className="flex items-center rounded-xl bg-white border border-gray-200 focus-within:border-brand-600 transition overflow-hidden shadow-sm">
                 <input 
                   type="number"
                   placeholder="Ex : 100 ou 120"
@@ -542,7 +539,7 @@ export default function ProfilProfesseurPage() {
           <div className="space-y-4 bg-gray-50/80 p-5 rounded-2xl border border-gray-200/60">
             <div className="space-y-1">
               <label className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
-                <Navigation className="w-4 h-4 text-[#FF5A5F]" />
+                <Navigation className="w-4 h-4 text-brand-600" />
                 Jusqu'à quelle distance pouvez-vous vous déplacer chez l'élève ?
               </label>
               <p className="text-[11px] text-gray-500">
@@ -566,7 +563,7 @@ export default function ProfilProfesseurPage() {
                   }}
                   className={`p-3 rounded-xl border text-xs font-bold transition flex items-center justify-center cursor-pointer ${
                     distanceMax === item.value
-                      ? 'bg-white border-[#FF5A5F] text-[#FF5A5F] shadow-sm ring-2 ring-red-500/10'
+                      ? 'bg-white border-brand-600 text-brand-600 shadow-sm ring-2 ring-red-500/10'
                       : 'bg-white/80 border-gray-200 text-gray-600 hover:bg-white'
                   }`}
                 >
@@ -578,11 +575,11 @@ export default function ProfilProfesseurPage() {
             {distanceMax !== '0' && (
               <div className="space-y-2 pt-2 border-t border-gray-200/60 animate-in fade-in slide-in-from-top-1">
                 <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
-                  <Coins className="w-3.5 h-3.5 text-[#FF5A5F]" />
+                  <Coins className="w-3.5 h-3.5 text-brand-600" />
                   Frais de déplacement supplémentaires (optionnel)
                 </label>
                 
-                <div className="flex items-center rounded-xl bg-white border border-gray-200 focus-within:border-[#FF5A5F] transition overflow-hidden shadow-sm">
+                <div className="flex items-center rounded-xl bg-white border border-gray-200 focus-within:border-brand-600 transition overflow-hidden shadow-sm">
                   <input 
                     type="number"
                     placeholder="Ex : 20 ou 30 (Laissez 0 si inclus)"
@@ -602,7 +599,7 @@ export default function ProfilProfesseurPage() {
           <div className="space-y-3 pt-2">
             <div className="flex items-center justify-between">
               <label className="text-sm font-extrabold text-gray-900 flex items-center gap-2">
-                <Clock className="w-4 h-4 text-[#FF5A5F]" />
+                <Clock className="w-4 h-4 text-brand-600" />
                 Disponibilité
               </label>
             </div>
@@ -663,7 +660,7 @@ export default function ProfilProfesseurPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
-                <Mail className="w-3.5 h-3.5 text-[#FF5A5F]" />
+                <Mail className="w-3.5 h-3.5 text-brand-600" />
                 Adresse e-mail
               </label>
               <input 
@@ -671,16 +668,16 @@ export default function ProfilProfesseurPage() {
                 placeholder="Ex : youssef@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full p-3.5 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:border-[#FF5A5F] focus:ring-4 focus:ring-red-500/10 shadow-sm transition"
+                className="w-full p-3.5 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:border-brand-600 focus:ring-4 focus:ring-brand-500/15 shadow-sm transition"
               />
             </div>
 
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
-                <Phone className="w-3.5 h-3.5 text-[#FF5A5F]" />
+                <Phone className="w-3.5 h-3.5 text-brand-600" />
                 Numéro de téléphone
               </label>
-              <div className="flex items-center rounded-xl bg-white border border-gray-200 focus-within:border-[#FF5A5F] focus-within:ring-4 focus-within:ring-red-500/10 shadow-sm transition overflow-hidden">
+              <div className="flex items-center rounded-xl bg-white border border-gray-200 focus-within:border-brand-600 focus-within:ring-4 focus-within:ring-red-500/10 shadow-sm transition overflow-hidden">
                 <span className="px-3.5 py-3.5 bg-gray-100/80 text-gray-700 font-bold text-xs sm:text-sm border-r border-gray-200 shrink-0">
                   🇲🇦 +212
                 </span>
@@ -703,13 +700,13 @@ export default function ProfilProfesseurPage() {
           {/* 7. PHOTO DE PROFIL */}
           <div className="space-y-2 pt-1">
             <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
-              <Camera className="w-4 h-4 text-[#FF5A5F]" />
+              <Camera className="w-4 h-4 text-brand-600" />
               Photo de profil
             </label>
 
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
               {imagePreview ? (
-                <div className="relative w-24 h-24 rounded-2xl overflow-hidden border-2 border-[#FF5A5F] shadow-md group shrink-0">
+                <div className="relative w-24 h-24 rounded-2xl overflow-hidden border-2 border-brand-600 shadow-md group shrink-0">
                   <img 
                     src={imagePreview} 
                     alt="Aperçu photo" 
@@ -724,8 +721,8 @@ export default function ProfilProfesseurPage() {
                   </button>
                 </div>
               ) : (
-                <label className="flex-1 border-2 border-dashed border-gray-200 hover:border-[#FF5A5F] bg-white hover:bg-red-50/10 p-4 rounded-2xl flex items-center justify-center gap-3 cursor-pointer transition text-gray-500 hover:text-[#FF5A5F]">
-                  <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center text-[#FF5A5F] shrink-0">
+                <label className="flex-1 border-2 border-dashed border-gray-200 hover:border-brand-600 bg-white hover:bg-red-50/10 p-4 rounded-2xl flex items-center justify-center gap-3 cursor-pointer transition text-gray-500 hover:text-brand-600">
+                  <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center text-brand-600 shrink-0">
                     <Upload className="w-5 h-5" />
                   </div>
                   <div className="text-left">
@@ -765,7 +762,7 @@ export default function ProfilProfesseurPage() {
             onClick={handleNext}
             className={`flex-1 py-3.5 font-bold text-sm rounded-xl transition shadow-lg flex items-center justify-center gap-2 cursor-pointer ${
               isValid 
-                ? 'bg-[#FF5A5F] hover:bg-[#E0484C] text-white shadow-red-500/20' 
+                ? 'bg-brand-600 hover:bg-brand-700 text-white shadow-brand-500/25' 
                 : 'bg-gray-100 text-gray-400 cursor-not-allowed shadow-none'
             }`}
           >

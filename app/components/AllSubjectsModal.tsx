@@ -40,7 +40,7 @@ export default function AllSubjectsModal({
         {/* Header de la modale */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-red-50 text-[#FF5A5F] flex items-center justify-center">
+            <div className="w-10 h-10 rounded-2xl bg-red-50 text-brand-600 flex items-center justify-center">
               <BookOpen className="w-5 h-5" />
             </div>
             <h3 className="text-xl font-extrabold text-gray-900">
@@ -68,14 +68,14 @@ export default function AllSubjectsModal({
                     onSelectSubject(subjectName);
                     onClose();
                   }}
-                  className="bg-gray-50 hover:bg-red-50/50 border border-gray-200/60 hover:border-[#FF5A5F]/40 p-5 rounded-2xl transition cursor-pointer flex flex-col justify-between gap-3 group"
+                  className="bg-gray-50 hover:bg-red-50/50 border border-gray-200/60 hover:border-brand-600/40 p-5 rounded-2xl transition cursor-pointer flex flex-col justify-between gap-3 group"
                 >
                   <div className="flex items-center justify-between">
-                    <h4 className="font-bold text-gray-900 text-base group-hover:text-[#FF5A5F] transition">
+                    <h4 className="font-bold text-gray-900 text-base group-hover:text-brand-600 transition">
                       {subjectName}
                     </h4>
                     <span className="inline-flex items-center gap-1 px-3 py-1 bg-white rounded-full text-xs font-bold text-gray-700 shadow-sm border border-gray-100">
-                      <Users className="w-3.5 h-3.5 text-[#FF5A5F]" />
+                      <Users className="w-3.5 h-3.5 text-brand-600" />
                       {data.count} {data.count > 1 ? 'professeurs' : 'professeur'}
                     </span>
                   </div>

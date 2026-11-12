@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Logo from '@/app/components/Logo';
 import { ROUTES } from '@/lib/siteconfig';
 
 interface SiteFooterProps {
@@ -25,8 +26,8 @@ export default function SiteFooter({ onSelectSubject, onOpenHelp }: SiteFooterPr
       <div className="max-w-[90rem] mx-auto px-6 lg:px-12 py-16 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10">
 
         <div className="lg:col-span-2 space-y-5">
-          <Link href={ROUTES.home} className="text-2xl font-black tracking-wider text-white">
-            prof<span className="text-orange-500">maroc</span>
+          <Link href={ROUTES.home} aria-label="profmaroc, accueil">
+            <Logo tone="dark" size="lg" />
           </Link>
           <p className="text-xs sm:text-sm leading-relaxed max-w-sm">
             La plateforme marocaine de référence pour trouver des professeurs particuliers qualifiés en ligne et à domicile, sans aucun frais d'intermédiaire.

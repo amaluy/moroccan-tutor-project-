@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Logo from '@/app/components/Logo';
 import { useRouter } from 'next/navigation';
 import { Wallet, CheckCircle2, ArrowRight, Building2, User, Hash, CreditCard, Copy, Check } from 'lucide-react';
 import Link from 'next/link';
@@ -121,16 +122,12 @@ export default function PagePaiementProf() {
   };
 
   return (
-    <main className="min-h-screen bg-[#FCFCFD] text-gray-900 font-sans flex flex-col justify-between selection:bg-[#FF5A5F] selection:text-white relative overflow-hidden">
+    <main className="min-h-screen bg-canvas text-gray-900 font-sans flex flex-col justify-between selection:bg-brand-600 selection:text-white relative overflow-hidden">
 
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[350px] bg-gradient-to-b from-red-50/60 to-transparent rounded-full blur-3xl pointer-events-none -z-10" />
 
       <header className="w-full max-w-4xl mx-auto px-6 py-6 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2">
-          <span className="text-2xl font-black text-gray-900 tracking-tight">
-            prof<span className="text-[#FF5A5F]">maroc</span>
-          </span>
-        </Link>
+        <Logo href="/" size="lg" />
       </header>
 
       <div className="flex-1 max-w-lg mx-auto px-6 py-8 w-full my-auto space-y-6">
@@ -138,7 +135,7 @@ export default function PagePaiementProf() {
         {!isSubmitted ? (
           <>
             <div className="text-center space-y-2">
-              <div className="w-12 h-12 bg-red-50 text-[#FF5A5F] rounded-2xl flex items-center justify-center mx-auto shadow-sm">
+              <div className="w-12 h-12 bg-red-50 text-brand-600 rounded-2xl flex items-center justify-center mx-auto shadow-sm">
                 <Wallet className="w-6 h-6" />
               </div>
               <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">
@@ -155,7 +152,7 @@ export default function PagePaiementProf() {
                 onClick={() => setMethode('cash')}
                 className={`p-3.5 rounded-2xl border text-center transition cursor-pointer font-bold text-xs sm:text-sm flex items-center justify-center gap-2 ${
                   methode === 'cash'
-                    ? 'bg-white border-[#FF5A5F] text-[#FF5A5F] shadow-sm ring-2 ring-red-500/10'
+                    ? 'bg-white border-brand-600 text-brand-600 shadow-sm ring-2 ring-red-500/10'
                     : 'bg-white/60 border-gray-200 text-gray-600 hover:bg-white'
                 }`}
               >
@@ -167,7 +164,7 @@ export default function PagePaiementProf() {
                 onClick={() => setMethode('carte')}
                 className={`p-3.5 rounded-2xl border text-center transition cursor-pointer font-bold text-xs sm:text-sm flex items-center justify-center gap-2 ${
                   methode === 'carte'
-                    ? 'bg-white border-[#FF5A5F] text-[#FF5A5F] shadow-sm ring-2 ring-red-500/10'
+                    ? 'bg-white border-brand-600 text-brand-600 shadow-sm ring-2 ring-red-500/10'
                     : 'bg-white/60 border-gray-200 text-gray-600 hover:bg-white'
                 }`}
               >
@@ -183,7 +180,7 @@ export default function PagePaiementProf() {
                     type="button"
                     onClick={() => setModeEspeces('cashplus')}
                     className={`py-2 px-3 rounded-xl border text-xs font-bold transition cursor-pointer ${
-                      modeEspeces === 'cashplus' ? 'bg-red-50 border-[#FF5A5F] text-[#FF5A5F]' : 'bg-white border-gray-200 text-gray-500'
+                      modeEspeces === 'cashplus' ? 'bg-red-50 border-brand-600 text-brand-600' : 'bg-white border-gray-200 text-gray-500'
                     }`}
                   >
                     CashPlus
@@ -192,7 +189,7 @@ export default function PagePaiementProf() {
                     type="button"
                     onClick={() => setModeEspeces('wafacash')}
                     className={`py-2 px-3 rounded-xl border text-xs font-bold transition cursor-pointer ${
-                      modeEspeces === 'wafacash' ? 'bg-red-50 border-[#FF5A5F] text-[#FF5A5F]' : 'bg-white border-gray-200 text-gray-500'
+                      modeEspeces === 'wafacash' ? 'bg-red-50 border-brand-600 text-brand-600' : 'bg-white border-gray-200 text-gray-500'
                     }`}
                   >
                     WafaCash
@@ -210,7 +207,7 @@ export default function PagePaiementProf() {
                       <button 
                         type="button"
                         onClick={() => handleCopy(`+212 ${mesCoordonnees.telephone}`, 'tel-cash')}
-                        className="flex items-center gap-1.5 font-bold text-gray-900 hover:text-[#FF5A5F] transition cursor-pointer"
+                        className="flex items-center gap-1.5 font-bold text-gray-900 hover:text-brand-600 transition cursor-pointer"
                       >
                         <span>+212 {mesCoordonnees.telephone}</span>
                         {copiedField === 'tel-cash' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-gray-400" />}
@@ -229,7 +226,7 @@ export default function PagePaiementProf() {
                     type="button"
                     onClick={() => setModeCarte('rib')}
                     className={`py-2 px-3 rounded-xl border text-xs font-bold transition cursor-pointer ${
-                      modeCarte === 'rib' ? 'bg-red-50 border-[#FF5A5F] text-[#FF5A5F]' : 'bg-white border-gray-200 text-gray-500'
+                      modeCarte === 'rib' ? 'bg-red-50 border-brand-600 text-brand-600' : 'bg-white border-gray-200 text-gray-500'
                     }`}
                   >
                     Par RIB Bancaire
@@ -238,7 +235,7 @@ export default function PagePaiementProf() {
                     type="button"
                     onClick={() => setModeCarte('telephone')}
                     className={`py-2 px-3 rounded-xl border text-xs font-bold transition cursor-pointer ${
-                      modeCarte === 'telephone' ? 'bg-red-50 border-[#FF5A5F] text-[#FF5A5F]' : 'bg-white border-gray-200 text-gray-500'
+                      modeCarte === 'telephone' ? 'bg-red-50 border-brand-600 text-brand-600' : 'bg-white border-gray-200 text-gray-500'
                     }`}
                   >
                     Par App Mobile (Téléphone)
@@ -270,7 +267,7 @@ export default function PagePaiementProf() {
                         <button 
                           type="button"
                           onClick={() => handleCopy(`+212 ${mesCoordonnees.telephone}`, 'tel-mobile')}
-                          className="flex items-center gap-1.5 font-bold text-gray-900 hover:text-[#FF5A5F] transition cursor-pointer"
+                          className="flex items-center gap-1.5 font-bold text-gray-900 hover:text-brand-600 transition cursor-pointer"
                         >
                           <span>+212 {mesCoordonnees.telephone}</span>
                           {copiedField === 'tel-mobile' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-gray-400" />}
@@ -284,14 +281,14 @@ export default function PagePaiementProf() {
 
             <form onSubmit={handleSubmit} className="space-y-4 pt-2 border-t border-gray-100">
               <h2 className="text-xs font-black uppercase tracking-wider text-gray-500 flex items-center gap-2">
-                <Hash className="w-4 h-4 text-[#FF5A5F]" />
+                <Hash className="w-4 h-4 text-brand-600" />
                 2. Confirmez votre paiement
               </h2>
 
               <div className="space-y-3">
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-gray-700">Votre Nom et Prénom</label>
-                  <div className="flex items-center rounded-xl bg-white border border-gray-200 focus-within:border-[#FF5A5F] overflow-hidden shadow-sm">
+                  <div className="flex items-center rounded-xl bg-white border border-gray-200 focus-within:border-brand-600 overflow-hidden shadow-sm">
                     <span className="px-3.5 text-gray-400"><User className="w-4 h-4" /></span>
                     <input 
                       type="text"
@@ -307,7 +304,7 @@ export default function PagePaiementProf() {
                   <label className="text-xs font-bold text-gray-700">
                     {methode === 'cash' ? "Code de transfert / Numéro de reçu" : "Référence du virement / Numéro de transaction"}
                   </label>
-                  <div className="flex items-center rounded-xl bg-white border border-gray-200 focus-within:border-[#FF5A5F] overflow-hidden shadow-sm">
+                  <div className="flex items-center rounded-xl bg-white border border-gray-200 focus-within:border-brand-600 overflow-hidden shadow-sm">
                     <span className="px-3.5 text-gray-400"><Hash className="w-4 h-4" /></span>
                     <input 
                       type="text"
@@ -325,7 +322,7 @@ export default function PagePaiementProf() {
                 disabled={!isValid || loading}
                 className={`w-full py-4 font-bold text-sm rounded-xl transition shadow-lg flex items-center justify-center gap-2 cursor-pointer ${
                   isValid && !loading
-                    ? 'bg-[#FF5A5F] hover:bg-[#E0484C] text-white shadow-red-500/20' 
+                    ? 'bg-brand-600 hover:bg-brand-700 text-white shadow-brand-500/25' 
                     : 'bg-gray-100 text-gray-400 cursor-not-allowed shadow-none'
                 }`}
               >

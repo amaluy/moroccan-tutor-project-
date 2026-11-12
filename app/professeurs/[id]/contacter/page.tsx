@@ -142,15 +142,15 @@ export default function ContacterProfesseur() {
 
   if (loadingProfessor) {
     return (
-      <div className="min-h-screen bg-[#faf9f6] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-rose-500 animate-spin" />
+      <div className="min-h-screen bg-canvas flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-brand-500 animate-spin" />
       </div>
     );
   }
 
   if (success) {
     return (
-      <main className="min-h-screen bg-[#faf9f6] flex flex-col items-center justify-center p-6 text-center">
+      <main className="min-h-screen bg-canvas flex flex-col items-center justify-center p-6 text-center">
         <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200/80 max-w-md w-full space-y-4">
           <div className="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
             <CheckCircle2 className="w-8 h-8" />
@@ -171,7 +171,7 @@ export default function ContacterProfesseur() {
   }
 
   return (
-    <main className="min-h-screen bg-[#faf9f6] text-slate-900 font-sans py-10 px-4 sm:px-6">
+    <main className="min-h-screen bg-canvas text-slate-900 font-sans py-10 px-4 sm:px-6">
       <div className="max-w-2xl mx-auto space-y-6">
 
         <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200/80 space-y-6">
@@ -336,7 +336,7 @@ export default function ContacterProfesseur() {
             <button 
               type="submit" 
               disabled={submitting}
-              className="w-full bg-[#ff2d55] hover:bg-[#e02447] text-white font-extrabold py-3.5 rounded-2xl text-sm transition shadow-lg shadow-rose-500/20 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              className="w-full bg-brand-600 hover:bg-brand-700 text-white font-extrabold py-3.5 rounded-2xl text-sm transition shadow-lg shadow-brand-500/25 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
             >
               {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               Envoyer la demande

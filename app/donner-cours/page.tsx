@@ -38,12 +38,12 @@ export default function TeachPage() {
       {/* BANNIÈRE TOP : BOUTON ACCÈS RAPIDE "DEVENIR PROF" */}
       <div className="bg-gray-900 text-white py-2.5 px-4 text-center text-xs sm:text-sm font-medium flex items-center justify-center gap-3">
         <span className="flex items-center gap-1.5">
-          <GraduationCap className="w-4 h-4 text-[#FF5733]" />
+          <GraduationCap className="w-4 h-4 text-brand-600" />
           Vous êtes enseignant ou étudiant tutorat ?
         </span>
         <button 
           onClick={handleGoToPayment}
-          className="bg-[#FF5733] hover:bg-[#e04824] text-white px-3 py-1 rounded-lg font-bold text-xs transition shadow-sm inline-flex items-center gap-1 cursor-pointer"
+          className="bg-brand-600 hover:bg-brand-700 text-white px-3 py-1 rounded-lg font-bold text-xs transition shadow-sm inline-flex items-center gap-1 cursor-pointer"
         >
           Devenir prof <ArrowRight className="w-3 h-3" />
         </button>
@@ -54,7 +54,7 @@ export default function TeachPage() {
         <div className="max-w-5xl mx-auto text-center space-y-6">
           
           {/* BADGE AVEC IMAGE LOCAL MAROC.PNG */}
-          <div className="inline-flex items-center gap-2 bg-orange-100 text-[#FF5733] border border-orange-200 px-4 py-1.5 rounded-full text-xs font-extrabold shadow-sm">
+          <div className="inline-flex items-center gap-2 bg-orange-100 text-brand-600 border border-orange-200 px-4 py-1.5 rounded-full text-xs font-extrabold shadow-sm">
             <img 
               src="/maroc.png" 
               alt="Drapeau du Maroc" 
@@ -66,7 +66,7 @@ export default function TeachPage() {
           {/* TITRE AXÉ SUR LA VRAIE VALEUR DU SITE */}
           <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-gray-900 leading-tight tracking-tight max-w-4xl mx-auto">
             Ne perdez plus votre temps à chercher des élèves. <br />
-            <span className="text-[#FF5733]">Les demandes sont déjà là.</span>
+            <span className="text-brand-600">Les demandes sont déjà là.</span>
           </h1>
 
           {/* PARAGRAPHE D'IMPACT */}
@@ -79,7 +79,7 @@ export default function TeachPage() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
             <button
               onClick={handleGoToPayment} 
-              className="w-full sm:w-auto bg-[#FF5733] hover:bg-[#e04824] text-white font-extrabold px-8 py-4 rounded-2xl text-base transition shadow-lg hover:shadow-orange-200 flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full sm:w-auto bg-brand-600 hover:bg-brand-700 text-white font-extrabold px-8 py-4 rounded-2xl text-base transition shadow-lg hover:shadow-orange-200 flex items-center justify-center gap-2 cursor-pointer"
             >
               <GraduationCap className="w-5 h-5" />
               Devenir prof maintenant
@@ -90,7 +90,7 @@ export default function TeachPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-6 text-left max-w-4xl mx-auto">
             
             <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-2">
-              <div className="w-9 h-9 rounded-xl bg-orange-50 text-[#FF5733] flex items-center justify-center font-bold">
+              <div className="w-9 h-9 rounded-xl bg-orange-50 text-brand-600 flex items-center justify-center font-bold">
                 <PhoneCall className="w-5 h-5" />
               </div>
               <h3 className="font-bold text-gray-900 text-sm">Numéros & contacts prêts</h3>
@@ -123,15 +123,15 @@ export default function TeachPage() {
 
           {/* CARTE D'INSCRIPTION TEST (10 DH) */}
           <div className="pt-8 max-w-md mx-auto">
-            <div className="bg-white p-6 rounded-3xl border-2 border-[#FF5733] shadow-xl relative overflow-hidden space-y-4">
+            <div className="bg-white p-6 rounded-3xl border-2 border-brand-600 shadow-xl relative overflow-hidden space-y-4">
               
-              <div className="absolute top-0 right-0 bg-[#FF5733] text-white text-[10px] font-black px-3 py-1 rounded-bl-xl uppercase tracking-wider flex items-center gap-1">
+              <div className="absolute top-0 right-0 bg-brand-600 text-white text-[10px] font-black px-3 py-1 rounded-bl-xl uppercase tracking-wider flex items-center gap-1">
                 <Sparkles className="w-3 h-3" />
                 Offre d'essai Inscription
               </div>
 
               <div className="text-left space-y-1 pt-1">
-                <p className="text-xs font-extrabold text-[#FF5733] uppercase tracking-wider">Accès d'essai au flux d'élèves</p>
+                <p className="text-xs font-extrabold text-brand-600 uppercase tracking-wider">Accès d'essai au flux d'élèves</p>
                 <div className="flex items-baseline gap-2">
                   <span className="text-4xl font-black text-gray-900">10 DH</span>
                   <span className="text-xs text-gray-500 font-semibold">activation unique de votre profil</span>
@@ -155,7 +155,7 @@ export default function TeachPage() {
 
               <button
                 onClick={handleGoToPayment} 
-                className="w-full bg-[#FF5733] hover:bg-[#e04824] text-white font-extrabold py-3.5 rounded-2xl text-sm transition shadow-lg hover:shadow-orange-200 flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full bg-brand-600 hover:bg-brand-700 text-white font-extrabold py-3.5 rounded-2xl text-sm transition shadow-lg hover:shadow-orange-200 flex items-center justify-center gap-2 cursor-pointer"
               >
                 <UserPlus className="w-4 h-4" />
                 Devenir Prof (Essai 10 DH)
@@ -178,7 +178,7 @@ export default function TeachPage() {
       <section className="py-16 px-4 sm:px-8 max-w-6xl mx-auto w-full space-y-12">
         <div className="text-center space-y-3">
           <h2 className="text-2xl sm:text-4xl font-black text-gray-900">
-            Comment ça marche pour <span className="text-[#FF5733]">les professeurs ?</span>
+            Comment ça marche pour <span className="text-brand-600">les professeurs ?</span>
           </h2>
           <p className="text-sm text-gray-500 max-w-xl mx-auto">
             Débloquez des contacts qualifiés en quelques clics sans perte de temps.
@@ -188,7 +188,7 @@ export default function TeachPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           
           <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
-            <div className="w-10 h-10 rounded-xl bg-orange-100 text-[#FF5733] font-black flex items-center justify-center text-lg">
+            <div className="w-10 h-10 rounded-xl bg-orange-100 text-brand-600 font-black flex items-center justify-center text-lg">
               1
             </div>
             <h3 className="text-lg font-bold text-gray-900">Activez votre compte (10 DH)</h3>
@@ -198,7 +198,7 @@ export default function TeachPage() {
           </div>
 
           <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
-            <div className="w-10 h-10 rounded-xl bg-orange-100 text-[#FF5733] font-black flex items-center justify-center text-lg">
+            <div className="w-10 h-10 rounded-xl bg-orange-100 text-brand-600 font-black flex items-center justify-center text-lg">
               2
             </div>
             <h3 className="text-lg font-bold text-gray-900">Consultez les demandes</h3>
@@ -208,7 +208,7 @@ export default function TeachPage() {
           </div>
 
           <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
-            <div className="w-10 h-10 rounded-xl bg-orange-100 text-[#FF5733] font-black flex items-center justify-center text-lg">
+            <div className="w-10 h-10 rounded-xl bg-orange-100 text-brand-600 font-black flex items-center justify-center text-lg">
               3
             </div>
             <h3 className="text-lg font-bold text-gray-900">Contactez & Enseignez</h3>

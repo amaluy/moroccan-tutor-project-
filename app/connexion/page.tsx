@@ -90,7 +90,7 @@ export default function ConnexionPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#F5F5F7] text-gray-900 font-sans flex flex-col justify-between selection:bg-[#FF5A5F] selection:text-white">
+    <main className="min-h-screen bg-canvas text-gray-900 font-sans flex flex-col justify-between selection:bg-brand-600 selection:text-white">
       <Navbar 
         isMenuOpen={isMenuOpen}
         setIsMenuOpen={setIsMenuOpen}
@@ -114,8 +114,8 @@ export default function ConnexionPage() {
 
       {currentPage === 'landing' && (
         <section className="flex-1 flex flex-col items-center justify-center px-6 py-16 md:py-24 text-center max-w-5xl mx-auto my-auto">
-          <div className="inline-flex items-center gap-2 bg-red-50 border border-red-100 px-4 py-1.5 rounded-full mb-8 text-xs font-bold text-[#FF5A5F]">
-            <span className="w-2 h-2 rounded-full bg-[#FF5A5F] animate-pulse" />
+          <div className="inline-flex items-center gap-2 bg-brand-50 border border-brand-100 px-4 py-1.5 rounded-full mb-8 text-xs font-bold text-brand-600">
+            <span className="w-2 h-2 rounded-full bg-brand-600 animate-pulse" />
             <span>La 1ère communauté de soutien scolaire au Maroc</span>
           </div>
 
@@ -140,7 +140,7 @@ export default function ConnexionPage() {
               <button 
                 type="submit"
                 disabled={isLoading}
-                className="w-full sm:w-auto px-6 py-3.5 bg-[#FF5A5F] hover:bg-[#E0484C] text-white font-bold rounded-xl text-sm shrink-0 shadow-md flex items-center justify-center gap-2"
+                className="w-full sm:w-auto px-6 py-3.5 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-xl text-sm shrink-0 shadow-md flex items-center justify-center gap-2"
               >
                 <span>{isLoading ? 'Vérification...' : "Se connecter"}</span>
                 <ArrowRight className="w-4 h-4" />
@@ -174,12 +174,12 @@ export default function ConnexionPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Votre mot de passe" 
-                  className="w-full px-4 py-3.5 text-gray-800 placeholder-gray-400 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#FF5A5F]"
+                  className="w-full px-4 py-3.5 text-gray-800 placeholder-gray-400 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-brand-600"
                 />
                 <button 
                   type="submit"
                   disabled={isLoading}
-                  className="px-6 py-3.5 bg-[#FF5A5F] hover:bg-[#E0484C] text-white font-bold rounded-xl text-sm shrink-0 shadow-md flex items-center justify-center gap-2"
+                  className="px-6 py-3.5 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-xl text-sm shrink-0 shadow-md flex items-center justify-center gap-2"
                 >
                   <span>{isLoading ? 'Connexion...' : 'Valider'}</span>
                   <ArrowRight className="w-4 h-4" />
@@ -195,9 +195,9 @@ export default function ConnexionPage() {
           )}
 
           <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-10 text-xs sm:text-sm text-gray-500 font-semibold mt-4">
-            <div className="flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-[#FF5A5F]" /><span>Profs vérifiés & certifiés</span></div>
-            <div className="flex items-center gap-2"><GraduationCap className="w-4 h-4 text-[#FF5A5F]" /><span>Tous niveaux scolaires</span></div>
-            <div className="flex items-center gap-2"><Users className="w-4 h-4 text-[#FF5A5F]" /><span>Groupes & Cours particuliers</span></div>
+            <div className="flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-brand-600" /><span>Profs vérifiés & certifiés</span></div>
+            <div className="flex items-center gap-2"><GraduationCap className="w-4 h-4 text-brand-600" /><span>Tous niveaux scolaires</span></div>
+            <div className="flex items-center gap-2"><Users className="w-4 h-4 text-brand-600" /><span>Groupes & Cours particuliers</span></div>
           </div>
         </section>
       )}

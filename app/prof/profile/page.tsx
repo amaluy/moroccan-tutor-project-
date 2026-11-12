@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Logo from '@/app/components/Logo';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Footer from '../../components/Footer';
@@ -207,9 +208,9 @@ export default function ProfessorPrivateProfile() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-[#faf9f6] flex items-center justify-center">
+      <main className="min-h-screen bg-canvas flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-8 h-8 text-rose-500 animate-spin" />
+          <Loader2 className="w-8 h-8 text-brand-500 animate-spin" />
           <p className="text-sm font-semibold text-slate-600">Vérification de vos accès sécurisés...</p>
         </div>
       </main>
@@ -219,9 +220,9 @@ export default function ProfessorPrivateProfile() {
   // ÉCRAN DE SÉCURITÉ SI LE COMPTE N'EXISTE PAS
   if (errorMessage) {
     return (
-      <main className="min-h-screen bg-[#faf9f6] flex items-center justify-center p-6">
-        <div className="bg-white border border-rose-200 rounded-3xl p-8 max-w-md w-full text-center space-y-4 shadow-xl">
-          <div className="w-12 h-12 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mx-auto">
+      <main className="min-h-screen bg-canvas flex items-center justify-center p-6">
+        <div className="bg-white border border-brand-200 rounded-3xl p-8 max-w-md w-full text-center space-y-4 shadow-xl">
+          <div className="w-12 h-12 bg-brand-50 text-brand-500 rounded-full flex items-center justify-center mx-auto">
             <ShieldAlert className="w-6 h-6" />
           </div>
           <h2 className="text-lg font-black text-slate-900">Accès restreint</h2>
@@ -237,11 +238,11 @@ export default function ProfessorPrivateProfile() {
   }
 
   return (
-    <main className="min-h-screen bg-[#faf9f6] text-slate-900 font-sans flex flex-col justify-between relative overflow-x-hidden">
+    <main className="min-h-screen bg-canvas text-slate-900 font-sans flex flex-col justify-between relative overflow-x-hidden">
       
       <div className="bg-slate-900 text-white px-6 py-2.5 flex items-center justify-between sticky top-0 z-40 shadow-md">
         <div className="flex items-center gap-2 text-xs font-bold">
-          <Edit3 className="w-4 h-4 text-rose-400" /> Mon Espace Professeur ({profEmail})
+          <Edit3 className="w-4 h-4 text-brand-400" /> Mon Espace Professeur ({profEmail})
         </div>
         <div className="flex items-center gap-4">
           {successMessage && (
@@ -252,7 +253,7 @@ export default function ProfessorPrivateProfile() {
           <button 
             onClick={handleSave}
             disabled={saving}
-            className="bg-rose-500 hover:bg-rose-600 text-white px-4 py-1.5 rounded-xl text-xs font-extrabold flex items-center gap-2 transition cursor-pointer shadow"
+            className="bg-brand-600 hover:bg-brand-700 text-white px-4 py-1.5 rounded-xl text-xs font-extrabold flex items-center gap-2 transition cursor-pointer shadow"
           >
             {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
             Enregistrer les modifications
@@ -264,12 +265,10 @@ export default function ProfessorPrivateProfile() {
         <Link href="/prof" className="flex items-center gap-2 text-xs font-bold text-slate-700 hover:text-slate-900 transition">
           <ArrowLeft className="w-4 h-4" /> Retour au tableau de bord
         </Link>
-        <span className="text-xs font-black tracking-wider text-slate-900 flex items-center gap-1">
-          <span className="text-rose-500 text-base">🎓</span> profmaroc
-        </span>
+        <Logo size="sm" />
       </header>
 
-      <div className="w-full relative border-b border-slate-200/40 pt-10 pb-16 min-h-[420px] flex items-center bg-[#faf9f6]">
+      <div className="w-full relative border-b border-slate-200/40 pt-10 pb-16 min-h-[420px] flex items-center bg-canvas">
         <div className="absolute inset-0 w-full h-full overflow-hidden">
           <img src="/minimaal.jpg" alt="Arrière-plan minimaliste" className="w-full h-full object-cover opacity-35" />
         </div>
@@ -282,7 +281,7 @@ export default function ProfessorPrivateProfile() {
                 value={matiere} 
                 onChange={(e) => setMatiere(e.target.value)} 
                 placeholder="Matière"
-                className="bg-rose-500 text-white px-3.5 py-1.5 rounded-full text-xs font-bold shadow-sm outline-none border border-rose-400 capitalize w-44"
+                className="bg-brand-600 text-white px-3.5 py-1.5 rounded-full text-xs font-bold shadow-sm outline-none border border-brand-400 capitalize w-44"
               />
               <span className="text-[11px] text-slate-400 italic">← modifiable</span>
             </div>
@@ -305,14 +304,14 @@ export default function ProfessorPrivateProfile() {
             </div>
 
             <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
-              <Calendar className="w-3.5 h-3.5 text-rose-500" />
+              <Calendar className="w-3.5 h-3.5 text-brand-500" />
               <span>Profil créé le {createdAtFormatted}</span>
             </div>
 
             <div className="space-y-3">
               <h3 className="text-sm font-black text-slate-900">Lieux du cours & Ville</h3>
               <div className="inline-flex items-center gap-2 bg-white/90 backdrop-blur-md border border-slate-200/80 px-4 py-2.5 rounded-2xl text-xs font-semibold text-slate-700 shadow-xs">
-                <MapPin className="w-4 h-4 text-rose-500" />
+                <MapPin className="w-4 h-4 text-brand-500" />
                 <span>Chez le professeur :</span>
                 <input 
                   type="text" 
@@ -340,7 +339,7 @@ export default function ProfessorPrivateProfile() {
               {photoUrl ? (
                 <img src={photoUrl} alt={fullName} className="w-full h-full object-cover" />
               ) : (
-                <div className="w-full h-full bg-gradient-to-tr from-orange-500 to-rose-500 flex items-center justify-center text-white font-black text-4xl">
+                <div className="w-full h-full bg-gradient-to-tr from-orange-500 to-brand-500 flex items-center justify-center text-white font-black text-4xl">
                   {getInitials(fullName)}
                 </div>
               )}
@@ -380,7 +379,7 @@ export default function ProfessorPrivateProfile() {
               <div className="flex flex-wrap gap-2.5">
                 {availabilities.map((slot, index) => (
                   <div key={index} className="bg-white border border-slate-200 text-slate-800 px-4 py-2.5 rounded-xl text-xs font-bold shadow-2xs flex items-center gap-2">
-                    <Clock className="w-3.5 h-3.5 text-rose-500" />
+                    <Clock className="w-3.5 h-3.5 text-brand-500" />
                     {formatSlot(slot)}
                   </div>
                 ))}
@@ -460,7 +459,7 @@ export default function ProfessorPrivateProfile() {
             <button 
               onClick={handleSave}
               disabled={saving}
-              className="w-full bg-[#ff2d55] hover:bg-[#e02447] text-white font-extrabold py-3.5 rounded-2xl text-sm transition shadow-lg shadow-rose-500/20 active:scale-95 cursor-pointer flex items-center justify-center gap-2"
+              className="w-full bg-brand-600 hover:bg-brand-700 text-white font-extrabold py-3.5 rounded-2xl text-sm transition shadow-lg shadow-brand-500/25 active:scale-95 cursor-pointer flex items-center justify-center gap-2"
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               Enregistrer les modifications

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback, type ReactNode } from 'react';
 import Link from 'next/link';
+import Logo from '@/app/components/Logo';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import {
@@ -186,15 +187,13 @@ async function fetchProfessor(apply: (q: any) => any): Promise<Professor | null>
 /*  STYLES GLOBAUX                                                     */
 /* ------------------------------------------------------------------ */
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap');
+.pm-light{--paper:#F7F8FA;--rule:#F1F3F6;--sheet:#FFFFFF;--edge:#E8EBF0;--ink:#0B1220;--muted:#667085;--blue:#DC3B18;--onblue:#FFFFFF;--red:#E11D48;--accent:#FF5733;--accent-ink:#B52E12;--hl:rgba(255,87,51,.09);--green:#0E9F6E;--side:#FFFFFF;--shadow:rgba(16,24,40,.22);--dark:#0B1220;--ondark:#FFFFFF}
+.pm-dark{--paper:#0F1217;--rule:#1E232C;--sheet:#171B22;--edge:#272D38;--ink:#F5F7FA;--muted:#9AA3B2;--blue:#FF5733;--onblue:#1A0E05;--red:#FF6B8A;--accent:#FF6F4D;--accent-ink:#FF9A80;--hl:rgba(255,87,51,.15);--green:#3DDC97;--side:#12151B;--shadow:rgba(0,0,0,.7);--dark:#F5F7FA;--ondark:#0B1220}
 
-.pm-light{--paper:#F7F8FA;--rule:#F1F3F6;--sheet:#FFFFFF;--edge:#E8EBF0;--ink:#0B1220;--muted:#667085;--blue:#F04A00;--onblue:#FFFFFF;--red:#E11D48;--accent:#FF6A1F;--accent-ink:#C23D00;--hl:rgba(240,74,0,.09);--green:#0E9F6E;--side:#FFFFFF;--shadow:rgba(16,24,40,.22);--dark:#0B1220;--ondark:#FFFFFF}
-.pm-dark{--paper:#0F1217;--rule:#1E232C;--sheet:#171B22;--edge:#272D38;--ink:#F5F7FA;--muted:#9AA3B2;--blue:#FF6A1F;--onblue:#1A0E05;--red:#FF6B8A;--accent:#FF7A33;--accent-ink:#FF9A5C;--hl:rgba(255,106,31,.14);--green:#3DDC97;--side:#12151B;--shadow:rgba(0,0,0,.7);--dark:#F5F7FA;--ondark:#0B1220}
-
-.pm{font-family:'Hanken Grotesk',system-ui,sans-serif;color:var(--ink);background:var(--paper)}
+.pm{font-family:var(--font-sans);color:var(--ink);background:var(--paper)}
 .pm *{box-sizing:border-box}
 .pm :focus-visible{outline:2px solid var(--blue);outline-offset:2px;border-radius:8px}
-.pm-display{font-family:'Bricolage Grotesque','Hanken Grotesk',sans-serif;font-variation-settings:'opsz' 60;letter-spacing:-.025em}
+.pm-display{font-family:var(--font-display);font-variation-settings:'opsz' 60;letter-spacing:-.025em}
 .pm-num{font-variant-numeric:tabular-nums}
 .pm-muted{color:var(--muted)}
 .pm-paper{background:var(--paper)}
@@ -957,7 +956,7 @@ export default function ProfDashboard() {
         style={{ background: 'var(--side)' }}>
         <div className={`flex h-16 items-center justify-between px-4 ${collapsed ? 'lg:justify-center lg:px-2' : ''}`}>
           <button onClick={() => goTo('overview')} className="flex items-center gap-2.5 text-left cursor-pointer">
-            <span className="flex size-9 items-center justify-center rounded-xl font-extrabold pm-display" style={{ background: 'var(--blue)', color: 'var(--onblue)' }}>P</span>
+            <Logo size="md" markOnly />
             <span className={`pm-display text-lg font-bold tracking-tight ${collapsed ? 'lg:hidden' : ''}`}>prof<span style={{ color: 'var(--blue)' }}>maroc</span></span>
           </button>
           <button onClick={() => setCollapsed(!collapsed)} aria-label="Réduire le menu" className={`pm-btn pm-btn-ghost hidden size-7 lg:flex ${collapsed ? 'lg:hidden' : ''}`}>

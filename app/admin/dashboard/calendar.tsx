@@ -90,7 +90,7 @@ export default function Calendar() {
                 onClick={() => setSelectedDate(dayNumber)}
                 className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
                   isSelected
-                    ? "bg-[#E67E63] text-white shadow-md shadow-[#E67E63]/30"
+                    ? "bg-brand-400 text-white shadow-md shadow-brand-400/30"
                     : "text-gray-700 hover:bg-gray-100"
                 }`}
               >

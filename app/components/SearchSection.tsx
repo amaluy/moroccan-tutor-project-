@@ -91,7 +91,7 @@ export default function SearchSection({ searchTerm, setSearchTerm, onSearch, onV
 
         <button
           type="submit"
-          className="w-full md:w-auto px-8 py-4 bg-[#FF5A5F] hover:bg-[#E0484C] text-white font-bold text-sm rounded-[2rem] transition shadow-lg shadow-red-500/20 flex items-center justify-center gap-2 cursor-pointer shrink-0"
+          className="w-full md:w-auto px-8 py-4 bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm rounded-[2rem] transition shadow-lg shadow-brand-500/25 flex items-center justify-center gap-2 cursor-pointer shrink-0"
         >
           <Search className="w-4 h-4" />
           <span>Rechercher</span>

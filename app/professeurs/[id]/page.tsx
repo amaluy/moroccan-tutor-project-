@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Logo from '@/app/components/Logo';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import Footer from '../../components/Footer';
@@ -87,9 +88,9 @@ export default function ProfessorDetail() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-[#faf9f6] flex items-center justify-center">
+      <main className="min-h-screen bg-canvas flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-8 h-8 text-rose-500 animate-spin" />
+          <Loader2 className="w-8 h-8 text-brand-500 animate-spin" />
           <p className="text-sm font-semibold text-slate-600">Chargement du profil...</p>
         </div>
       </main>
@@ -98,7 +99,7 @@ export default function ProfessorDetail() {
 
   if (!professor) {
     return (
-      <main className="min-h-screen bg-[#faf9f6] flex flex-col items-center justify-center p-6 text-center space-y-4">
+      <main className="min-h-screen bg-canvas flex flex-col items-center justify-center p-6 text-center space-y-4">
         <h1 className="text-2xl font-black text-slate-900">Professeur introuvable</h1>
         <p className="text-sm text-slate-500">Le profil que vous recherchez n'existe pas ou a été supprimé.</p>
         <Link href="/" className="bg-slate-900 text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow">
@@ -190,7 +191,7 @@ export default function ProfessorDetail() {
   };
 
   return (
-    <main className="min-h-screen bg-[#faf9f6] text-slate-900 font-sans flex flex-col justify-between relative overflow-x-hidden">
+    <main className="min-h-screen bg-canvas text-slate-900 font-sans flex flex-col justify-between relative overflow-x-hidden">
       
       {/* Top Header Navigation */}
       <header className="bg-white/85 backdrop-blur-md border-b border-slate-200/60 px-6 py-4 flex items-center justify-between sticky top-0 z-30">
@@ -198,14 +199,12 @@ export default function ProfessorDetail() {
           <ArrowLeft className="w-4 h-4" /> Retour aux recherches
         </Link>
         <div className="flex items-center gap-4">
-          <Link href="/" className="text-xs font-black tracking-wider text-slate-900 flex items-center gap-1">
-            <span className="text-rose-500 text-base">🎓</span> profmaroc
-          </Link>
+          <Logo href="/" size="sm" />
         </div>
       </header>
 
       {/* SECTION PLEINE LARGEUR AVEC IMAGE DE FOND */}
-      <div className="w-full relative border-b border-slate-200/40 pt-10 pb-16 min-h-[420px] flex items-center bg-[#faf9f6]">
+      <div className="w-full relative border-b border-slate-200/40 pt-10 pb-16 min-h-[420px] flex items-center bg-canvas">
         
         <div className="absolute inset-0 w-full h-full overflow-hidden">
           <img 
@@ -219,7 +218,7 @@ export default function ProfessorDetail() {
           
           <div className="lg:col-span-7 space-y-6">
             <div className="flex flex-wrap gap-2">
-              <span className="bg-rose-500 text-white px-3.5 py-1 rounded-full text-xs font-bold shadow-sm capitalize">
+              <span className="bg-brand-600 text-white px-3.5 py-1 rounded-full text-xs font-bold shadow-sm capitalize">
                 {subjectDisplay.toLowerCase()}
               </span>
             </div>
@@ -229,14 +228,14 @@ export default function ProfessorDetail() {
             </h1>
 
             <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
-              <Calendar className="w-3.5 h-3.5 text-rose-500" />
+              <Calendar className="w-3.5 h-3.5 text-brand-500" />
               <span>Profil créé le {createdAtFormatted}</span>
             </div>
 
             <div className="space-y-3">
               <h3 className="text-sm font-black text-slate-900">Lieux du cours</h3>
               <div className="inline-flex items-center gap-2 bg-white/90 backdrop-blur-md border border-slate-200/80 px-4 py-2.5 rounded-2xl text-xs font-semibold text-slate-700 shadow-xs">
-                <MapPin className="w-4 h-4 text-rose-500" />
+                <MapPin className="w-4 h-4 text-brand-500" />
                 Chez {fullName.toLowerCase()} : {city.toLowerCase()}
               </div>
             </div>
@@ -252,7 +251,7 @@ export default function ProfessorDetail() {
               {photo ? (
                 <img src={photo} alt={fullName} className="w-full h-full object-cover" />
               ) : (
-                <div className="w-full h-full bg-gradient-to-tr from-orange-500 to-rose-500 flex items-center justify-center text-white font-black text-4xl">
+                <div className="w-full h-full bg-gradient-to-tr from-orange-500 to-brand-500 flex items-center justify-center text-white font-black text-4xl">
                   {getInitials(fullName)}
                 </div>
               )}
@@ -291,9 +290,9 @@ export default function ProfessorDetail() {
                 {availabilities.map((slot, index) => (
                   <div 
                     key={index}
-                    className="bg-white border border-slate-200 text-slate-800 px-4 py-2.5 rounded-xl text-xs font-bold shadow-2xs flex items-center gap-2 hover:border-rose-500 transition cursor-default"
+                    className="bg-white border border-slate-200 text-slate-800 px-4 py-2.5 rounded-xl text-xs font-bold shadow-2xs flex items-center gap-2 hover:border-brand-500 transition cursor-default"
                   >
-                    <Clock className="w-3.5 h-3.5 text-rose-500" />
+                    <Clock className="w-3.5 h-3.5 text-brand-500" />
                     {formatSlot(slot)}
                   </div>
                 ))}
@@ -387,7 +386,7 @@ export default function ProfessorDetail() {
             {/* BOUTON CONTACTER MODIFIÉ EN LINK */}
             <Link 
               href={`/professeurs/${id}/contacter`}
-              className="block w-full text-center bg-[#ff2d55] hover:bg-[#e02447] text-white font-extrabold py-3.5 rounded-2xl text-sm transition shadow-lg shadow-rose-500/20 active:scale-95 cursor-pointer"
+              className="block w-full text-center bg-brand-600 hover:bg-brand-700 text-white font-extrabold py-3.5 rounded-2xl text-sm transition shadow-lg shadow-brand-500/25 active:scale-95 cursor-pointer"
             >
               Contacter
             </Link>

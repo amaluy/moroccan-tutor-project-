@@ -1,8 +1,9 @@
 'use client';
 
+import Logo from '@/app/components/Logo';
 import { 
   LayoutDashboard, CheckSquare, Coins, TrendingUp, UserCheck, 
-  Calendar as CalendarIcon, BarChart3, Settings, HelpCircle, LogOut, GraduationCap 
+  Calendar as CalendarIcon, BarChart3, Settings, HelpCircle, LogOut 
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -17,12 +18,10 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
       {/* En-tête du menu */}
       <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
         <div className="flex items-center gap-2.5">
-          <div className="bg-orange-50 p-1.5 rounded-xl border border-orange-100">
-            <GraduationCap className="w-5 h-5 text-[#FF5733]" />
-          </div>
+          <Logo size="sm" markOnly />
           <div>
-            <span className="text-base font-black tracking-tight text-gray-900">prof<span className="text-[#FF5733]">maroc</span></span>
-            <p className="text-[9px] font-extrabold text-[#FF5733] uppercase tracking-widest leading-none mt-0.5">ADMIN PANEL</p>
+            <span className="font-display text-base font-extrabold tracking-tight text-slate-900">prof<span className="text-brand-600">maroc</span></span>
+            <p className="mt-1 text-[9px] font-extrabold uppercase leading-none tracking-widest text-brand-600">Admin panel</p>
           </div>
         </div>
       </div>
@@ -38,7 +37,7 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
               href="/admin/dashboard"
               onClick={onClose}
               title="Vue d'ensemble globale des KPIs et performances de la marketplace"
-              className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold bg-[#0f2922] text-white transition shadow-xs cursor-pointer"
+              className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold bg-slate-800 text-white transition shadow-xs cursor-pointer"
             >
               <div className="flex items-center gap-3">
                 <LayoutDashboard className="w-4 h-4 text-emerald-400" />
@@ -69,7 +68,7 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
                 <Coins className="w-4 h-4 text-amber-500" />
                 <span>Suivi des Leads & Soldes</span>
               </div>
-              <span className="text-[9px] font-extrabold bg-orange-100 text-[#FF5733] px-2 py-0.5 rounded-md">10 MAD</span>
+              <span className="text-[9px] font-extrabold bg-orange-100 text-brand-600 px-2 py-0.5 rounded-md">10 MAD</span>
             </Link>
 
             <Link 

@@ -89,9 +89,9 @@ export default function AdminLeadsPage() {
           <p className="text-sm text-gray-500 mt-1">Vue d'ensemble automatisée des mises en relation et des soldes.</p>
         </div>
         <div className="bg-orange-50 border border-orange-100 px-4 py-2.5 rounded-2xl flex items-center gap-2.5 shadow-xs">
-          <Coins className="w-5 h-5 text-[#FF5733]" />
+          <Coins className="w-5 h-5 text-brand-600" />
           <div>
-            <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#FF5733] block leading-none">Valeur Lead</span>
+            <span className="text-[10px] font-extrabold uppercase tracking-widest text-brand-600 block leading-none">Valeur Lead</span>
             <span className="text-sm font-black text-gray-900">10 MAD / Lead</span>
           </div>
         </div>
@@ -106,7 +106,7 @@ export default function AdminLeadsPage() {
             placeholder="Rechercher par nom de prof ou d'élève..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#FF5733]/20 focus:border-[#FF5733]"
+            className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-600/20 focus:border-brand-600"
           />
         </div>
 
@@ -117,7 +117,7 @@ export default function AdminLeadsPage() {
               onClick={() => setFilter(statusKey)}
               className={`px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer uppercase tracking-wider ${
                 filter === statusKey 
-                  ? 'bg-[#0f2922] text-white shadow-xs' 
+                  ? 'bg-slate-800 text-white shadow-xs' 
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
@@ -153,7 +153,7 @@ export default function AdminLeadsPage() {
                     {/* Professeur */}
                     <td className="py-4 px-6">
                       <div className="font-bold text-gray-900 flex items-center gap-1.5">
-                        <User className="w-3.5 h-3.5 text-[#FF5733]" />
+                        <User className="w-3.5 h-3.5 text-brand-600" />
                         {lead.professor?.Nom || 'Inconnu'} {lead.professor?.Prénom || ''}
                       </div>
                       <div className="flex items-center gap-2 text-xs text-gray-500 mt-1">

@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState, useEffect } from 'react';
+import Logo from '@/app/components/Logo';
 import { Search, BookOpen, MapPin, HelpCircle } from 'lucide-react';
 import { subjectsData } from '../data/subjectsData';
 
@@ -51,17 +52,14 @@ export default function StickyHeader({
       isScrolled ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0 pointer-events-none'
     }`}>
       <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between gap-4">
-        <span 
-          className="text-xl font-extrabold text-[#FF5A5F] tracking-tight shrink-0 cursor-pointer" 
-          onClick={onLogoutClick}
-        >
-          profmaroc
-        </span>
+        <button type="button" onClick={onLogoutClick} aria-label="profmaroc" className="shrink-0 cursor-pointer">
+          <Logo size="sm" />
+        </button>
 
         <form onSubmit={handleFormSubmit} className="flex-1 max-w-xl relative" ref={headerDropdownRef}>
           <div className="flex items-center bg-gray-100 rounded-full px-4 py-2 border border-gray-200">
             <div className="flex items-center gap-2 flex-1 border-r border-gray-300 pr-3">
-              <BookOpen className="w-4 h-4 text-[#FF5A5F]" />
+              <BookOpen className="w-4 h-4 text-brand-600" />
               <input
                 type="text"
                 placeholder="Matière"
@@ -85,7 +83,7 @@ export default function StickyHeader({
 
             <button 
               type="submit" 
-              className="bg-[#FF5A5F] hover:bg-[#E0484C] text-white p-2 rounded-full transition ml-1 shrink-0"
+              className="bg-brand-600 hover:bg-brand-700 text-white p-2 rounded-full transition ml-1 shrink-0"
             >
               <Search className="w-4 h-4" />
             </button>

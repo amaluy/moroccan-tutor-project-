@@ -1,27 +1,177 @@
 @import "tailwindcss";
 @source "../node_modules/@tremor";
 
+/* ==================================================================
+   DESIGN SYSTEM — profmaroc
+   Une seule source de vérité pour les couleurs, polices et formes.
+   Les classes Tailwind existantes (orange-*, gray-*) pointent
+   automatiquement vers ces valeurs : tout le site reste cohérent.
+   ================================================================== */
+
+@theme static {
+  /* --- Marque (orange profmaroc) ----------------------------------- */
+  --color-brand-50:  #FFF4EF;
+  --color-brand-100: #FFE6DC;
+  --color-brand-200: #FFCDB9;
+  --color-brand-300: #FFA98A;
+  --color-brand-400: #FF8059;
+  --color-brand-500: #FF5733;  /* couleur du logo */
+  --color-brand-600: #DC3B18;  /* boutons / texte (contraste AA sur blanc) */
+  --color-brand-700: #B52E12;
+  --color-brand-800: #8F2711;
+  --color-brand-900: #75230F;
+  --color-brand-950: #3F0F06;
+
+  /* L'ancienne palette "orange" de Tailwind = la marque */
+  --color-orange-50:  var(--color-brand-50);
+  --color-orange-100: var(--color-brand-100);
+  --color-orange-200: var(--color-brand-200);
+  --color-orange-300: var(--color-brand-300);
+  --color-orange-400: var(--color-brand-400);
+  --color-orange-500: var(--color-brand-500);
+  --color-orange-600: var(--color-brand-600);
+  --color-orange-700: var(--color-brand-700);
+  --color-orange-800: var(--color-brand-800);
+  --color-orange-900: var(--color-brand-900);
+
+  /* --- Neutres : un seul gris (slate) ------------------------------ */
+  --color-gray-50:  #F8FAFC;
+  --color-gray-100: #F1F5F9;
+  --color-gray-200: #E2E8F0;
+  --color-gray-300: #CBD5E1;
+  --color-gray-400: #94A3B8;
+  --color-gray-500: #64748B;
+  --color-gray-600: #475569;
+  --color-gray-700: #334155;
+  --color-gray-800: #1E293B;
+  --color-gray-900: #0F172A;
+  --color-gray-950: #0B1220;
+
+  --color-ink: #0B1220;
+  --color-canvas: #F7F8FA;
+
+  /* --- Typographie -------------------------------------------------- */
+  --font-sans: var(--nf-body), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--nf-display), var(--nf-body), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* --- Ombres douces ------------------------------------------------ */
+  --shadow-card: 0 1px 2px rgb(16 24 40 / 0.04), 0 10px 26px -18px rgb(16 24 40 / 0.22);
+  --shadow-pop:  0 2px 4px rgb(16 24 40 / 0.05), 0 22px 44px -22px rgb(16 24 40 / 0.35);
+  --shadow-brand: 0 10px 24px -12px rgb(255 87 51 / 0.55);
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-feature-settings: "cv11", "ss01";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Titres : police d'affichage, interlettrage resserré */
+h1, h2, h3, h4,
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.022em;
+  font-variation-settings: "opsz" 60;
+  text-wrap: balance;
+}
+
+p { text-wrap: pretty; }
+
+::selection {
+  background: var(--color-brand-500);
+  color: #fff;
+}
+
+/* Boutons et liens cliquables : curseur cohérent */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+summary,
+select {
+  cursor: pointer;
+}
+
+button:disabled { cursor: not-allowed; }
+
+/* Focus clavier visible et uniforme (accessibilité) */
+:focus-visible {
+  outline: 2px solid var(--color-brand-500);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/* Champs de formulaire : même rendu partout */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+textarea,
+select {
+  font-family: inherit;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-gray-400);
+}
+
+/* Barres de défilement discrètes */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-gray-300) transparent;
+}
+
+/* ------------------------------------------------------------------
+   Composants réutilisables (optionnels, utilisables dans toutes les pages)
+   ------------------------------------------------------------------ */
+@layer components {
+  .pm-container { @apply mx-auto w-full max-w-7xl px-4 sm:px-8; }
+
+  .pm-card {
+    @apply rounded-3xl border border-slate-200/80 bg-white;
+    box-shadow: var(--shadow-card);
+  }
+
+  .pm-card-hover {
+    @apply transition-all duration-300 hover:-translate-y-1;
+  }
+  .pm-card-hover:hover { box-shadow: var(--shadow-pop); }
+
+  .pm-badge {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-brand-200/80 bg-brand-50 px-3.5 py-1 text-xs font-bold text-brand-700;
+  }
+
+  .pm-btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-brand-700 active:scale-[0.98];
+    box-shadow: var(--shadow-brand);
+  }
+  .pm-btn-outline {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-brand-600 px-5 py-2.5 text-sm font-bold text-brand-600 transition hover:bg-brand-600 hover:text-white active:scale-[0.98];
+  }
+  .pm-btn-dark {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-ink px-5 py-2.5 text-sm font-bold text-white transition hover:bg-slate-800 active:scale-[0.98];
+  }
+
+  .pm-field {
+    @apply w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-900 shadow-xs transition focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/15;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

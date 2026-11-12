@@ -80,7 +80,7 @@ export default function SubjectsPage() {
   );
 
   return (
-    <main className="min-h-screen bg-[#F5F5F7] text-gray-900 font-sans flex flex-col justify-between selection:bg-[#FF5A5F] selection:text-white">
+    <main className="min-h-screen bg-canvas text-gray-900 font-sans flex flex-col justify-between selection:bg-brand-600 selection:text-white">
       {/* NAVBAR */}
       <Navbar 
         isLoggedIn={false}
@@ -93,7 +93,7 @@ export default function SubjectsPage() {
       {/* CONTENU PRINCIPAL */}
       <section className="flex-1 max-w-5xl w-full mx-auto px-6 py-10 md:py-16 animate-in fade-in duration-300">
         <div className="text-center mb-10">
-          <div className="inline-flex items-center gap-2 bg-red-50 border border-red-100 px-4 py-1.5 rounded-full mb-4 text-xs font-bold text-[#FF5A5F] shadow-sm">
+          <div className="inline-flex items-center gap-2 bg-red-50 border border-red-100 px-4 py-1.5 rounded-full mb-4 text-xs font-bold text-brand-600 shadow-sm">
             <Sparkles className="w-3.5 h-3.5" />
             <span>Programme National & International</span>
           </div>
@@ -114,7 +114,7 @@ export default function SubjectsPage() {
               value={filterQuery}
               onChange={(e) => setFilterQuery(e.target.value)}
               placeholder="Filtrer une matière (ex: Mathématiques, Physique...)"
-              className="w-full bg-white border border-gray-200 focus:border-[#FF5A5F] rounded-xl pl-11 pr-4 py-3 text-sm text-gray-800 placeholder-gray-400 focus:outline-none shadow-sm transition"
+              className="w-full bg-white border border-gray-200 focus:border-brand-600 rounded-xl pl-11 pr-4 py-3 text-sm text-gray-800 placeholder-gray-400 focus:outline-none shadow-sm transition"
             />
           </div>
         </div>
@@ -130,7 +130,7 @@ export default function SubjectsPage() {
                 <Link 
                   key={item.id}
                   href="/"
-                  className="group bg-white rounded-2xl p-6 border border-gray-200/80 hover:border-[#FF5A5F]/40 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 cursor-pointer block"
+                  className="group bg-white rounded-2xl p-6 border border-gray-200/80 hover:border-brand-600/40 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 cursor-pointer block"
                 >
                   <div className="flex items-start gap-5 flex-1">
                     <div className={`w-14 h-14 rounded-2xl ${item.iconBg} text-white flex items-center justify-center shrink-0 shadow-md group-hover:scale-105 transition-transform`}>
@@ -139,7 +139,7 @@ export default function SubjectsPage() {
 
                     <div className="space-y-2">
                       <div className="flex flex-wrap items-center gap-2">
-                        <h2 className="text-xl font-extrabold text-gray-900 group-hover:text-[#FF5A5F] transition">
+                        <h2 className="text-xl font-extrabold text-gray-900 group-hover:text-brand-600 transition">
                           {item.name}
                         </h2>
                         <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${item.badgeColor}`}>
@@ -165,7 +165,7 @@ export default function SubjectsPage() {
                     <span className="text-xs font-bold text-gray-500 bg-gray-100 px-2.5 py-1 rounded-lg">
                       {loading ? 'Chargement...' : `${count} prof${count > 1 ? 's' : ''} disponible${count > 1 ? 's' : ''}`}
                     </span>
-                    <div className="flex items-center gap-1 text-xs font-extrabold text-[#FF5A5F] group-hover:translate-x-1 transition-transform">
+                    <div className="flex items-center gap-1 text-xs font-extrabold text-brand-600 group-hover:translate-x-1 transition-transform">
                       <span>Voir les profs</span>
                       <ArrowUpRight className="w-4 h-4" />
                     </div>

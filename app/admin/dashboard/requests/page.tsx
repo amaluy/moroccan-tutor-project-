@@ -160,7 +160,7 @@ export default function RequestsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F4F5F7] text-gray-900 font-sans p-8 space-y-8">
+    <div className="min-h-screen bg-canvas text-gray-900 font-sans p-8 space-y-8">
       <div className="max-w-[95rem] mx-auto space-y-6">
         
         {/* En-tête / Bouton de retour */}
@@ -178,13 +178,13 @@ export default function RequestsPage() {
           <div className="flex flex-wrap gap-3 border-b border-gray-100 pb-4">
             <button 
               onClick={() => setActiveTab('nouveaux')} 
-              className={`px-5 py-2.5 rounded-xl font-bold text-xs transition cursor-pointer flex items-center gap-2 ${activeTab === 'nouveaux' ? 'bg-[#103D3B] text-white shadow-xs' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+              className={`px-5 py-2.5 rounded-xl font-bold text-xs transition cursor-pointer flex items-center gap-2 ${activeTab === 'nouveaux' ? 'bg-slate-900 text-white shadow-xs' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
             >
-              <BookOpen className="w-3.5 h-3.5 text-[#FF5A5F]" /> <span>Demandes en attente ({professeursNouveaux.length})</span>
+              <BookOpen className="w-3.5 h-3.5 text-brand-600" /> <span>Demandes en attente ({professeursNouveaux.length})</span>
             </button>
             <button 
               onClick={() => setActiveTab('existants')} 
-              className={`px-5 py-2.5 rounded-xl font-bold text-xs transition cursor-pointer flex items-center gap-2 ${activeTab === 'existants' ? 'bg-[#103D3B] text-white shadow-xs' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+              className={`px-5 py-2.5 rounded-xl font-bold text-xs transition cursor-pointer flex items-center gap-2 ${activeTab === 'existants' ? 'bg-slate-900 text-white shadow-xs' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
             >
               <Users className="w-3.5 h-3.5 text-blue-500" /> <span>Professeurs Actifs ({professeursExistants.length})</span>
             </button>

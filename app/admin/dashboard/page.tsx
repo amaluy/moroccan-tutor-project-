@@ -1,6 +1,7 @@
 'use client';
 
 import AdminPanel from './adminPanel'; 
+import Logo from '@/app/components/Logo';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
@@ -192,7 +193,7 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F4F5F7] text-gray-900 font-sans flex flex-col w-full">
+    <div className="min-h-screen bg-canvas text-gray-900 font-sans flex flex-col w-full">
       
       {/* EN-TÊTE ADMIN */}
       <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between sticky top-0 z-20 w-full shadow-2xs">
@@ -201,7 +202,7 @@ export default function AdminDashboardPage() {
             <Menu className="w-5 h-5" />
           </button>
           <div className="flex items-center gap-2">
-            <span className="font-black text-base tracking-tight text-gray-900">profmaroc</span>
+            <Logo size="sm" />
             <span className="text-[10px] font-extrabold text-red-500 uppercase tracking-widest bg-red-50 px-2 py-0.5 rounded-md">ADMIN</span>
           </div>
         </div>
@@ -240,7 +241,7 @@ export default function AdminDashboardPage() {
             <p className="text-xs text-gray-500 mt-0.5">Suivi financier, répartition géographique et performance des demandes au Maroc.</p>
           </div>
           <div className="flex items-center gap-3">
-            <button onClick={() => router.push('/admin/dashboard/requests')} className="px-4 py-2.5 bg-[#103D3B] hover:bg-[#0d312f] text-white font-bold text-xs rounded-xl shadow transition flex items-center gap-2 cursor-pointer">
+            <button onClick={() => router.push('/admin/dashboard/requests')} className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow transition flex items-center gap-2 cursor-pointer">
               <Plus className="w-4 h-4" /> <span>Gérer les Demandes ({professeursNouveaux.length})</span>
             </button>
             <button onClick={exportToExcel} className="px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs rounded-xl shadow transition flex items-center gap-2 cursor-pointer">
@@ -256,7 +257,7 @@ export default function AdminDashboardPage() {
               <div className="w-10 h-10 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-750">
                 <Users className="w-5 h-5" />
               </div>
-              <span className="px-2.5 py-1 bg-[#FF4747] text-white text-[11px] font-black rounded-full">-2,08%</span>
+              <span className="px-2.5 py-1 bg-brand-600 text-white text-[11px] font-black rounded-full">-2,08%</span>
             </div>
             <div>
               <span className="text-xs font-medium text-gray-500 block mb-0.5">Visiteurs</span>
@@ -264,7 +265,7 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
-          <div className="bg-[#103D3B] text-white p-6 rounded-3xl shadow-sm relative overflow-hidden flex flex-col justify-between h-36">
+          <div className="bg-slate-900 text-white p-6 rounded-3xl shadow-sm relative overflow-hidden flex flex-col justify-between h-36">
             <div className="flex justify-between items-start">
               <span className="text-xs font-medium text-emerald-100 flex items-center gap-1.5"><TrendingUp className="w-4 h-4" /> Chiffre d'affaires</span>
               <span className="p-1.5 bg-white/10 rounded-full"><ChevronRight className="w-4 h-4 text-white" /></span>
@@ -378,7 +379,7 @@ export default function AdminDashboardPage() {
                       </div>
 
                       {item.count > 0 && (
-                        <span className="text-[10px] font-black text-[#103D3B] mb-1.5 opacity-90 group-hover:scale-110 transition-transform">
+                        <span className="text-[10px] font-black text-slate-900 mb-1.5 opacity-90 group-hover:scale-110 transition-transform">
                           {item.count}
                         </span>
                       )}
@@ -386,7 +387,7 @@ export default function AdminDashboardPage() {
                       <div 
                         className={`w-full rounded-t-xl transition-all duration-300 shadow-xs ${
                           item.count > 0 
-                            ? 'bg-gradient-to-t from-[#103D3B] to-emerald-600 opacity-90 group-hover:opacity-100 group-hover:brightness-110' 
+                            ? 'bg-gradient-to-t from-slate-900 to-emerald-600 opacity-90 group-hover:opacity-100 group-hover:brightness-110' 
                             : 'bg-gray-200 opacity-60'
                         }`} 
                         style={{ height: `${finalHeight}%` }}

@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+import Logo from '@/app/components/Logo';
 import Link from 'next/link';
 import { 
   MapPin, BookOpen, ChevronDown, 
-  HelpCircle, GraduationCap, Menu, X, Home, Info, ArrowRight
+  HelpCircle, Menu, X, Home, Info, ArrowRight
 } from 'lucide-react';
 
 const VILLES = [
@@ -43,25 +44,18 @@ export default function PublicNavbar({
           <div className="flex items-center gap-3">
             <button 
               onClick={() => setIsMenuOpen(true)}
-              className="p-2 text-gray-700 hover:text-[#FF5733] hover:bg-orange-50 rounded-xl transition cursor-pointer border border-gray-200 shadow-xs flex items-center justify-center -ml-2 sm:ml-0"
+              className="p-2 text-gray-700 hover:text-brand-600 hover:bg-orange-50 rounded-xl transition cursor-pointer border border-gray-200 shadow-xs flex items-center justify-center -ml-2 sm:ml-0"
               title="Ouvrir le menu"
             >
               <Menu className="w-5 h-5" />
             </button>
 
-            <Link href="/" className="flex items-center gap-2 group">
-              <div className="bg-orange-50 p-1.5 rounded-xl border border-orange-100 group-hover:bg-orange-100 transition">
-                <GraduationCap className="w-6 h-6 text-[#FF5733]" />
-              </div>
-              <span className="text-2xl font-black tracking-tight text-gray-900">
-                prof<span className="text-[#FF5733]">maroc</span>
-              </span>
-            </Link>
+            <Logo href="/" size="md" />
           </div>
 
           {/* CENTRE : Menu Horizontal Classique */}
           <div className="hidden lg:flex items-center gap-7 text-sm font-bold text-gray-700">
-            <Link href="/" className="hover:text-[#FF5733] transition">
+            <Link href="/" className="hover:text-brand-600 transition">
               ACCUEIL
             </Link>
 
@@ -71,8 +65,8 @@ export default function PublicNavbar({
               onMouseEnter={() => setOpenDropdown('villes')}
               onMouseLeave={() => setOpenDropdown(null)}
             >
-              <button className="flex items-center gap-1.5 hover:text-[#FF5733] py-2 transition cursor-pointer">
-                <MapPin className="w-4 h-4 text-[#FF5733]" />
+              <button className="flex items-center gap-1.5 hover:text-brand-600 py-2 transition cursor-pointer">
+                <MapPin className="w-4 h-4 text-brand-600" />
                 <span>VILLES</span>
                 <ChevronDown className={`w-3.5 h-3.5 transition-transform ${openDropdown === 'villes' ? 'rotate-180' : ''}`} />
               </button>
@@ -86,7 +80,7 @@ export default function PublicNavbar({
                         if (onSelectCity) onSelectCity(v);
                         setOpenDropdown(null);
                       }}
-                      className="text-left px-2.5 py-1.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-orange-50 hover:text-[#FF5733] transition cursor-pointer"
+                      className="text-left px-2.5 py-1.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-orange-50 hover:text-brand-600 transition cursor-pointer"
                     >
                       {v}
                     </button>
@@ -101,8 +95,8 @@ export default function PublicNavbar({
               onMouseEnter={() => setOpenDropdown('matieres')}
               onMouseLeave={() => setOpenDropdown(null)}
             >
-              <button className="flex items-center gap-1.5 hover:text-[#FF5733] py-2 transition cursor-pointer">
-                <BookOpen className="w-4 h-4 text-[#FF5733]" />
+              <button className="flex items-center gap-1.5 hover:text-brand-600 py-2 transition cursor-pointer">
+                <BookOpen className="w-4 h-4 text-brand-600" />
                 <span>MATIÈRES</span>
                 <ChevronDown className={`w-3.5 h-3.5 transition-transform ${openDropdown === 'matieres' ? 'rotate-180' : ''}`} />
               </button>
@@ -116,7 +110,7 @@ export default function PublicNavbar({
                         if (onSelectSubject) onSelectSubject(m);
                         setOpenDropdown(null);
                       }}
-                      className="text-left px-2.5 py-1.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-orange-50 hover:text-[#FF5733] transition cursor-pointer"
+                      className="text-left px-2.5 py-1.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-orange-50 hover:text-brand-600 transition cursor-pointer"
                     >
                       {m}
                     </button>
@@ -125,12 +119,12 @@ export default function PublicNavbar({
               )}
             </div>
 
-            <Link href="/qui-sommes-nous" className="hover:text-[#FF5733] transition">
+            <Link href="/qui-sommes-nous" className="hover:text-brand-600 transition">
               QUI SOMMES NOUS ?
             </Link>
 
-            <button onClick={onOpenHelp} className="hover:text-[#FF5733] transition flex items-center gap-1.5 cursor-pointer">
-              <HelpCircle className="w-4 h-4 text-[#FF5733]" />
+            <button onClick={onOpenHelp} className="hover:text-brand-600 transition flex items-center gap-1.5 cursor-pointer">
+              <HelpCircle className="w-4 h-4 text-brand-600" />
               <span>AIDE</span>
             </button>
           </div>
@@ -139,14 +133,14 @@ export default function PublicNavbar({
           <div className="flex items-center gap-3">
             <Link 
               href="/donner-cours"
-              className="hidden sm:inline-flex border border-[#FF5733] text-[#FF5733] hover:bg-[#FF5733] hover:text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow-sm"
+              className="hidden sm:inline-flex border border-brand-600 text-brand-600 hover:bg-brand-600 hover:text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow-sm"
             >
               Donner des cours
             </Link>
 
             <Link
               href="/connexion"
-              className="bg-[#FF5733] hover:bg-[#e0482b] text-white text-xs font-bold px-4 py-2.5 rounded-xl transition shadow-sm flex items-center gap-1.5"
+              className="bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition shadow-sm flex items-center gap-1.5"
             >
               <span>Se connecter</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -167,10 +161,7 @@ export default function PublicNavbar({
           <div className="relative w-80 bg-gray-900 text-gray-200 h-full shadow-2xl flex flex-col z-10 animate-in slide-in-from-left duration-200">
             
             <div className="flex items-center justify-between px-6 py-5 border-b border-gray-800">
-              <div className="flex items-center gap-2">
-                <GraduationCap className="w-6 h-6 text-[#FF5733]" />
-                <span className="text-xl font-black text-white">prof<span className="text-[#FF5733]">maroc</span></span>
-              </div>
+              <Logo tone="dark" size="md" />
               <button 
                 onClick={() => setIsMenuOpen(false)}
                 className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition cursor-pointer"
@@ -186,7 +177,7 @@ export default function PublicNavbar({
                 onClick={() => setIsMenuOpen(false)}
                 className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-800 hover:text-white transition"
               >
-                <Home className="w-4 h-4 text-[#FF5733]" />
+                <Home className="w-4 h-4 text-brand-600" />
                 <span>Accueil</span>
               </Link>
               <Link 
@@ -194,7 +185,7 @@ export default function PublicNavbar({
                 onClick={() => setIsMenuOpen(false)}
                 className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-800 hover:text-white transition"
               >
-                <Info className="w-4 h-4 text-[#FF5733]" />
+                <Info className="w-4 h-4 text-brand-600" />
                 <span>Qui sommes-nous ?</span>
               </Link>
               <button 
@@ -204,7 +195,7 @@ export default function PublicNavbar({
                 }}
                 className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-800 hover:text-white transition text-left cursor-pointer"
               >
-                <HelpCircle className="w-4 h-4 text-[#FF5733]" />
+                <HelpCircle className="w-4 h-4 text-brand-600" />
                 <span>Aide & Support</span>
               </button>
             </div>
@@ -213,7 +204,7 @@ export default function PublicNavbar({
               <Link
                 href="/connexion"
                 onClick={() => setIsMenuOpen(false)}
-                className="w-full py-2.5 bg-[#FF5733] hover:bg-[#e0482b] text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-2 shadow-sm"
+                className="w-full py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-2 shadow-sm"
               >
                 <span>Se connecter / Espace Prof</span>
                 <ArrowRight className="w-3.5 h-3.5" />
