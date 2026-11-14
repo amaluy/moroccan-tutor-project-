@@ -5,7 +5,7 @@ import Logo from '@/app/components/Logo';
 import Link from 'next/link';
 import { 
   MapPin, BookOpen, ChevronDown, 
-  HelpCircle, Menu, X, Home, Info, ArrowRight
+  HelpCircle, Menu, X, Home, Info, ArrowRight, LogOut
 } from 'lucide-react';
 
 const VILLES = [
@@ -18,17 +18,22 @@ const MATIERES = [
   "Anglais", "Arabe", "Économie", "Informatique", "Aide aux devoirs"
 ];
 
-interface PublicNavbarProps {
+export interface PublicNavbarProps {
+  isLoggedIn?: boolean;
+  currentPage?: string;
   isMenuOpen: boolean;
   setIsMenuOpen: (open: boolean) => void;
+  onLogoutClick?: () => void;
   onOpenHelp: () => void;
   onSelectCity?: (city: string) => void;
   onSelectSubject?: (subject: string) => void;
 }
 
 export default function PublicNavbar({
+  isLoggedIn,
   isMenuOpen,
   setIsMenuOpen,
+  onLogoutClick,
   onOpenHelp,
   onSelectCity,
   onSelectSubject
@@ -138,13 +143,23 @@ export default function PublicNavbar({
               Donner des cours
             </Link>
 
-            <Link
-              href="/connexion"
-              className="bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition shadow-sm flex items-center gap-1.5"
-            >
-              <span>Se connecter</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
+            {isLoggedIn && onLogoutClick ? (
+              <button
+                onClick={onLogoutClick}
+                className="bg-gray-900 hover:bg-gray-800 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition shadow-sm flex items-center gap-1.5 cursor-pointer"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Déconnexion</span>
+              </button>
+            ) : (
+              <Link
+                href="/connexion"
+                className="bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition shadow-sm flex items-center gap-1.5"
+              >
+                <span>Se connecter</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            )}
           </div>
 
         </div>
@@ -201,14 +216,27 @@ export default function PublicNavbar({
             </div>
 
             <div className="p-4 border-t border-gray-800 bg-gray-950/50">
-              <Link
-                href="/connexion"
-                onClick={() => setIsMenuOpen(false)}
-                className="w-full py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-2 shadow-sm"
-              >
-                <span>Se connecter / Espace Prof</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
+              {isLoggedIn && onLogoutClick ? (
+                <button
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    onLogoutClick();
+                  }}
+                  className="w-full py-2.5 bg-gray-800 hover:bg-gray-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Se déconnecter</span>
+                </button>
+              ) : (
+                <Link
+                  href="/connexion"
+                  onClick={() => setIsMenuOpen(false)}
+                  className="w-full py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-2 shadow-sm"
+                >
+                  <span>Se connecter / Espace Prof</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              )}
             </div>
 
           </div>

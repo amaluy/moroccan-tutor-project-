@@ -4,9 +4,10 @@ import Link from 'next/link';
 import Logo from '@/app/components/Logo';
 import { ROUTES } from '@/lib/siteconfig';
 
-interface SiteFooterProps {
+export interface SiteFooterProps {
   /** Sur l'accueil : filtre la liste. Ailleurs : renvoie vers l'accueil avec le filtre. */
   onSelectSubject?: (subject: string) => void;
+  onNavigateHome?: () => void;
   onOpenHelp?: () => void;
 }
 
@@ -18,7 +19,7 @@ const FOOTER_SUBJECTS = [
   { label: 'SVT & Biologie', value: 'SVT' },
 ];
 
-export default function SiteFooter({ onSelectSubject, onOpenHelp }: SiteFooterProps) {
+export default function SiteFooter({ onSelectSubject, onNavigateHome, onOpenHelp }: SiteFooterProps) {
   const linkClass = 'hover:text-orange-400 transition';
 
   return (
@@ -26,11 +27,17 @@ export default function SiteFooter({ onSelectSubject, onOpenHelp }: SiteFooterPr
       <div className="max-w-[90rem] mx-auto px-6 lg:px-12 py-16 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10">
 
         <div className="lg:col-span-2 space-y-5">
-          <Link href={ROUTES.home} aria-label="profmaroc, accueil">
+          <Link
+            href={ROUTES.home}
+            aria-label="profmaroc, accueil"
+            onClick={() => {
+              if (onNavigateHome) onNavigateHome();
+            }}
+          >
             <Logo tone="dark" size="lg" />
           </Link>
           <p className="text-xs sm:text-sm leading-relaxed max-w-sm">
-            La plateforme marocaine de référence pour trouver des professeurs particuliers qualifiés en ligne et à domicile, sans aucun frais d'intermédiaire.
+            La plateforme marocaine de référence pour trouver des professeurs particuliers qualifiés en ligne et à domicile, sans aucun frais d&apos;intermédiaire.
           </p>
         </div>
 
@@ -70,9 +77,9 @@ export default function SiteFooter({ onSelectSubject, onOpenHelp }: SiteFooterPr
             <li><Link href={ROUTES.contact} className={linkClass}>Nous contacter</Link></li>
             <li>
               {onOpenHelp ? (
-                <button onClick={onOpenHelp} className={`${linkClass} cursor-pointer`}>Centre d'aide</button>
+                <button onClick={onOpenHelp} className={`${linkClass} cursor-pointer`}>Centre d&apos;aide</button>
               ) : (
-                <Link href={ROUTES.contact} className={linkClass}>Centre d'aide</Link>
+                <Link href={ROUTES.contact} className={linkClass}>Centre d&apos;aide</Link>
               )}
             </li>
           </ul>
@@ -82,7 +89,7 @@ export default function SiteFooter({ onSelectSubject, onOpenHelp }: SiteFooterPr
       <div className="border-t border-slate-900 py-6 px-6 lg:px-12 text-center sm:flex sm:items-center sm:justify-between text-xs text-slate-500 max-w-[90rem] mx-auto">
         <p>© {new Date().getFullYear()} ProfMaroc. Tous droits réservés.</p>
         <div className="flex justify-center gap-6 mt-4 sm:mt-0">
-          <Link href={ROUTES.terms} className="hover:text-slate-300 transition">Conditions d'utilisation</Link>
+          <Link href={ROUTES.terms} className="hover:text-slate-300 transition">Conditions d&apos;utilisation</Link>
           <Link href={ROUTES.privacy} className="hover:text-slate-300 transition">Politique de confidentialité</Link>
         </div>
       </div>
